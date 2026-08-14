@@ -1,0 +1,79 @@
+name: Build and deploy Jekyll site to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; do not cancel an in-progress production deploy.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build site
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        env:
+          JEKYLL_ENV: production
+
+      # Fail the build if any facilitator-only material leaked into the published site.
+      # NOTE: the framework terms "CLOSES IT / DENTS IT / MISSES IT" appear legitimately in the
+      # published Module 5, so they are NOT markers. Only strings unique to answer-key/spoiler
+      # material are checked here — they must exist ONLY in excluded files.
+      - name: Answer-key leak check
+        run: |
+          set -e
+          leaked=0
+          for marker in "ANSWER KEY" "PLANTED PROBLEM" "FACILITATOR-ONLY" "SPOILER"; do
+            if grep -rniF "$marker" _site >/dev/null 2>&1; then
+              echo "::error::Leaked marker found in _site: '$marker'"
+              grep -rniF "$marker" _site | head -n 5
+              leaked=1
+            fi
+          done
+          for f in AGENTS PLANNING CLAUDE; do
+            if find _site -iname "${f}.html" -o -iname "${f}.md" | grep -q .; then
+              echo "::error::Excluded doc rendered into _site: ${f}"
+              leaked=1
+            fi
+          done
+          if [ "$leaked" -ne 0 ]; then
+            echo "Answer-key/facilitator content leaked into the published site. Fix _config.yml exclude:."
+            exit 1
+          fi
+          echo "No leaks detected."
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

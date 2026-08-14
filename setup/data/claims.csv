@@ -1,0 +1,6 @@
+mm_claimid,mm_customer,mm_status,mm_amount,mm_adjuster
+CLM-9001,CUS-501,Open,3200,priya.nair@meridianmutual.com
+CLM-9002,CUS-502,Under review,15400,priya.nair@meridianmutual.com
+CLM-9003,CUS-503,Approved,880,dana.reeves@meridianmutual.com
+CLM-9004,CUS-504,Open,20250,dana.reeves@meridianmutual.com
+CLM-9005,CUS-505,Denied,0,priya.nair@meridianmutual.com

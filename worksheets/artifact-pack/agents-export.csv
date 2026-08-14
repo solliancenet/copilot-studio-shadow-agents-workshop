@@ -1,0 +1,11 @@
+display_name,environment,owner_upn,status,published,created_utc,last_modified_utc,description
+Benefits Buddy,Meridian-Prod,marcus.webb@meridianmutual.com,Active,Yes,2026-03-18,2026-07-02,Answers employee benefits and open-enrollment questions
+Claims Copilot,Claims-Test,priya.nair@meridianmutual.com,Active,Yes,2026-04-02,2026-07-28,Adjuster helper for claim status lookups
+Policy Lookup Bot,Meridian-Prod,it.helpdesk@meridianmutual.com,Active,Yes,2026-03-25,2026-06-14,Looks up policy details for customers and agents
+Underwriting Assistant,Meridian-Prod,priya.nair@meridianmutual.com,Active,Yes,2026-05-06,2026-07-30,Helps underwriters price risk
+Expense Helper,Meridian (default),sam.olsen@meridianmutual.com,Active,Yes,2026-03-20,2026-05-11,Helps employees submit expenses
+Onboarding Guide,Meridian (default),tom.dean@meridianmutual.com,Active,Yes,2026-03-16,2026-03-29,Helps new hires with onboarding steps
+Team Wiki,Maker-Sandbox,dev.kim@meridianmutual.com,Active,Yes,2026-04-19,2026-08-01,Personal ask-the-wiki bot across team sites
+Sales Nudge,Meridian-Prod,lena.ford@meridianmutual.com,Active,Yes,2026-04-11,2026-07-19,Nudges reps about leads
+HR FAQ v2 (copy),Meridian-Prod,marcus.webb@meridianmutual.com,Active,Yes,2026-05-22,2026-06-03,Copy of the old HR FAQ bot
+Meeting Notes Summarizer,Maker-Sandbox,dev.kim@meridianmutual.com,Active,Yes,2026-04-27,2026-07-05,Summarizes the maker's own meeting notes

@@ -1,0 +1,10 @@
+{
+  "name": "meridian-lab-underwriting-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FACILITATOR-ONLY intentionally-weak Underwriting MCP-style server for the Shadow Agents workshop",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

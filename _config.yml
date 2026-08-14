@@ -1,0 +1,77 @@
+title: Copilot Studio Shadow Agents Workshop
+description: >-
+  Assess a Copilot Studio agent estate as a security problem — inventory it,
+  map effective access, break it, and test whether Microsoft's controls
+  actually reduce the risk.
+theme: just-the-docs
+
+# Set to your published Pages URL. Leave baseurl empty for a user/org root site,
+# or set it to "/copilot-studio-shadow-agents-workshop" if serving from a project path.
+url: "https://solliancenet.github.io"
+baseurl: "/copilot-studio-shadow-agents-workshop"
+
+# --- Navigation -------------------------------------------------------------
+# just-the-docs builds the sidebar and next/previous links from front matter
+# (nav_order / parent / has_children). Do not hand-author next/prev links.
+nav_enabled: true
+search_enabled: true
+back_to_top: true
+back_to_top_text: "Back to top"
+
+heading_anchors: true
+
+aux_links:
+  "View on GitHub":
+    - "https://github.com/solliancenet/copilot-studio-shadow-agents-workshop"
+aux_links_new_tab: true
+
+# --- Diagrams ---------------------------------------------------------------
+mermaid:
+  version: "10.9.0"
+
+# --- Callouts ---------------------------------------------------------------
+callouts_level: quiet
+callouts:
+  note:
+    title: Note
+    color: blue
+  tip:
+    title: Tip
+    color: green
+  important:
+    title: Important
+    color: purple
+  warning:
+    title: Warning
+    color: yellow
+  caution:
+    title: Caution
+    color: red
+
+# --- Build ------------------------------------------------------------------
+markdown: kramdown
+kramdown:
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# --- EXCLUDE (KEEP ANSWER KEYS AND FACILITATOR MATERIAL OUT OF THE SITE) -----
+# github-workshop had a real incident where an answer key leaked to the live
+# site. Everything that reveals the planted problems or is facilitator-only
+# MUST be listed here, and CI re-checks _site/ for leaks after every build.
+exclude:
+  - AGENTS.md
+  - PLANNING.md
+  - CLAUDE.md
+  - README.md
+  - setup/
+  - scripts/
+  - worksheets/answer-keys/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+  - .bundle/
+  - .devcontainer/
+  - .github/
+  - "**/*.answers.md"
+  - "**/*.answers.local.md"

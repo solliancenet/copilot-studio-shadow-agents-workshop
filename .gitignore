@@ -1,0 +1,23 @@
+# Jekyll
+_site/
+.jekyll-cache/
+.jekyll-metadata
+.sass-cache/
+
+# Ruby / Bundler
+.bundle/
+vendor/
+*.gem
+
+# Node (if any tooling is added)
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local-only facilitator scratch (never commit filled answer keys with real tenant data)
+**/*.answers.local.md
+setup/**/secrets.*
+setup/**/*.local.json

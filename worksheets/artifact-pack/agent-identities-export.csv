@@ -1,0 +1,11 @@
+agent,entra_identity,app_id,identity_created_utc
+Benefits Buddy,cs-agent-benefits-buddy-prod,00000000-0000-0000-0000-000000000101,2026-03-18
+Claims Copilot,cs-agent-claims-copilot-test,00000000-0000-0000-0000-000000000102,2026-04-02
+Policy Lookup Bot,cs-agent-policy-lookup-prod,00000000-0000-0000-0000-000000000103,2026-03-25
+Underwriting Assistant,cs-agent-underwriting-prod,00000000-0000-0000-0000-000000000104,2026-05-06
+Expense Helper,cs-agent-expense-helper-default,00000000-0000-0000-0000-000000000105,2026-03-20
+Onboarding Guide,cs-agent-onboarding-default,00000000-0000-0000-0000-000000000106,2026-03-16
+Team Wiki,cs-agent-team-wiki-sandbox,00000000-0000-0000-0000-000000000107,2026-04-19
+Sales Nudge,cs-agent-sales-nudge-prod,00000000-0000-0000-0000-000000000108,2026-04-11
+HR FAQ v2 (copy),cs-agent-hr-faq-v2-prod,00000000-0000-0000-0000-000000000109,2026-05-22
+Meeting Notes Summarizer,cs-agent-meeting-notes-sandbox,00000000-0000-0000-0000-000000000110,2026-04-27

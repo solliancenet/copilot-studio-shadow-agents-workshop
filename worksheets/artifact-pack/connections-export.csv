@@ -1,0 +1,12 @@
+connection_name,connector,environment,connection_owner_upn,shared_with,used_by_agent,auth_type
+SP-HR-Benefits,SharePoint,Meridian-Prod,marcus.webb@meridianmutual.com,,Benefits Buddy,User (delegated)
+DV-Claims-Shared,Microsoft Dataverse,Claims-Test,svc-claims@meridianmutual.com,Claims-Adjusters,Claims Copilot,Service account
+HTTP-PolicyAPI,HTTP action,Meridian-Prod,it.helpdesk@meridianmutual.com,,Policy Lookup Bot,API key in action config
+MCP-Underwriting,MCP (custom),Meridian-Prod,priya.nair@meridianmutual.com,,Underwriting Assistant,Static bearer token
+PA-Expense-AutoApprove,Power Automate,Meridian (default),sam.olsen@meridianmutual.com,All-Employees,Expense Helper,Runs as owner
+SP-Onboarding,SharePoint,Meridian (default),tom.dean@meridianmutual.com,,Onboarding Guide,User (delegated)
+O365-Outlook-Onboarding,Office 365 Outlook,Meridian (default),tom.dean@meridianmutual.com,,Onboarding Guide,User (delegated)
+Graph-DevKim,Microsoft Graph,Maker-Sandbox,dev.kim@meridianmutual.com,,Team Wiki,User (delegated)
+DV-CRM-Shared,Microsoft Dataverse,Meridian-Prod,tom.dean@meridianmutual.com,Sales,Sales Nudge,User (delegated)
+SP-HR-FAQ,SharePoint,Meridian-Prod,marcus.webb@meridianmutual.com,,HR FAQ v2 (copy),User (delegated)
+OneDrive-DevKim,OneDrive for Business,Maker-Sandbox,dev.kim@meridianmutual.com,,Meeting Notes Summarizer,User (delegated)
