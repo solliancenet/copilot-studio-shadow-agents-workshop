@@ -1,7 +1,24 @@
-# PLANNING.md — Instructor working notes
+# PLANNING.md — Internal working notes (maintainers / PM)
 
-> **FACILITATOR-ONLY. Not attendee-facing, not published** (excluded in `_config.yml`). Working doc for
-> delivery: status, timing, open product-detail verifications, and delivery risks.
+> **Internal — not published, not for delivery.** Excluded from the site in `_config.yml`; kept as a
+> `FACILITATOR-ONLY` tripwire (the CI leak-check greps that marker). Audience: the workshop
+> **owners/authors and the PM process** — not attendees, and not something the delivering facilitator
+> needs to read. Holds build status, the work backlog, timing, open product verifications, and
+> delivery risks.
+
+## PM backlog / open issues
+
+This repo is run PM-style: items are executed by assigned agents (a prompt is produced per item), not directly. This table is the canonical backlog. Do **not** execute `deferred` items without an explicit go.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 1 | Make the workshop public and enable GitHub Pages | OPEN — deferred | Repo stays **private** for now. Decide first: making the repo public exposes `AGENTS.md`, `PLANNING.md`, `setup/`, and `worksheets/answer-keys/` in **source** — the Pages `exclude:` only affects the rendered site, not the public repo tree. |
+| 2 | Resolve the `[verify]` 2026 product-surface items | OPEN | Agent 365 admin/Graph surfaces, Conditional Access for workload identities, Purview coverage of Copilot Studio, `pac solution` agent portability, licensing. Feeds the Module 5 verdicts (see the verification list below). |
+| 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. |
+| 4 | Capture the 13 screenshots | OPEN | Referenced by the labs; list in `setup/screenshot-capture-list.md`. |
+| 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). |
+
+_Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
 
 ## Status
 

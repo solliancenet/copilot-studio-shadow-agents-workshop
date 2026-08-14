@@ -101,6 +101,8 @@ relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
 - **Spoiler discipline:** the strings `ANSWER KEY`, `PLANTED PROBLEM`, `FACILITATOR-ONLY`, `SPOILER`
   appear **only** in excluded files. CI (`.github/workflows/jekyll-gh-pages.yml`) fails the build if they
   (or a rendered `AGENTS/PLANNING/CLAUDE` page) reach `_site/`. Do not use these strings in `docs/`.
+  Excluded files are listed in `_config.yml` `exclude:` and CI re-checks `_site/` every build, so VERIFY
+  THE EXCLUDE LIST BEFORE EVERY DEPLOY — a prior workshop shipped its answer key to the live site.
 - **CLOSES IT / DENTS IT / MISSES IT** is the Module 5 verdict vocabulary and *is* allowed in published
   pages (attendees fill blank verdict cells). The *filled* answer matrix stays in `AGENTS.md`.
 - **Hybrid lab model:** every analysis task must be completable from the exported **artifact pack**, not

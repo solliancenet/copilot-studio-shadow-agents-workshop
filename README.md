@@ -16,29 +16,18 @@ Attendees work an intentionally imperfect estate for the fictional insurer **Mer
 running "Estate Binder" of deliverables, and leave with a repeatable method and a top-3 Monday-morning
 action list for their own tenant.
 
-## How this differs from "Agent 365: Securely Managing and Governing Agents at Scale"
-
-That workshop teaches the Microsoft governance stack. **This one teaches attendees to assess an estate
-as an attacker and a defender would** — to prove where it fails and judge whether the available controls
-actually mitigate the risk. The gaps are the point.
-
 ## Repository layout
 
-| Path | What it is | Published? |
-|---|---|---|
-| `index.md` | Attendee home: narrative, audience, prerequisites, agenda TOC | ✅ |
-| `docs/` | Lab content — exercises `00`–`08`, each a landing page + `NN_MM.md` task pages | ✅ |
-| `worksheets/` | "Estate Binder" deliverable templates + CSV/JSON seeds | ✅ (answer keys excluded) |
-| `media/` | Screenshots (`ex##_t##_kt##_s##.png`) | ✅ |
-| `AGENTS.md` | **Canonical estate spec + answer key** — single source of truth | ❌ excluded |
-| `PLANNING.md` | Instructor working notes, delivery risks, open items | ❌ excluded |
-| `CLAUDE.md` | Maintainer conventions (house style, authoring rules) | ❌ excluded |
-| `setup/` | Facilitator provisioning kit — `RUNBOOK.md`, Bicep, PowerShell, Python | ❌ excluded |
-
-> **Do not leak the answer key.** `AGENTS.md`, `PLANNING.md`, `CLAUDE.md`, `setup/`, and any
-> `*.answers.md` are listed in `_config.yml` `exclude:`. CI re-checks `_site/` for leaked markers after
-> every build (see `.github/workflows/jekyll-gh-pages.yml`). A prior workshop shipped its answer key to
-> the live site — verify the exclude list before every deploy.
+| Path | What it is |
+|---|---|
+| `index.md` | Attendee home: narrative, audience, prerequisites, agenda TOC |
+| `docs/` | Lab content — exercises `00`–`08`, each a landing page + `NN_MM.md` task pages |
+| `worksheets/` | "Estate Binder" deliverable templates + CSV/JSON seeds |
+| `media/` | Screenshots (`ex##_t##_kt##_s##.png`) |
+| `AGENTS.md` | **Canonical estate spec + answer key** — single source of truth |
+| `PLANNING.md` | Internal maintainer/PM notes — backlog, delivery risks, open items |
+| `CLAUDE.md` | Maintainer conventions (house style, authoring rules) |
+| `setup/` | Facilitator provisioning kit — `RUNBOOK.md`, Bicep, PowerShell, Python |
 
 ## Local development
 
@@ -64,7 +53,7 @@ threat-modeling continue even if tenant access drops.
 
 ## Presenters
 
-Jim Counts · Michele *(co-presenter)* — Power Platform Conference.
+Jim Counts · Michele Leroux Bustamante — Power Platform Conference.
 
 ## Contributing & conduct
 
