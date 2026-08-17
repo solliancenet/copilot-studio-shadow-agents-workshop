@@ -66,6 +66,8 @@ exclude:
   - README.md
   - setup/
   - scripts/
+  # Meridian Mutual demo app (.NET). Never renders into the attendee site.
+  - src/
   - worksheets/answer-keys/
   - vendor/
   - Gemfile

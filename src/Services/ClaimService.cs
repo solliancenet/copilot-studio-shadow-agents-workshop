@@ -1,0 +1,80 @@
+using System.Globalization;
+using MeridianMutual.Data;
+using MeridianMutual.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace MeridianMutual.Services;
+
+public class ClaimService
+{
+    private readonly MeridianMutualDbContext _db;
+    private readonly ILogger<ClaimService> _logger;
+
+    public ClaimService(MeridianMutualDbContext db, ILogger<ClaimService> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
+
+    /// <summary>Claims filed against a policy, newest first.</summary>
+    public List<Claim> GetClaims(long policyId) =>
+        _db.Claims
+            .Where(c => c.PolicyId == policyId)
+            .OrderByDescending(c => c.FiledOn)
+            .ToList();
+
+    public Claim? GetByClaimNumber(string claimNumber) =>
+        _db.Claims
+            .Include(c => c.Policy)
+            .FirstOrDefault(c => c.ClaimNumber == claimNumber);
+
+    /// <summary>
+    /// Files a new claim against a policy and returns the claim number the member should quote.
+    /// New claims start in <see cref="ClaimStatus.Open"/> until an adjuster picks them up.
+    /// </summary>
+    public string CreateClaim(long policyId, decimal amount, string description)
+    {
+        // Unspecified kind, so the date a caller gets back from POST /api/claims is byte-for-byte
+        // the one it gets when it reads the claim again.
+        var filedOn = DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Unspecified);
+
+        var claim = new Claim
+        {
+            ClaimNumber = NextClaimNumber(filedOn.Year),
+            PolicyId = policyId,
+            Status = ClaimStatus.Open,
+            Amount = amount,
+            FiledOn = filedOn,
+            Description = description
+        };
+
+        _db.Claims.Add(claim);
+        _db.SaveChanges();
+
+        _logger.LogInformation("Filed claim {ClaimNumber} for {Amount} against policy {PolicyId}.",
+            claim.ClaimNumber, claim.Amount, policyId);
+
+        return claim.ClaimNumber;
+    }
+
+    /// <summary>
+    /// Claim numbers run <c>CLM-{year}-{sequence}</c>, with the sequence continuing from the
+    /// highest one already issued this year.
+    /// </summary>
+    private string NextClaimNumber(int year)
+    {
+        var prefix = $"CLM-{year}-";
+
+        var highest = _db.Claims
+            .Where(c => c.ClaimNumber.StartsWith(prefix))
+            .Select(c => c.ClaimNumber)
+            .AsEnumerable()
+            .Select(number => int.TryParse(number[prefix.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out var sequence)
+                ? sequence
+                : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return $"{prefix}{highest + 1:D5}";
+    }
+}

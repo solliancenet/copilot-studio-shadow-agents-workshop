@@ -12,6 +12,13 @@ vendor/
 # Node (if any tooling is added)
 node_modules/
 
+# .NET demo app (src/) — build output and the local SQLite estate
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+
 # OS / editor
 .DS_Store
 Thumbs.db
