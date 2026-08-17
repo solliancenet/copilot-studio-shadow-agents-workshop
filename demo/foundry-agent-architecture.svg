@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Segoe UI, system-ui, -apple-system, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="720" fill="#f7f9fc"/>
+
+  <!-- Title -->
+  <text x="40" y="56" font-size="30" font-weight="700" fill="#0f172a">Agents in Action — Azure AI Foundry Reference Architecture</text>
+  <text x="40" y="86" font-size="16" fill="#475569">User → Agent → Tools → Data, with identity, observability, and safety built in.</text>
+
+  <!-- Flow arrows -->
+  <line x1="240" y1="305" x2="298" y2="305" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="600" y1="305" x2="653" y2="305" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="955" y1="305" x2="1008" y2="305" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="627" y="292" font-size="12" fill="#64748b" text-anchor="middle">tool calls</text>
+  <text x="982" y="292" font-size="12" fill="#64748b" text-anchor="middle">grounded</text>
+
+  <!-- Column A: User / Channel -->
+  <rect x="40" y="220" width="200" height="170" rx="12" fill="#e8f1fb" stroke="#4a90d9" stroke-width="2"/>
+  <text x="140" y="255" font-size="18" font-weight="700" fill="#1e3a5f" text-anchor="middle">User / Channel</text>
+  <text x="140" y="292" font-size="15" fill="#334155" text-anchor="middle">Web chat</text>
+  <text x="140" y="322" font-size="15" fill="#334155" text-anchor="middle">Microsoft Teams</text>
+  <text x="140" y="352" font-size="15" fill="#334155" text-anchor="middle">App / API</text>
+
+  <!-- Column B: Agent -->
+  <rect x="300" y="150" width="300" height="310" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="450" y="184" font-size="20" font-weight="700" fill="#1d4ed8" text-anchor="middle">Agent</text>
+  <text x="450" y="206" font-size="13" fill="#64748b" text-anchor="middle">Azure AI Foundry Agent Service</text>
+  <g>
+    <rect x="320" y="226" width="260" height="62" rx="8" fill="#eef4ff" stroke="#93b4f5"/>
+    <text x="336" y="252" font-size="15" font-weight="600" fill="#1e3a8a">Model deployment</text>
+    <text x="336" y="272" font-size="12" fill="#5b6b8c">GPT-4.1 · reasoning + tool use</text>
+    <rect x="320" y="298" width="260" height="62" rx="8" fill="#eef4ff" stroke="#93b4f5"/>
+    <text x="336" y="324" font-size="15" font-weight="600" fill="#1e3a8a">Instructions &amp; persona</text>
+    <text x="336" y="344" font-size="12" fill="#5b6b8c">task, guardrails, tone</text>
+    <rect x="320" y="370" width="260" height="62" rx="8" fill="#eef4ff" stroke="#93b4f5"/>
+    <text x="336" y="396" font-size="15" font-weight="600" fill="#1e3a8a">Tool-calling &amp; orchestration</text>
+    <text x="336" y="416" font-size="12" fill="#5b6b8c">plans and invokes tools</text>
+  </g>
+
+  <!-- Column C: Tools -->
+  <rect x="655" y="150" width="300" height="310" rx="14" fill="#ffffff" stroke="#0d9488" stroke-width="2.5"/>
+  <text x="805" y="184" font-size="20" font-weight="700" fill="#0d9488" text-anchor="middle">Tools</text>
+  <text x="805" y="206" font-size="13" fill="#64748b" text-anchor="middle">how the agent reaches the world</text>
+  <g>
+    <rect x="675" y="226" width="260" height="62" rx="8" fill="#e6f7f4" stroke="#5ec5b8"/>
+    <text x="691" y="252" font-size="15" font-weight="600" fill="#0f766e">Knowledge (grounding)</text>
+    <text x="691" y="272" font-size="12" fill="#4b7a72">File Search · Azure AI Search</text>
+    <rect x="675" y="298" width="260" height="62" rx="8" fill="#e6f7f4" stroke="#5ec5b8"/>
+    <text x="691" y="324" font-size="15" font-weight="600" fill="#0f766e">Actions</text>
+    <text x="691" y="344" font-size="12" fill="#4b7a72">Function / OpenAPI tools → APIs</text>
+    <rect x="675" y="370" width="260" height="62" rx="8" fill="#e6f7f4" stroke="#5ec5b8"/>
+    <text x="691" y="396" font-size="15" font-weight="600" fill="#0f766e">Code Interpreter</text>
+    <text x="691" y="416" font-size="12" fill="#4b7a72">compute over data on the fly</text>
+  </g>
+
+  <!-- Column D: Data & Systems -->
+  <rect x="1010" y="220" width="230" height="170" rx="12" fill="#f3f0fc" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1125" y="255" font-size="18" font-weight="700" fill="#6d28d9" text-anchor="middle">Data &amp; Systems</text>
+  <text x="1125" y="292" font-size="15" fill="#334155" text-anchor="middle">SharePoint / Blob</text>
+  <text x="1125" y="322" font-size="15" fill="#334155" text-anchor="middle">Databases</text>
+  <text x="1125" y="352" font-size="15" fill="#334155" text-anchor="middle">Line-of-business APIs</text>
+
+  <!-- Bottom band: Enterprise foundation -->
+  <rect x="40" y="498" width="1200" height="176" rx="14" fill="#eef2f7" stroke="#cbd5e1"/>
+  <text x="56" y="528" font-size="15" font-weight="700" fill="#334155">Enterprise foundation</text>
+
+  <rect x="56" y="544" width="282" height="112" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="74" y="580" font-size="16" font-weight="700" fill="#1d4ed8">Identity</text>
+  <text x="74" y="606" font-size="13" fill="#475569">Microsoft Entra ID</text>
+  <text x="74" y="626" font-size="13" fill="#475569">Managed Identity</text>
+
+  <rect x="354" y="544" width="282" height="112" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="372" y="580" font-size="16" font-weight="700" fill="#0d9488">Observability</text>
+  <text x="372" y="606" font-size="13" fill="#475569">App Insights tracing</text>
+  <text x="372" y="626" font-size="13" fill="#475569">Evaluations</text>
+
+  <rect x="652" y="544" width="282" height="112" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="670" y="580" font-size="16" font-weight="700" fill="#b45309">Safety</text>
+  <text x="670" y="606" font-size="13" fill="#475569">Azure AI Content Safety</text>
+  <text x="670" y="626" font-size="13" fill="#475569">prompt-injection &amp; egress checks</text>
+
+  <rect x="950" y="544" width="290" height="112" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="968" y="580" font-size="16" font-weight="700" fill="#6d28d9">Governance</text>
+  <text x="968" y="606" font-size="13" fill="#475569">RBAC · network isolation</text>
+  <text x="968" y="626" font-size="13" fill="#475569">data residency</text>
+
+  <!-- Footer -->
+  <text x="40" y="702" font-size="12" fill="#94a3b8">Draft reference architecture — swap the Tools and Data to the customer's scenario. One agent, one real tool call + grounding, shown live.</text>
+</svg>

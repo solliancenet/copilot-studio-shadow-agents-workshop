@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Segoe UI, system-ui, -apple-system, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <marker id="ao" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d97706"/>
+    </marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect width="1280" height="720" fill="#f7f9fc"/>
+
+  <text x="40" y="42" font-size="24" font-weight="700" fill="#0f172a">Solution Topology — Claims Triage (with infrastructure)</text>
+  <text x="40" y="66" font-size="13.5" fill="#475569">The same request → read → return flow, plus the deployment plumbing: ACR, Log Analytics, managed identity, grounding store.</text>
+
+  <!-- Adjuster -->
+  <rect x="36" y="224" width="150" height="108" rx="12" fill="#e8f1fb" stroke="#4a90d9"/>
+  <text x="111" y="272" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">Adjuster /</text>
+  <text x="111" y="292" text-anchor="middle" font-size="14" font-weight="700" fill="#1e3a5f">claims pro</text>
+
+  <!-- Resource group boundary -->
+  <rect x="206" y="96" width="1034" height="516" rx="16" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="222" y="118" font-size="12" font-weight="700" fill="#64748b" letter-spacing="0.5">RESOURCE GROUP: rg-mmdemo — westus3</text>
+
+  <!-- App: Container Apps Environment -->
+  <rect x="232" y="140" width="436" height="232" rx="12" fill="#eefaf6" stroke="#0d7a5f" stroke-width="2"/>
+  <text x="248" y="164" font-size="13" font-weight="700" fill="#0d7a5f">Container Apps Environment</text>
+  <rect x="250" y="176" width="400" height="186" rx="9" fill="#ffffff" stroke="#5ec5a8"/>
+  <text x="266" y="199" font-size="13" font-weight="700" fill="#0f766e">Meridian Mutual app — Container App (.NET 8)</text>
+  <rect x="266" y="210" width="368" height="62" rx="7" fill="#f2fbf8" stroke="#a7e0d0"/>
+  <text x="280" y="232" font-size="12" font-weight="700" fill="#0f766e">Portal UI</text>
+  <text x="280" y="252" font-size="10" fill="#475569">shows the triage briefing (MVC)</text>
+  <rect x="266" y="284" width="368" height="68" rx="7" fill="#f2fbf8" stroke="#a7e0d0"/>
+  <text x="280" y="306" font-size="12" font-weight="700" fill="#0f766e">REST API — claims &amp; policy data</text>
+  <text x="280" y="325" font-size="10" fill="#475569">policies · claims · premium-payments · /swagger</text>
+  <text x="280" y="343" font-size="10" fill="#475569">EF Core · SQLite (system of record)</text>
+
+  <!-- App infra tier -->
+  <rect x="232" y="400" width="136" height="84" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="300" y="432" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Container</text>
+  <text x="300" y="449" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Registry</text>
+  <text x="300" y="469" text-anchor="middle" font-size="9" fill="#94a3b8">image source</text>
+
+  <rect x="380" y="400" width="140" height="84" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="450" y="432" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Managed</text>
+  <text x="450" y="449" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">identity</text>
+  <text x="450" y="469" text-anchor="middle" font-size="9" fill="#94a3b8">AcrPull</text>
+
+  <rect x="532" y="400" width="136" height="84" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="600" y="432" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Log</text>
+  <text x="600" y="449" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Analytics</text>
+  <text x="600" y="469" text-anchor="middle" font-size="9" fill="#94a3b8">logs · audit</text>
+
+  <!-- Foundry -->
+  <rect x="700" y="140" width="510" height="232" rx="12" fill="#f6f9ff" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="716" y="164" font-size="13" font-weight="700" fill="#1d4ed8">Azure AI Foundry</text>
+  <rect x="716" y="176" width="478" height="64" rx="8" fill="#ffffff" stroke="#2563eb"/>
+  <text x="732" y="200" font-size="13" font-weight="700" fill="#1d4ed8">Claims Triage agent</text>
+  <text x="732" y="222" font-size="10" fill="#475569">instructions · human-in-the-loop — briefs, never decides</text>
+  <rect x="716" y="254" width="232" height="108" rx="8" fill="#eef4ff" stroke="#93b4f5"/>
+  <text x="832" y="302" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a8a">Model deployment</text>
+  <text x="832" y="322" text-anchor="middle" font-size="10" fill="#475569">gpt-4.1 / gpt-5-class</text>
+  <rect x="962" y="254" width="232" height="108" rx="8" fill="#eef4ff" stroke="#93b4f5"/>
+  <text x="1078" y="302" text-anchor="middle" font-size="12" font-weight="700" fill="#1e3a8a">File Search</text>
+  <text x="1078" y="322" text-anchor="middle" font-size="10" fill="#475569">grounding</text>
+
+  <!-- Foundry infra tier -->
+  <rect x="700" y="400" width="246" height="84" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="823" y="437" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Agent identity (Entra)</text>
+  <text x="823" y="458" text-anchor="middle" font-size="9" fill="#94a3b8">least-privilege read scope</text>
+  <rect x="962" y="400" width="232" height="84" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="1078" y="437" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Grounding store</text>
+  <text x="1078" y="458" text-anchor="middle" font-size="9" fill="#94a3b8">vector index + blob</text>
+
+  <!-- Request-flow spine (coloured) -->
+  <line x1="186" y1="262" x2="264" y2="242" stroke="#64748b" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="223" y="251" text-anchor="middle" font-size="9" fill="#64748b">uses</text>
+
+  <line x1="634" y1="230" x2="714" y2="202" stroke="#64748b" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="676" y="200" text-anchor="middle" font-size="10" font-weight="700" fill="#334155">1 · request</text>
+  <line x1="714" y1="224" x2="636" y2="252" stroke="#64748b" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a)"/>
+  <text x="676" y="268" text-anchor="middle" font-size="9" fill="#64748b">3 · briefing</text>
+
+  <line x1="742" y1="240" x2="638" y2="302" stroke="#d97706" stroke-width="3" marker-end="url(#ao)"/>
+  <text x="700" y="300" text-anchor="middle" font-size="10" font-weight="700" fill="#b45309">2 · reads data · OpenAPI</text>
+
+  <line x1="832" y1="240" x2="832" y2="253" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="868" y="250" font-size="9" fill="#64748b">inference</text>
+  <line x1="1078" y1="240" x2="1078" y2="253" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <text x="1116" y="250" font-size="9" fill="#64748b">grounding</text>
+
+  <!-- Infra edges (grey) -->
+  <line x1="300" y1="399" x2="300" y2="364" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="300" y="391" text-anchor="middle" font-size="8.5" fill="#94a3b8">image</text>
+  <line x1="450" y1="399" x2="450" y2="364" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="450" y="391" text-anchor="middle" font-size="8.5" fill="#94a3b8">identity</text>
+  <line x1="600" y1="374" x2="600" y2="399" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="600" y="391" text-anchor="middle" font-size="8.5" fill="#94a3b8">logs</text>
+  <line x1="823" y1="374" x2="823" y2="399" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="823" y="391" text-anchor="middle" font-size="8.5" fill="#94a3b8">identity</text>
+  <line x1="1078" y1="362" x2="1078" y2="399" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ag)"/>
+  <text x="1078" y="384" text-anchor="middle" font-size="8.5" fill="#94a3b8">index</text>
+
+  <!-- Legend + footer -->
+  <rect x="40" y="556" width="14" height="12" rx="2" fill="#d97706"/>
+  <text x="60" y="566" font-size="11" fill="#475569">coloured = request flow</text>
+  <rect x="230" y="556" width="14" height="12" rx="2" fill="#cbd5e1"/>
+  <text x="250" y="566" font-size="11" fill="#475569">grey = deployment plumbing</text>
+
+  <text x="40" y="592" font-size="11.5" fill="#475569"><tspan font-weight="700" fill="#334155">Governance:</tspan> agent identity (Entra) · least-privilege read scope · human-in-the-loop — the agent briefs, never decides.</text>
+  <text x="40" y="612" font-size="11.5" fill="#94a3b8">App live: ca-web-ieveiacpjsr6g…westus3.azurecontainerapps.io · deployed via azd (Bicep + ACR remote build). Foundry agent: to be provisioned.</text>
+</svg>
