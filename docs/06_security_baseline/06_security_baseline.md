@@ -57,7 +57,7 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 45 minutes
+**Estimated time:** 25 minutes
 
 ## Deliverable
 

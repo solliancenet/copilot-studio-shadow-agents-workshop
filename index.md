@@ -9,8 +9,8 @@ nav_order: 1
 
 Your makers are shipping Copilot Studio agents faster than anyone is tracking them. Each one gets an
 identity. Each one carries permissions for every connector it touches. Each one can reach Dataverse,
-SharePoint, and whatever that HTTP action points at. This workshop teaches you to treat that estate as a
-security problem — and to find out what your agents can actually do.
+SharePoint, and whatever that HTTP action points at. This workshop teaches you to find out what your
+agents can actually access, reach, and do — and whether the controls around them are enough.
 {: .fs-6 .fw-300 }
 
 [Get started]({% link docs/00_lab_environment/00_lab_environment.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
@@ -50,21 +50,21 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 | # | Module | Focus | Est. |
 |---|--------|-------|------|
 | 0 | [Lab environment]({% link docs/00_lab_environment/00_lab_environment.md %}) | Access the estate + orient | — |
-| 1 | [The agent estate you didn't know you had]({% link docs/01_the_agent_estate/01_the_agent_estate.md %}) | The security model & trust boundaries | 30 min |
-| 2 | [Discover & inventory]({% link docs/02_discover_and_inventory/02_discover_and_inventory.md %}) | What do I actually have? | 60 min |
-| 3 | [Identity, authorization & effective access]({% link docs/03_identity_and_effective_access/03_identity_and_effective_access.md %}) | Whose authority, and what can it reach? | 75 min |
+| 1 | [The agent estate you didn't know you had]({% link docs/01_the_agent_estate/01_the_agent_estate.md %}) | The security model & trust boundaries | 20 min |
+| 2 | [Discover & inventory]({% link docs/02_discover_and_inventory/02_discover_and_inventory.md %}) | What do I actually have? | 40 min |
+| 3 | [Identity, authorization & effective access]({% link docs/03_identity_and_effective_access/03_identity_and_effective_access.md %}) | Whose authority, and what can it reach? | 45 min |
 | — | _Break_ | | 15 min |
-| 4 | [Break the agents]({% link docs/04_break_the_agents/04_break_the_agents.md %}) | Failure modes & attack paths | 90 min |
+| 4 | [Break the agents]({% link docs/04_break_the_agents/04_break_the_agents.md %}) | Failure modes & attack paths | 60 min |
 | — | _Lunch / longer break_ | | 30 min |
-| 5 | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | CLOSES IT / DENTS IT / MISSES IT | 90 min |
-| 6 | [Build an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 45 min |
-| 7 | [Assess your own estate]({% link docs/07_assess_your_estate/07_assess_your_estate.md %}) | Your tenant, Monday morning | 30 min |
+| 5 | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | CLOSES IT / DENTS IT / MISSES IT | 60 min |
+| 6 | [Build an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 25 min |
+| 7 | [Assess your own estate]({% link docs/07_assess_your_estate/07_assess_your_estate.md %}) | Your tenant, Monday morning | 20 min |
 | 8 | [Wrap-up & hand-off]({% link docs/08_wrap_up_and_handoff/08_wrap_up_and_handoff.md %}) | Resources & next steps | — |
 
 {: .note }
-> Durations reflect ideal pacing and sum to more than six instructional hours. Facilitators should trim
-> demos and discussion to fit the actual room; the labs are designed so the *hands-on* core of each
-> module fits even when the surrounding discussion is shortened.
+> The exercises (Modules 1–7) total ~270 minutes (~4.5 hours). The remaining ~90 minutes of the six-hour
+> day is reserved for the opening and orientation, brief lecture segments between modules, and the
+> wrap-up. Breaks are in addition to instructional time.
 
 ## Your Estate Binder (deliverables)
 

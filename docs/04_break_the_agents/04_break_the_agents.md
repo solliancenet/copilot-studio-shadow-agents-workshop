@@ -95,7 +95,7 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 90 minutes.
+**Estimated time:** 60 minutes.
 
 This is the centerpiece of the day and the most likely module to over-run. Roughly 15 minutes per
 scenario. If the room is tight, run A and D live and treat B, C, E, and F as guided walk-throughs from the

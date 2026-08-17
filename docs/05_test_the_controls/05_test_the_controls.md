@@ -72,7 +72,7 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 90 minutes
+**Estimated time:** 60 minutes
 
 ## Deliverable
 
