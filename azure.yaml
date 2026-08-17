@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: meridian-mutual
+
+services:
+  web:
+    project: ./src
+    language: dotnet
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      # Build server-side via ACR Tasks: no local Docker daemon needed and the
+      # image is always linux/amd64 (avoids arm64 build mismatches on Apple Silicon).
+      remoteBuild: true

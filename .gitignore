@@ -12,6 +12,9 @@ vendor/
 # Node (if any tooling is added)
 node_modules/
 
+# Azure Developer CLI (azd) local environment state
+.azure/
+
 # .NET demo app (src/) — build output and the local SQLite estate
 bin/
 obj/
