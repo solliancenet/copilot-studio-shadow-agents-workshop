@@ -33,6 +33,19 @@ module resources 'resources.bicep' = {
   }
 }
 
+module foundry 'foundry.bicep' = {
+  name: 'foundry'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+  }
+}
+
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT
 output WEB_URI string = resources.outputs.WEB_URI
 output SERVICE_WEB_URI string = resources.outputs.WEB_URI
+output AZURE_AI_FOUNDRY_ENDPOINT string = foundry.outputs.AZURE_AI_FOUNDRY_ENDPOINT
+output AZURE_AI_FOUNDRY_PROJECT string = foundry.outputs.AZURE_AI_FOUNDRY_PROJECT
+output AZURE_OPENAI_MODEL string = foundry.outputs.AZURE_OPENAI_MODEL
