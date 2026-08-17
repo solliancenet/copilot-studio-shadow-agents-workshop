@@ -1,0 +1,6 @@
+# Azure AI Foundry Agents SDK for the Claims Triage agent.
+# Verified working set (see create_agent.py header notes).
+azure-ai-agents==1.1.0
+azure-identity==1.25.3
+# azure-ai-projects 2.x is installed transitively but NOT used for the classic
+# Assistants-style agent surface (its .agents is the hosted-agent-version API).

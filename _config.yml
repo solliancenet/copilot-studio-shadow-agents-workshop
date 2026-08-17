@@ -71,6 +71,9 @@ exclude:
   # azd + Bicep deployment for the demo app. Facilitator-only; not published.
   - azure.yaml
   - infra/
+  # Azure AI Foundry "Claims Triage" agent kit (SDK script + grounding docs).
+  # Facilitator-only; never renders into the attendee site.
+  - foundry/
   # GUARD Foundry pursuit slides (SVG). Internal; not published to the site.
   - demo/
   - worksheets/answer-keys/
