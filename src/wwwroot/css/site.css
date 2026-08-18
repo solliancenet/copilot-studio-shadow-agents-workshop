@@ -1,81 +1,330 @@
-html {
-  font-size: 14px;
+/* ===========================================================================
+   Meridian Mutual — Claims Triage Console
+   Brand + UI polish (presentation only). Self-contained; no external assets.
+   ========================================================================= */
+
+:root {
+  /* --- Brand anchors --------------------------------------------------- */
+  --mm-navy:        #12294B;  /* primary */
+  --mm-navy-700:    #1B3A66;
+  --mm-navy-600:    #244B80;
+  --mm-navy-050:    #EAF0F8;
+  --mm-teal:        #178C82;  /* accent */
+  --mm-teal-600:    #12756D;
+  --mm-teal-700:    #0E5F58;
+  --mm-teal-050:    #E4F3F1;
+
+  /* --- Neutrals -------------------------------------------------------- */
+  --mm-canvas:      #F6F8FB;  /* warm neutral page canvas */
+  --mm-surface:     #FFFFFF;
+  --mm-ink:         #1E2A3D;  /* slate text */
+  --mm-muted:       #5C6B82;  /* slate muted */
+  --mm-border:      #DCE3ED;
+  --mm-border-soft: #E9EEF5;
+
+  /* --- Semantic status ------------------------------------------------- */
+  --mm-green:       #1B7A4B;  --mm-green-050: #E6F4EC;
+  --mm-amber:       #A96A12;  --mm-amber-050: #FBF0DC;
+  --mm-red:         #B42318;  --mm-red-050:   #FBE9E7;
+  --mm-slate:       #52627A;  --mm-slate-050: #EEF1F6;
+
+  /* --- Map onto Bootstrap theme vars ---------------------------------- */
+  --bs-primary:        var(--mm-navy);
+  --bs-primary-rgb:    18, 41, 75;
+  --bs-link-color:     var(--mm-teal-700);
+  --bs-link-color-rgb: 14, 95, 88;
+  --bs-link-hover-color: var(--mm-teal);
+  --bs-body-color:     var(--mm-ink);
+  --bs-body-bg:        var(--mm-canvas);
+  --bs-border-color:   var(--mm-border);
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-html {
-  position: relative;
-  min-height: 100%;
-}
+/* ---------- Base ------------------------------------------------------- */
+html { font-size: 14px; position: relative; min-height: 100%; }
+@media (min-width: 768px) { html { font-size: 16px; } }
 
 body {
-  margin-bottom: 60px;
+  margin-bottom: 72px;
+  background-color: var(--mm-canvas);
+  color: var(--mm-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+               Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Product Card Styles */
-.product-image {
-  height: 200px;
-  object-fit: cover;
-  width: 100%;
+h1, h2, h3, h4, h5, h6 { color: var(--mm-navy); font-weight: 650; letter-spacing: -0.01em; }
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- Visible focus everywhere ---------------------------------- */
+a:focus-visible,
+.btn:focus-visible,
+.nav-link:focus-visible,
+.navbar-brand:focus-visible,
+button:focus-visible,
+.trace-toggle:focus-visible {
+  outline: 3px solid var(--mm-teal);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
+/* ---------- Header / nav ---------------------------------------------- */
+.mm-navbar {
+  background: var(--mm-navy);
+  border-bottom: 3px solid var(--mm-teal);
+  box-shadow: 0 1px 0 rgba(18, 41, 75, 0.25), 0 4px 18px rgba(18, 41, 75, 0.10);
+}
+.mm-navbar .navbar-brand { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+.mm-brand-lockup { display: inline-flex; align-items: center; gap: 0.65rem; }
+.mm-brand-lockup .mm-logo { display: block; height: 34px; width: auto; }
+.mm-brand-divider {
+  width: 1px; height: 30px; background: rgba(255, 255, 255, 0.22); margin: 0 0.15rem;
+}
+.mm-brand-context { display: flex; flex-direction: column; line-height: 1.15; }
+.mm-brand-context .mm-app-name { color: #fff; font-weight: 600; font-size: 0.95rem; }
+.mm-brand-context .mm-app-scope {
+  color: #A9C2E4; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.mm-navbar .nav-link { color: #D7E3F4 !important; font-weight: 500; border-radius: 6px; }
+.mm-navbar .nav-link:hover,
+.mm-navbar .nav-link:focus { color: #fff !important; background: rgba(255, 255, 255, 0.08); }
+.mm-navbar .navbar-text { color: #A9C2E4 !important; }
+.mm-navbar .navbar-toggler {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.mm-navbar .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* ---------- Cards ----------------------------------------------------- */
 .card {
-  transition: transform 0.2s;
+  border: 1px solid var(--mm-border);
+  border-radius: 12px;
+  background: var(--mm-surface);
+  box-shadow: 0 1px 2px rgba(18, 41, 75, 0.04);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.card:hover { box-shadow: 0 6px 20px rgba(18, 41, 75, 0.09); }
+.card-body { padding: 1.25rem 1.35rem; }
+h2.text-uppercase.text-muted,
+h1 + p .text-uppercase,
+.text-uppercase.text-muted { letter-spacing: 0.06em; }
+.text-muted { color: var(--mm-muted) !important; }
+
+/* Section eyebrow labels inside cards */
+.card h2.h6.text-uppercase { color: var(--mm-navy-600); font-weight: 700; }
+
+/* ---------- Buttons --------------------------------------------------- */
+.btn-primary {
+  --bs-btn-bg: var(--mm-navy);
+  --bs-btn-border-color: var(--mm-navy);
+  --bs-btn-hover-bg: var(--mm-navy-700);
+  --bs-btn-hover-border-color: var(--mm-navy-700);
+  --bs-btn-active-bg: var(--mm-navy-600);
+  --bs-btn-active-border-color: var(--mm-navy-600);
+  --bs-btn-disabled-bg: var(--mm-navy);
+  --bs-btn-disabled-border-color: var(--mm-navy);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(18, 41, 75, 0.18);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--mm-navy);
+  --bs-btn-border-color: var(--mm-border);
+  --bs-btn-hover-bg: var(--mm-navy);
+  --bs-btn-hover-border-color: var(--mm-navy);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--mm-navy-700);
+  --bs-btn-active-border-color: var(--mm-navy-700);
+  font-weight: 600;
 }
 
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+/* Inline button spinner (submit loading state) */
+.btn .mm-spinner {
+  display: inline-block;
+  width: 0.9em; height: 0.9em;
+  vertical-align: -0.12em;
+  margin-right: 0.45rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mm-spin 0.7s linear infinite;
 }
+@keyframes mm-spin { to { transform: rotate(360deg); } }
 
-/* Cart Styles */
-.cart-item-image {
-  width: 80px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
+/* ---------- Status badges -------------------------------------------- */
+.mm-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.74rem; font-weight: 650; line-height: 1;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-transform: uppercase; letter-spacing: 0.03em;
 }
+.mm-badge::before {
+  content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%;
+  background: currentColor; flex: 0 0 auto;
+}
+.mm-badge--green { color: var(--mm-green); background: var(--mm-green-050); border-color: #BEE3CC; }
+.mm-badge--amber { color: var(--mm-amber); background: var(--mm-amber-050); border-color: #EAD3A3; }
+.mm-badge--red   { color: var(--mm-red);   background: var(--mm-red-050);   border-color: #EEC2BD; }
+.mm-badge--slate { color: var(--mm-slate); background: var(--mm-slate-050); border-color: #D3DAE5; }
 
-/* Cart badge positioning */
-.navbar-nav .nav-link {
-  padding-right: 1rem;
+/* ---------- Triage queue table --------------------------------------- */
+.mm-table-card {
+  background: var(--mm-surface);
+  border: 1px solid var(--mm-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(18, 41, 75, 0.04);
 }
-/* Claims-triage audit trail (agent "what it did & why" timeline) */
-.triage-trace .trace-timeline {
-  position: relative;
+.table.mm-table { margin-bottom: 0; color: var(--mm-ink); }
+.table.mm-table thead th {
+  background: var(--mm-navy-050);
+  color: var(--mm-navy-600);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  border-bottom: 1px solid var(--mm-border);
+  padding: 0.7rem 0.9rem;
+  white-space: nowrap;
 }
-.triage-trace .trace-step {
-  position: relative;
+.table.mm-table tbody td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid var(--mm-border-soft);
+  vertical-align: middle;
 }
-.triage-trace .trace-marker {
-  position: relative;
-  width: 1.75rem;
-  flex: 0 0 1.75rem;
+.table.mm-table tbody tr:last-child td { border-bottom: 0; }
+.table.mm-table tbody tr { transition: background-color 0.12s ease; }
+.table.mm-table.table-hover tbody tr:hover { background-color: var(--mm-navy-050); }
+.mm-claim-no { font-weight: 700; color: var(--mm-navy); font-variant-numeric: tabular-nums; }
+.mm-amount { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--mm-ink); }
+
+/* Queue counter chip */
+.mm-count {
+  display: inline-flex; flex-direction: column; align-items: flex-end;
+  padding: 0.35rem 0.85rem;
+  background: var(--mm-navy); color: #fff; border-radius: 10px; line-height: 1.05;
 }
+.mm-count .mm-count-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: #A9C2E4; }
+.mm-count .mm-count-value { font-size: 1.35rem; font-weight: 700; }
+
+/* Empty state */
+.mm-empty {
+  text-align: center; padding: 3rem 1rem; color: var(--mm-muted);
+  border: 1px dashed var(--mm-border); border-radius: 12px; background: var(--mm-surface);
+}
+.mm-empty .mm-empty-icon { color: var(--mm-teal); opacity: 0.85; margin-bottom: 0.5rem; }
+
+/* Page header rule */
+.mm-page-head { border-bottom: 1px solid var(--mm-border); padding-bottom: 1rem; }
+
+/* ---------- Governance / trust callout -------------------------------- */
+.mm-governance {
+  display: flex; gap: 0.85rem; align-items: flex-start;
+  background: linear-gradient(180deg, var(--mm-teal-050), #F3FAF9);
+  border: 1px solid #BEE0DC;
+  border-left: 4px solid var(--mm-teal);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  color: var(--mm-ink);
+}
+.mm-governance .mm-governance-icon {
+  flex: 0 0 auto; color: var(--mm-teal-700); margin-top: 0.05rem;
+}
+.mm-governance strong { color: var(--mm-teal-700); }
+
+/* ---------- Agent audit trail (the money-shot timeline) --------------- */
+.triage-trace {
+  background: var(--mm-navy-050);
+  border: 1px solid var(--mm-border);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+.trace-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--mm-surface);
+  border: 1px solid var(--mm-border);
+  color: var(--mm-navy);
+  font-weight: 600; font-size: 0.9rem;
+  padding: 0.45rem 0.8rem; border-radius: 8px;
+  cursor: pointer; transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.trace-toggle:hover { background: var(--mm-navy-050); border-color: var(--mm-navy-600); }
+.trace-toggle .mm-chevron { transition: transform 0.2s ease; }
+.trace-toggle[aria-expanded="true"] .mm-chevron { transform: rotate(90deg); }
+.trace-toggle .mm-toggle-hide { display: none; }
+.trace-toggle[aria-expanded="true"] .mm-toggle-show { display: none; }
+.trace-toggle[aria-expanded="true"] .mm-toggle-hide { display: inline; }
+
+.trace-panel[hidden] { display: none; }
+.trace-panel { margin-top: 1rem; }
+
+.triage-trace .trace-timeline { position: relative; }
+.triage-trace .trace-step { position: relative; }
+.triage-trace .trace-marker { position: relative; width: 2rem; flex: 0 0 2rem; }
 /* vertical connector between step markers */
 .triage-trace .trace-step:not(:last-child) .trace-marker::after {
   content: "";
   position: absolute;
-  top: 1.75rem;
-  bottom: -0.35rem;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: var(--bs-border-color, #dee2e6);
+  top: 2rem; bottom: -0.5rem;
+  left: 50%; width: 2px; transform: translateX(-50%);
+  background: linear-gradient(180deg, var(--mm-teal), var(--mm-border));
 }
 .triage-trace .trace-index {
-  width: 1.75rem;
-  height: 1.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
+  width: 2rem; height: 2rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+  background: var(--mm-navy); color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--mm-navy-050), 0 1px 2px rgba(18, 41, 75, 0.25);
 }
+.triage-trace .trace-card {
+  background: var(--mm-surface);
+  border: 1px solid var(--mm-border);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  flex: 1 1 auto;
+}
+.triage-trace .trace-kind {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem; border-radius: 6px;
+  margin-right: 0.5rem; flex: 0 0 auto;
+}
+.triage-trace .trace-kind--api    { background: var(--mm-navy-050); color: var(--mm-navy); }
+.triage-trace .trace-kind--search { background: var(--mm-teal-050); color: var(--mm-teal-700); }
+.triage-trace .trace-kind--other  { background: var(--mm-slate-050); color: var(--mm-slate); }
 .triage-trace .trace-ref {
   overflow-wrap: anywhere;
+  background: var(--mm-navy-050);
+  color: var(--mm-navy-700);
+  padding: 0.1rem 0.35rem; border-radius: 5px; font-size: 0.82em;
 }
+.mm-chip {
+  display: inline-block; font-size: 0.7rem; font-weight: 600;
+  padding: 0.15rem 0.45rem; border-radius: 999px;
+  background: var(--mm-slate-050); color: var(--mm-slate); border: 1px solid var(--mm-border);
+}
+
+/* Briefing body */
+.briefing { color: var(--mm-ink); line-height: 1.6; }
+.briefing h1, .briefing h2, .briefing h3 { margin-top: 1.1rem; }
+.briefing h2 { font-size: 1.15rem; }
+.briefing h3 { font-size: 1rem; }
+.briefing table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+.briefing th, .briefing td { border: 1px solid var(--mm-border); padding: 0.4rem 0.6rem; text-align: left; }
+.briefing th { background: var(--mm-navy-050); color: var(--mm-navy-600); }
+
+/* ---------- Breadcrumb ------------------------------------------------ */
+.breadcrumb { --bs-breadcrumb-divider-color: var(--mm-muted); }
+.breadcrumb-item a { color: var(--mm-teal-700); }
+.breadcrumb-item.active { color: var(--mm-muted); }
+
+/* ---------- Footer ---------------------------------------------------- */
+.footer {
+  position: absolute; bottom: 0; width: 100%; height: 56px; line-height: 56px;
+  background: var(--mm-surface); border-top: 1px solid var(--mm-border);
+  color: var(--mm-muted); font-size: 0.85rem;
+}
+.footer a { color: var(--mm-teal-700); }

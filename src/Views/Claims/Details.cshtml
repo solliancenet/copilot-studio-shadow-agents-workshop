@@ -1,3 +1,4 @@
+@using MeridianMutual.Models
 @using MeridianMutual.Models.ViewModels
 @model ClaimDetailViewModel
 @{
@@ -5,6 +6,19 @@
     var policy = claim.Policy;
     var holder = policy?.Policyholder;
     ViewData["Title"] = $"Claim {claim.ClaimNumber}";
+
+    Func<ClaimStatus, string> statusClass = s => s switch
+    {
+        ClaimStatus.Approved => "mm-badge--green",
+        ClaimStatus.UnderReview => "mm-badge--amber",
+        ClaimStatus.Denied => "mm-badge--red",
+        _ => "mm-badge--slate"
+    };
+    Func<ClaimStatus, string> statusLabel = s => s switch
+    {
+        ClaimStatus.UnderReview => "Under review",
+        _ => s.ToString()
+    };
 }
 
 <nav aria-label="breadcrumb">
@@ -17,9 +31,9 @@
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h1 class="h3 mb-1">@claim.ClaimNumber</h1>
-        <p class="text-muted mb-0">
-            Filed @claim.FiledOn.ToString("d MMMM yyyy") &middot;
-            <span class="badge @(claim.Status == MeridianMutual.Models.ClaimStatus.UnderReview ? "text-bg-warning" : "text-bg-secondary")">@claim.Status</span>
+        <p class="text-muted mb-0 d-flex align-items-center gap-2">
+            <span>Filed @claim.FiledOn.ToString("d MMMM yyyy")</span>
+            <span class="mm-badge @statusClass(claim.Status)">@statusLabel(claim.Status)</span>
         </p>
     </div>
     <div class="text-end">
@@ -84,9 +98,9 @@
                     the agent does not make a claim decision.
                 </p>
             </div>
-            <form asp-controller="Claims" asp-action="GenerateBriefing" asp-route-id="@claim.ClaimNumber" method="post">
+            <form asp-controller="Claims" asp-action="GenerateBriefing" asp-route-id="@claim.ClaimNumber" method="post" data-mm-loading>
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-primary" @(Model.AgentConfigured ? "" : "disabled")>
+                <button type="submit" class="btn btn-primary" data-mm-busy-label="Generating briefing…" @(Model.AgentConfigured ? "" : "disabled")>
                     Generate triage briefing
                 </button>
             </form>
@@ -111,54 +125,83 @@
             @if (Model.Briefing.Steps.Count > 0)
             {
                 <section class="triage-trace mb-4" aria-label="Agent audit trail">
-                    <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-2 mb-2">
-                        <h3 class="h6 mb-0">What the agent did &amp; why</h3>
-                        <span class="small text-muted">
-                            @Model.Briefing.Steps.Count step@(Model.Briefing.Steps.Count == 1 ? "" : "s")@(Model.Briefing.CitationCount > 0 ? $" · {Model.Briefing.CitationCount} citation{(Model.Briefing.CitationCount == 1 ? "" : "s")}" : "")
-                        </span>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h3 class="h6 mb-1">What the agent did &amp; why</h3>
+                            <span class="small text-muted">@Model.Briefing.Steps.Count step@(Model.Briefing.Steps.Count == 1 ? "" : "s")@(Model.Briefing.CitationCount > 0 ? $" · {Model.Briefing.CitationCount} citation{(Model.Briefing.CitationCount == 1 ? "" : "s")}" : "")</span>
+                        </div>
+                        <button type="button" class="trace-toggle" aria-expanded="false" aria-controls="agent-trace-panel">
+                            <svg class="mm-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="m6 4 4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="mm-toggle-show">Show audit trail</span>
+                            <span class="mm-toggle-hide">Hide audit trail</span>
+                        </button>
                     </div>
 
-                    <div class="alert alert-secondary small d-flex gap-2 py-2 mb-3" role="note">
-                        <span aria-hidden="true">&#128274;</span>
-                        <span>
-                            Ran as the application's <strong>managed identity</strong> with a
-                            <strong>least-privilege, read-only</strong> scope over the claims API and
-                            grounding documents. No data was written and no decision was made — a
-                            <strong>human adjuster</strong> decides.
-                        </span>
-                    </div>
+                    <div id="agent-trace-panel" class="trace-panel" hidden>
+                        <div class="mm-governance small mb-3" role="note">
+                            <span class="mm-governance-icon" aria-hidden="true">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                    <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                            <span>
+                                Ran as the application's <strong>managed identity</strong> with a
+                                <strong>least-privilege, read-only</strong> scope over the claims API and
+                                grounding documents. No data was written and no decision was made — a
+                                <strong>human adjuster</strong> decides.
+                            </span>
+                        </div>
 
-                    <ol class="trace-timeline list-unstyled mb-0">
-                        @for (var i = 0; i < Model.Briefing.Steps.Count; i++)
-                        {
-                            var step = Model.Briefing.Steps[i];
-                            var icon = step.Kind == "search" ? "&#128218;" : step.Kind == "api" ? "&#128279;" : "&#9881;";
-                            <li class="trace-step d-flex gap-3 pb-3">
-                                <div class="trace-marker text-center">
-                                    <span class="trace-index badge rounded-pill text-bg-primary">@(i + 1)</span>
-                                </div>
-                                <div class="trace-body">
-                                    <div class="fw-semibold">
-                                        <span class="me-1" aria-hidden="true">@Html.Raw(icon)</span>@step.Title
+                        <ol class="trace-timeline list-unstyled mb-0">
+                            @for (var i = 0; i < Model.Briefing.Steps.Count; i++)
+                            {
+                                var step = Model.Briefing.Steps[i];
+                                var kindClass = step.Kind == "search" ? "trace-kind--search" : step.Kind == "api" ? "trace-kind--api" : "trace-kind--other";
+                                var kindLabel = step.Kind == "search" ? "Grounding search" : step.Kind == "api" ? "Claims API call" : "Reasoning step";
+                                <li class="trace-step d-flex gap-3 pb-3">
+                                    <div class="trace-marker text-center">
+                                        <span class="trace-index">@(i + 1)</span>
                                     </div>
-                                    @if (step.Detail is not null)
-                                    {
-                                        <div class="small text-muted">@step.Detail</div>
-                                    }
-                                    @if (step.Reference is not null)
-                                    {
-                                        <div class="small mt-1">
-                                            <code class="trace-ref">@step.Reference</code>
-                                            @if (step.Status is not null)
-                                            {
-                                                <span class="badge text-bg-light border ms-1">@step.Status</span>
-                                            }
+                                    <div class="trace-card">
+                                        <div class="fw-semibold d-flex align-items-center">
+                                            <span class="trace-kind @kindClass" title="@kindLabel" aria-hidden="true">
+                                                @if (step.Kind == "search")
+                                                {
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 5h11M4 10h11M4 15h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="17.5" cy="16.5" r="3.5" stroke="currentColor" stroke-width="2"/><path d="m20 19 2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                                }
+                                                else if (step.Kind == "api")
+                                                {
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 15a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M15 9a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                                }
+                                                else
+                                                {
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                                                }
+                                            </span>
+                                            <span class="visually-hidden">@kindLabel: </span>@step.Title
                                         </div>
-                                    }
-                                </div>
-                            </li>
-                        }
-                    </ol>
+                                        @if (step.Detail is not null)
+                                        {
+                                            <div class="small text-muted mt-1">@step.Detail</div>
+                                        }
+                                        @if (step.Reference is not null)
+                                        {
+                                            <div class="small mt-2">
+                                                <code class="trace-ref">@step.Reference</code>
+                                                @if (step.Status is not null)
+                                                {
+                                                    <span class="mm-chip ms-1">@step.Status</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ol>
+                    </div>
                 </section>
             }
             <div class="briefing">

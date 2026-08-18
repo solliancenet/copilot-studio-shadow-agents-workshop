@@ -1,63 +1,85 @@
 @model List<MeridianMutual.Models.Claim>
+@using MeridianMutual.Models
 @{
     ViewData["Title"] = "Triage queue";
+
+    Func<ClaimStatus, string> statusClass = s => s switch
+    {
+        ClaimStatus.Approved => "mm-badge--green",
+        ClaimStatus.UnderReview => "mm-badge--amber",
+        ClaimStatus.Denied => "mm-badge--red",
+        _ => "mm-badge--slate"
+    };
+    Func<ClaimStatus, string> statusLabel = s => s switch
+    {
+        ClaimStatus.UnderReview => "Under review",
+        _ => s.ToString()
+    };
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 mm-page-head">
     <div>
         <h1 class="h3 mb-1">Triage queue</h1>
         <p class="text-muted mb-0">Claims awaiting adjuster review &mdash; Open and Under review.</p>
     </div>
-    <div class="text-end">
-        <div class="text-muted small text-uppercase">In queue</div>
-        <div class="h3 mb-0">@Model.Count</div>
+    <div class="mm-count">
+        <span class="mm-count-label">In queue</span>
+        <span class="mm-count-value">@Model.Count</span>
     </div>
 </div>
 
 @if (Model.Count == 0)
 {
-    <p class="text-muted">Nothing is waiting for triage right now.</p>
+    <div class="mm-empty">
+        <div class="mm-empty-icon">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <p class="mb-0">Nothing is waiting for triage right now.</p>
+        <p class="small mb-0">New Open and Under-review claims will appear here.</p>
+    </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th scope="col">Claim #</th>
-                    <th scope="col">Policyholder</th>
-                    <th scope="col">Policy</th>
-                    <th scope="col">Type / vehicle</th>
-                    <th scope="col">Filed</th>
-                    <th scope="col" class="text-end">Amount</th>
-                    <th scope="col">Status</th>
-                    <th scope="col"></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var claim in Model)
-                {
-                    var policy = claim.Policy;
+    <div class="mm-table-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mm-table">
+                <thead>
                     <tr>
-                        <td class="fw-semibold">@claim.ClaimNumber</td>
-                        <td>@(policy?.Policyholder?.Name ?? "—")</td>
-                        <td>@(policy?.PolicyNumber ?? "—")</td>
-                        <td class="small text-muted">@(policy?.Type.ToString() ?? "—")</td>
-                        <td class="small">@claim.FiledOn.ToString("d MMM yyyy")</td>
-                        <td class="text-end">@claim.Amount.ToString("C")</td>
-                        <td>
-                            <span class="badge @(claim.Status == MeridianMutual.Models.ClaimStatus.UnderReview ? "text-bg-warning" : "text-bg-secondary")">
-                                @claim.Status
-                            </span>
-                        </td>
-                        <td class="text-end">
-                            <a class="btn btn-outline-primary btn-sm" asp-controller="Claims" asp-action="Details" asp-route-id="@claim.ClaimNumber">
-                                Open
-                            </a>
-                        </td>
+                        <th scope="col">Claim #</th>
+                        <th scope="col">Policyholder</th>
+                        <th scope="col">Policy</th>
+                        <th scope="col">Type / vehicle</th>
+                        <th scope="col">Filed</th>
+                        <th scope="col" class="text-end">Amount</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var claim in Model)
+                    {
+                        var policy = claim.Policy;
+                        <tr>
+                            <td><span class="mm-claim-no">@claim.ClaimNumber</span></td>
+                            <td>@(policy?.Policyholder?.Name ?? "—")</td>
+                            <td>@(policy?.PolicyNumber ?? "—")</td>
+                            <td class="small text-muted">@(policy?.Type.ToString() ?? "—")</td>
+                            <td class="small">@claim.FiledOn.ToString("d MMM yyyy")</td>
+                            <td class="text-end"><span class="mm-amount">@claim.Amount.ToString("C")</span></td>
+                            <td>
+                                <span class="mm-badge @statusClass(claim.Status)">@statusLabel(claim.Status)</span>
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-outline-primary btn-sm" asp-controller="Claims" asp-action="Details" asp-route-id="@claim.ClaimNumber">
+                                    Open
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
