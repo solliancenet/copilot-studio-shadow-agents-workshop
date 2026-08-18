@@ -110,8 +110,14 @@ public static class PolicySeeder
             Email = "priya.nadella@example.com",
             MemberSince = new DateTime(2021, 11, 1)
         };
+        var alvarez = new Policyholder
+        {
+            Name = "Sofia Alvarez",
+            Email = "sofia.alvarez@example.com",
+            MemberSince = new DateTime(2020, 7, 1)
+        };
 
-        db.Policyholders.AddRange(reyes, nadella);
+        db.Policyholders.AddRange(reyes, nadella, alvarez);
         db.SaveChanges();
 
         var reyesAuto = new Policy
@@ -156,7 +162,26 @@ public static class PolicySeeder
                 + "$250 comprehensive deductible, rental reimbursement included."
         };
 
-        db.Policies.AddRange(reyesAuto, nadellaHome, nadellaAuto);
+        // A comprehensive (Other Than Collision) auto policy for an animal-strike scenario. Its
+        // single open claim below is a Coverage D animal-contact loss ($250 deductible) — a
+        // comprehensive peril distinct from the hail claim (00842) and the Coverage B collision
+        // claim on MM-AUTO-004417 ($500 deductible). Note: striking an animal is adjudicated as
+        // comprehensive, not collision, even though it is an impact.
+        var alvarezAuto = new Policy
+        {
+            PolicyNumber = "MM-AUTO-007033",
+            PolicyholderId = alvarez.Id,
+            Type = PolicyType.Auto,
+            Status = PolicyStatus.Active,
+            MonthlyPremium = 134.60m,
+            EffectiveDate = new DateTime(2020, 7, 1),
+            RenewalDate = NextAnniversary(new DateTime(2020, 7, 1), today),
+            CoverageSummary =
+                "2021 Mazda CX-5. Liability 100/300, $500 collision deductible, "
+                + "$250 comprehensive deductible, full glass coverage included."
+        };
+
+        db.Policies.AddRange(reyesAuto, nadellaHome, nadellaAuto, alvarezAuto);
         db.SaveChanges();
 
         // A little premium history so the agent's standing lookup has something to read. Note the
@@ -169,7 +194,10 @@ public static class PolicySeeder
             Payment(nadellaHome.Id, thisMonth.AddMonths(-1).AddDays(8), nadellaHome.MonthlyPremium, PaymentMethod.BankTransfer, PaymentStatus.Returned),
             Payment(nadellaHome.Id, thisMonth.AddDays(8), nadellaHome.MonthlyPremium, PaymentMethod.Card, PaymentStatus.Cleared),
             Payment(nadellaAuto.Id, thisMonth.AddMonths(-1).AddDays(2), nadellaAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
-            Payment(nadellaAuto.Id, thisMonth.AddDays(2), nadellaAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared));
+            Payment(nadellaAuto.Id, thisMonth.AddDays(2), nadellaAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(alvarezAuto.Id, thisMonth.AddMonths(-2).AddDays(6), alvarezAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(alvarezAuto.Id, thisMonth.AddMonths(-1).AddDays(6), alvarezAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(alvarezAuto.Id, thisMonth.AddDays(6), alvarezAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared));
 
         db.Claims.AddRange(
             new Claim
@@ -200,6 +228,16 @@ public static class PolicySeeder
                 Amount = 640.00m,
                 FiledOn = today.AddDays(-1),
                 Description = "Cracked windshield from highway debris. No other damage reported."
+            },
+            new Claim
+            {
+                ClaimNumber = $"CLM-{today.Year}-00845",
+                PolicyId = alvarezAuto.Id,
+                Status = ClaimStatus.UnderReview,
+                Amount = 3180.00m,
+                FiledOn = today.AddDays(-6),
+                Description = "Struck a deer at dusk on a rural highway; front bumper, hood, and a "
+                    + "headlight assembly damaged. Repair estimate on file; airbags did not deploy."
             });
 
         db.SaveChanges();
