@@ -1,48 +1,63 @@
-@model List<MeridianMutual.Models.Policy>
+@model List<MeridianMutual.Models.Claim>
 @{
-    ViewData["Title"] = "My policies";
-    var member = ViewData["Member"] as MeridianMutual.Models.Policyholder;
+    ViewData["Title"] = "Triage queue";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-1">My policies</h1>
-        @if (member is not null)
-        {
-            <p class="text-muted mb-0">
-                @member.Name &middot; member since @member.MemberSince.ToString("MMMM yyyy")
-            </p>
-        }
+        <h1 class="h3 mb-1">Triage queue</h1>
+        <p class="text-muted mb-0">Claims awaiting adjuster review &mdash; Open and Under review.</p>
     </div>
     <div class="text-end">
-        <div class="text-muted small text-uppercase">Total monthly premium</div>
-        <div class="h3 mb-0">@Model.Sum(p => p.MonthlyPremium).ToString("C")</div>
+        <div class="text-muted small text-uppercase">In queue</div>
+        <div class="h3 mb-0">@Model.Count</div>
     </div>
-</div>
-
-<div class="row g-3">
-    @foreach (var policy in Model)
-    {
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">@policy.Type</div>
-                    <h2 class="h5 card-title mb-1">@policy.PolicyNumber</h2>
-                    <p class="text-muted small mb-3">
-                        @policy.Status &middot; renews @policy.RenewalDate.ToString("d MMMM yyyy")
-                    </p>
-                    <div class="h4 mb-3">@policy.MonthlyPremium.ToString("C") <span class="text-muted h6">/ month</span></div>
-                    <p class="small">@policy.CoverageSummary</p>
-                    <a class="btn btn-outline-primary btn-sm" asp-controller="Policies" asp-action="Details" asp-route-id="@policy.PolicyNumber">
-                        View policy
-                    </a>
-                </div>
-            </div>
-        </div>
-    }
 </div>
 
 @if (Model.Count == 0)
 {
-    <p class="text-muted">No policies are on file for this member.</p>
+    <p class="text-muted">Nothing is waiting for triage right now.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Claim #</th>
+                    <th scope="col">Policyholder</th>
+                    <th scope="col">Policy</th>
+                    <th scope="col">Type / vehicle</th>
+                    <th scope="col">Filed</th>
+                    <th scope="col" class="text-end">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var claim in Model)
+                {
+                    var policy = claim.Policy;
+                    <tr>
+                        <td class="fw-semibold">@claim.ClaimNumber</td>
+                        <td>@(policy?.Policyholder?.Name ?? "—")</td>
+                        <td>@(policy?.PolicyNumber ?? "—")</td>
+                        <td class="small text-muted">@(policy?.Type.ToString() ?? "—")</td>
+                        <td class="small">@claim.FiledOn.ToString("d MMM yyyy")</td>
+                        <td class="text-end">@claim.Amount.ToString("C")</td>
+                        <td>
+                            <span class="badge @(claim.Status == MeridianMutual.Models.ClaimStatus.UnderReview ? "text-bg-warning" : "text-bg-secondary")">
+                                @claim.Status
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" asp-controller="Claims" asp-action="Details" asp-route-id="@claim.ClaimNumber">
+                                Open
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }

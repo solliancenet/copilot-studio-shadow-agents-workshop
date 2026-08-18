@@ -85,6 +85,124 @@ public static class PolicySeeder
         });
 
         db.SaveChanges();
+
+        // Additional book so the triage queue reads like a real adjuster's worklist. Dana
+        // Whitfield above is left untouched (still the single-policyholder demo member, and
+        // CLM-2026-00841 remains the only claim on its policy — "no prior claims").
+        SeedAdditionalQueue(db, today, thisMonth);
+    }
+
+    /// <summary>
+    /// Two more policyholders with active policies and open/under-review claims, so the triage
+    /// queue has several rows. Kept deliberately separate from the primary demo member.
+    /// </summary>
+    private static void SeedAdditionalQueue(MeridianMutualDbContext db, DateTime today, DateTime thisMonth)
+    {
+        var reyes = new Policyholder
+        {
+            Name = "Marcus Reyes",
+            Email = "marcus.reyes@example.com",
+            MemberSince = new DateTime(2018, 3, 1)
+        };
+        var nadella = new Policyholder
+        {
+            Name = "Priya Nadella",
+            Email = "priya.nadella@example.com",
+            MemberSince = new DateTime(2021, 11, 1)
+        };
+
+        db.Policyholders.AddRange(reyes, nadella);
+        db.SaveChanges();
+
+        var reyesAuto = new Policy
+        {
+            PolicyNumber = "MM-AUTO-005522",
+            PolicyholderId = reyes.Id,
+            Type = PolicyType.Auto,
+            Status = PolicyStatus.Active,
+            MonthlyPremium = 142.75m,
+            EffectiveDate = new DateTime(2018, 3, 1),
+            RenewalDate = NextAnniversary(new DateTime(2018, 3, 1), today),
+            CoverageSummary =
+                "2022 Toyota RAV4. Liability 100/300, $500 collision deductible, "
+                + "$250 comprehensive deductible, glass coverage included."
+        };
+
+        var nadellaHome = new Policy
+        {
+            PolicyNumber = "MM-HOME-003310",
+            PolicyholderId = nadella.Id,
+            Type = PolicyType.Home,
+            Status = PolicyStatus.Active,
+            MonthlyPremium = 108.90m,
+            EffectiveDate = new DateTime(2021, 11, 1),
+            RenewalDate = NextAnniversary(new DateTime(2021, 11, 1), today),
+            CoverageSummary =
+                "Single-family dwelling, 2,240 sq ft. Dwelling limit $488,000, personal property "
+                + "$244,000, $1,000 all-peril deductible, water backup endorsement."
+        };
+
+        var nadellaAuto = new Policy
+        {
+            PolicyNumber = "MM-AUTO-006140",
+            PolicyholderId = nadella.Id,
+            Type = PolicyType.Auto,
+            Status = PolicyStatus.Active,
+            MonthlyPremium = 119.30m,
+            EffectiveDate = new DateTime(2022, 5, 15),
+            RenewalDate = NextAnniversary(new DateTime(2022, 5, 15), today),
+            CoverageSummary =
+                "2020 Honda CR-V. Liability 100/300, $500 collision deductible, "
+                + "$250 comprehensive deductible, rental reimbursement included."
+        };
+
+        db.Policies.AddRange(reyesAuto, nadellaHome, nadellaAuto);
+        db.SaveChanges();
+
+        // A little premium history so the agent's standing lookup has something to read. Note the
+        // returned payment on nadellaHome preceding its claim — a standing flag for triage.
+        db.PremiumPayments.AddRange(
+            Payment(reyesAuto.Id, thisMonth.AddMonths(-2).AddDays(5), reyesAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(reyesAuto.Id, thisMonth.AddMonths(-1).AddDays(5), reyesAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(reyesAuto.Id, thisMonth.AddDays(5), reyesAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(nadellaHome.Id, thisMonth.AddMonths(-2).AddDays(8), nadellaHome.MonthlyPremium, PaymentMethod.BankTransfer, PaymentStatus.Cleared),
+            Payment(nadellaHome.Id, thisMonth.AddMonths(-1).AddDays(8), nadellaHome.MonthlyPremium, PaymentMethod.BankTransfer, PaymentStatus.Returned),
+            Payment(nadellaHome.Id, thisMonth.AddDays(8), nadellaHome.MonthlyPremium, PaymentMethod.Card, PaymentStatus.Cleared),
+            Payment(nadellaAuto.Id, thisMonth.AddMonths(-1).AddDays(2), nadellaAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared),
+            Payment(nadellaAuto.Id, thisMonth.AddDays(2), nadellaAuto.MonthlyPremium, PaymentMethod.AutoPay, PaymentStatus.Cleared));
+
+        db.Claims.AddRange(
+            new Claim
+            {
+                ClaimNumber = $"CLM-{today.Year}-00842",
+                PolicyId = reyesAuto.Id,
+                Status = ClaimStatus.UnderReview,
+                Amount = 1180.00m,
+                FiledOn = today.AddDays(-12),
+                Description = "Hail damage to the hood and roof panel during a storm; multiple dents. "
+                    + "Photos submitted, no glass breakage reported."
+            },
+            new Claim
+            {
+                ClaimNumber = $"CLM-{today.Year}-00843",
+                PolicyId = nadellaHome.Id,
+                Status = ClaimStatus.Open,
+                Amount = 3620.00m,
+                FiledOn = today.AddDays(-4),
+                Description = "Water backup from a blocked drain flooded the finished basement. "
+                    + "Mitigation vendor on site; itemized estimate pending."
+            },
+            new Claim
+            {
+                ClaimNumber = $"CLM-{today.Year}-00844",
+                PolicyId = nadellaAuto.Id,
+                Status = ClaimStatus.Open,
+                Amount = 640.00m,
+                FiledOn = today.AddDays(-1),
+                Description = "Cracked windshield from highway debris. No other damage reported."
+            });
+
+        db.SaveChanges();
     }
 
     private static PremiumPayment Payment(

@@ -11,6 +11,9 @@ param tags object
 @description('Stable per-environment suffix for globally-unique names.')
 param resourceToken string
 
+@description('Principal id of the app user-assigned identity, granted the Foundry User role.')
+param appIdentityPrincipalId string = ''
+
 @description('Chat model to deploy (Foundry / Azure OpenAI model name).')
 param modelName string = 'gpt-4.1'
 
@@ -80,6 +83,24 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   }
 }
 
+// "Foundry User" — the data-plane role that lets the app identity call the project's agents /
+// Responses API. Assigned at the account scope so it covers the project's data plane.
+var foundryUserRoleId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '53ca6127-db72-4b80-b1b0-d745d6d5456d'
+)
+
+resource foundryUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appIdentityPrincipalId)) {
+  scope: foundryAccount
+  name: guid(foundryAccount.id, appIdentityPrincipalId, foundryUserRoleId)
+  properties: {
+    principalId: appIdentityPrincipalId
+    roleDefinitionId: foundryUserRoleId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 output AZURE_AI_FOUNDRY_ENDPOINT string = foundryAccount.properties.endpoint
 output AZURE_AI_FOUNDRY_PROJECT string = foundryProject.name
+output AZURE_AI_FOUNDRY_PROJECT_ENDPOINT string = '${foundryAccount.properties.endpoint}api/projects/${foundryProject.name}'
 output AZURE_OPENAI_MODEL string = modelDeployment.name

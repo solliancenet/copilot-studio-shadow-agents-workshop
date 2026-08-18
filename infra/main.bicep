@@ -40,6 +40,8 @@ module foundry 'foundry.bicep' = {
     location: location
     tags: tags
     resourceToken: resourceToken
+    // Grant the app's managed identity the Foundry User role on the account.
+    appIdentityPrincipalId: resources.outputs.APP_IDENTITY_PRINCIPAL_ID
   }
 }
 
@@ -48,4 +50,5 @@ output WEB_URI string = resources.outputs.WEB_URI
 output SERVICE_WEB_URI string = resources.outputs.WEB_URI
 output AZURE_AI_FOUNDRY_ENDPOINT string = foundry.outputs.AZURE_AI_FOUNDRY_ENDPOINT
 output AZURE_AI_FOUNDRY_PROJECT string = foundry.outputs.AZURE_AI_FOUNDRY_PROJECT
+output AZURE_AI_FOUNDRY_PROJECT_ENDPOINT string = foundry.outputs.AZURE_AI_FOUNDRY_PROJECT_ENDPOINT
 output AZURE_OPENAI_MODEL string = foundry.outputs.AZURE_OPENAI_MODEL

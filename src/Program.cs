@@ -42,6 +42,17 @@ builder.Services.AddScoped<PolicyService>();
 builder.Services.AddScoped<PremiumService>();
 builder.Services.AddScoped<ClaimService>();
 
+// Foundry Claims-Triage agent. Connection settings (project endpoint + agent name) come from
+// configuration / environment — no secrets; the app authenticates with its managed identity.
+var triageOptions = builder.Configuration.GetSection(ClaimsTriageAgentOptions.SectionName)
+    .Get<ClaimsTriageAgentOptions>() ?? new ClaimsTriageAgentOptions();
+builder.Services.AddSingleton(triageOptions);
+builder.Services.AddHttpClient<ClaimsTriageAgentService>(client =>
+{
+    // A briefing run makes several tool calls server-side; give it room.
+    client.Timeout = TimeSpan.FromMinutes(3);
+});
+
 var app = builder.Build();
 
 // Bring the schema up to date on start-up, then load the demonstration data set.

@@ -1,11 +1,17 @@
-# Meridian Mutual Member Portal
+# Meridian Mutual Claims Triage Console
 
-The member-facing insurance portal for **Meridian Mutual**, the fictional insurer the workshop is
-built around. It is an ASP.NET Core MVC app on .NET 8 with EF Core over SQLite, and it publishes a
-**REST API** that an agent (or any other external caller) can call to answer member questions:
-what policies do I hold, did my premium clear, what is happening with my claim, and file a new one.
+The internal, adjuster-facing **Claims Triage Console** for **Meridian Mutual**, the fictional
+insurer the workshop is built around. It is an ASP.NET Core MVC app on .NET 8 with EF Core over
+SQLite. The home page is a **triage queue** of claims needing review; opening a claim shows the
+claim and policy context and a **Generate triage briefing** action that calls the Foundry
+**Claims-Triage** agent.
 
-It is a self-contained demo: no external services, no secrets, one SQLite file created on first run.
+It still publishes the same **REST API** that an agent (or any other external caller) can call to
+answer questions about a policy, premium standing, and claims — this is the surface the agent's
+OpenAPI tool calls, so its routes and shapes are unchanged.
+
+Auth to Foundry uses the app's **managed identity** via `DefaultAzureCredential` (no secrets); the
+agent flow is configured with the Foundry project endpoint + agent name in `appsettings`/env.
 
 > The published attendee site never renders this folder — `src/` is in the `exclude:` list in
 > `_config.yml`.
@@ -71,18 +77,22 @@ curl -X POST http://localhost:5256/api/claims \
 
 ## Demonstration data
 
-`Data/PolicySeeder.cs` seeds one policyholder, Dana Whitfield, with two active policies — auto
-`MM-AUTO-004417` and home `MM-HOME-002289` — four billing months of premium payments per policy
-(including the month the demo is being run in, so "did this month's premium clear?" always has an
-answer), and one auto claim under review. Dates are anchored to today, so the seeded book never
-goes stale.
+`Data/PolicySeeder.cs` seeds the primary demo member, Dana Whitfield, with two active policies —
+auto `MM-AUTO-004417` and home `MM-HOME-002289` — four billing months of premium payments per
+policy (including the current month), and one auto claim under review, `CLM-2026-00841` (still the
+only claim on its policy, so "no prior claims"). To make the triage queue read like a real
+worklist, two more policyholders (Marcus Reyes, Priya Nadella) carry three additional open /
+under-review claims (`CLM-2026-00842`..`00844`) across their own policies. Dates are anchored to
+today, so the seeded book never goes stale. The seed lives in `PolicySeeder` (run at startup), not
+in a migration, so adding claims does not require a schema migration.
 
 ## Project structure
 
 ```
 src/
 ├── Controllers/
-│   ├── HomeController.cs                 # Policy summary
+│   ├── HomeController.cs                 # Triage queue (claims needing review)
+│   ├── ClaimsController.cs               # Adjuster claim view + Generate triage briefing
 │   ├── PoliciesController.cs             # Policy detail (premiums + claims)
 │   └── Api/                              # The REST API
 │       ├── PolicyholdersApiController.cs

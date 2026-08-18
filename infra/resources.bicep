@@ -118,6 +118,25 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1.0Gi'
           }
+          env: [
+            // The app calls the Foundry Claims-Triage agent with its managed identity. No
+            // secrets: only the project endpoint + agent name are configured here. The Foundry
+            // account/project names are deterministic from resourceToken (see foundry.bicep),
+            // so the endpoint is constructed directly and there is no module dependency cycle.
+            {
+              name: 'Foundry__ProjectEndpoint'
+              value: 'https://aif-${resourceToken}.services.ai.azure.com/api/projects/proj-${resourceToken}'
+            }
+            {
+              name: 'Foundry__AgentName'
+              value: 'Claims-Triage'
+            }
+            // Selects the user-assigned identity for DefaultAzureCredential at runtime.
+            {
+              name: 'AZURE_CLIENT_ID'
+              value: appIdentity.properties.clientId
+            }
+          ]
         }
       ]
       scale: {
@@ -133,3 +152,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
 output WEB_URI string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+
+// Consumed by the foundry module to grant the app identity the Foundry User data-plane role.
+output APP_IDENTITY_PRINCIPAL_ID string = appIdentity.properties.principalId

@@ -16,6 +16,26 @@ public class ClaimService
         _logger = logger;
     }
 
+    /// <summary>
+    /// The triage queue: claims that still need an adjuster — anything Open or UnderReview —
+    /// with policy and policyholder context loaded, newest filing first. Read straight from the
+    /// app's own data layer, not the member API.
+    /// </summary>
+    public List<Claim> GetTriageQueue() =>
+        _db.Claims
+            .Include(c => c.Policy!)
+                .ThenInclude(p => p.Policyholder)
+            .Where(c => c.Status == ClaimStatus.Open || c.Status == ClaimStatus.UnderReview)
+            .OrderByDescending(c => c.FiledOn)
+            .ToList();
+
+    /// <summary>A single claim with its policy and policyholder context, for the adjuster view.</summary>
+    public Claim? GetForAdjuster(string claimNumber) =>
+        _db.Claims
+            .Include(c => c.Policy!)
+                .ThenInclude(p => p.Policyholder)
+            .FirstOrDefault(c => c.ClaimNumber == claimNumber);
+
     /// <summary>Claims filed against a policy, newest first.</summary>
     public List<Claim> GetClaims(long policyId) =>
         _db.Claims

@@ -8,27 +8,19 @@ namespace MeridianMutual.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly PolicyService _policies;
+    private readonly ClaimService _claims;
 
-    public HomeController(ILogger<HomeController> logger, PolicyService policies)
+    public HomeController(ILogger<HomeController> logger, ClaimService claims)
     {
         _logger = logger;
-        _policies = policies;
+        _claims = claims;
     }
 
+    /// <summary>The triage queue — the adjuster's landing page.</summary>
     public IActionResult Index()
     {
-        _logger.LogInformation("Loading the policy summary");
-
-        var member = _policies.GetSignedInPolicyholder();
-
-        if (member is null)
-        {
-            return View(new List<Policy>());
-        }
-
-        ViewData["Member"] = member;
-        return View(_policies.GetByPolicyholder(member.Id));
+        _logger.LogInformation("Loading the triage queue");
+        return View(_claims.GetTriageQueue());
     }
 
     public IActionResult Privacy()
