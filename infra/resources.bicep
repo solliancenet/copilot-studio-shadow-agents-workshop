@@ -199,6 +199,7 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.l
 output WEB_URI string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.properties.ConnectionString
 output APPLICATIONINSIGHTS_NAME string = appInsights.name
+output APPLICATIONINSIGHTS_ID string = appInsights.id
 
 // Consumed by the foundry module to grant the app identity the Foundry User data-plane role.
 output APP_IDENTITY_PRINCIPAL_ID string = appIdentity.properties.principalId

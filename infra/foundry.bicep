@@ -14,6 +14,13 @@ param resourceToken string
 @description('Principal id of the app user-assigned identity, granted the Foundry User role.')
 param appIdentityPrincipalId string = ''
 
+@description('Resource id of the Application Insights component to wire as the project tracing connection. Empty skips the connection.')
+param appInsightsId string = ''
+
+@description('Application Insights connection string (ingestion key). Threaded as the ApiKey credential for the project connection.')
+@secure()
+param appInsightsConnectionString string = ''
+
 @description('Chat model to deploy (Foundry / Azure OpenAI model name).')
 param modelName string = 'gpt-4.1'
 
@@ -97,6 +104,34 @@ resource foundryUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
     principalId: appIdentityPrincipalId
     roleDefinitionId: foundryUserRoleId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Project → App Insights connection. This is what makes agent runs trace into the
+// Azure Monitor "AI Agents" view. Created out-of-band by CLI originally; now reproducible.
+// authType ApiKey with the App Insights connection string is the confirmed-working shape
+// (verified against the live connection via `az rest GET .../connections/appinsights`);
+// App Insights ingestion keys already flow through resources.bicep outputs, so no new
+// secret is introduced — it just lands in template/deployment state like the existing outputs.
+// Type + api-version + property shape verified against the live provider (bicepschema +
+// live GET). // [verify resolved]
+resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = if (!empty(appInsightsId)) {
+  parent: foundryProject
+  name: 'appinsights'
+  properties: {
+    category: 'AppInsights'
+    authType: 'ApiKey'
+    target: appInsightsId
+    credentials: {
+      key: appInsightsConnectionString
+    }
+    // The provider normalizes this to false for the AppInsights category, so set false to
+    // match what the API stores (else every what-if / provision shows phantom drift).
+    isSharedToAll: false
+    metadata: {
+      ApiType: 'Azure'
+      ResourceId: appInsightsId
+    }
   }
 }
 

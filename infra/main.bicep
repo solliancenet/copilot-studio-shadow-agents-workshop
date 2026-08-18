@@ -47,6 +47,9 @@ module foundry 'foundry.bicep' = {
     resourceToken: resourceToken
     // Grant the app's managed identity the Foundry User role on the account.
     appIdentityPrincipalId: resources.outputs.APP_IDENTITY_PRINCIPAL_ID
+    // Wire the project's App Insights connection so agent runs trace into Azure Monitor.
+    appInsightsId: resources.outputs.APPLICATIONINSIGHTS_ID
+    appInsightsConnectionString: resources.outputs.APPLICATIONINSIGHTS_CONNECTION_STRING
   }
 }
 
