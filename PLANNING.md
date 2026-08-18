@@ -20,6 +20,55 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 
 _Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
 
+## GUARD Foundry demo (separate pursuit) — progress
+
+A customer pursuit (GUARD, insurance) for the **Wednesday** Azure AI Foundry call — distinct from the
+workshop, but its assets live in this repo and are all excluded from the site (`src/`, `infra/`,
+`azure.yaml`, `foundry/`, `demo/`). Slack: `#customer-guard-ins-foundry-opp`. Presenters: Jim + Michele.
+The demo is an internal **Claims Triage Console** (adjuster tool) that calls a Foundry agent to produce a
+grounded, post-FNOL claim-triage briefing — mapping to GUARD's Claims Domain initiative + Microsoft's
+"Modernize claims operations." **Governance is the wedge** (agent identity, least-privilege,
+human-in-the-loop, audit).
+
+**Built & deployed** (Azure sub `6aa3be9e…` "AI Practice Development", RG `rg-mmdemo`, **westus3**):
+- **Meridian Mutual app** — .NET 8 MVC + REST API + EF/SQLite; internal Claims Triage Console (triage
+  queue → claim detail → *Generate triage briefing*), branded (navy/teal, meridian logo), collapsible
+  audit trail + governance banner. Live:
+  `https://ca-web-ieveiacpjsr6g.thankfulglacier-039daedb.westus3.azurecontainerapps.io`. Deployed via
+  `azd` (Bicep in `infra/`, ACR remote build).
+- **Azure AI Foundry** — account `aif-ieveiacpjsr6g`, project `proj-ieveiacpjsr6g`, model `gpt-4.1`
+  (GlobalStandard). Agent **`Claims-Triage`** = NEW-API prompt agent (File Search grounding + OpenAPI
+  tool over the app `/api/*`). Grounding docs + create scripts in `foundry/`.
+- **App-driven flow** — the app calls the agent via REST `responses`/`agent_reference`
+  (scope `https://ai.azure.com/.default`) using its **managed identity** (`id-ieveiacpjsr6g`), which
+  holds the **Foundry User** role on the account.
+- **Seed scenarios** — `CLM-2026-00841` collision (Coverage B, $500), `00842` hail + `00845` deer-strike
+  (Coverage D comprehensive, $250), plus others — three distinct coverage reasonings to demo.
+
+**Demo-prep checklist (Wednesday):**
+
+| # | Item | Status | Owner |
+|---|------|--------|-------|
+| 1 | Live click-through verified from the deployed URL | DONE | Jim |
+| 2 | Fallback screen-recording of the flow | TODO | Jim |
+| 3 | 30-min narrative + governance talking points | in progress | Michele |
+| 4 | Governance "money-shot" audit trail | DONE | — |
+| 5 | Deck (reference-arch + topology slides in `demo/`) | shared w/ Michele | Michele |
+| 6 | Scenario variety (collision / hail / deer-strike) | DONE | — |
+| 7 | Brand + style polish (palette, logo, collapsible trace) | DONE | — |
+
+**Key facts / redeploy:** Foundry project endpoint
+`https://aif-ieveiacpjsr6g.services.ai.azure.com/api/projects/proj-ieveiacpjsr6g` · agent `Claims-Triage`
+· model `gpt-4.1`. Redeploy the app with `azd deploy web` (or `azd up` to re-provision); azd env `mmdemo`.
+Demo script = Slack canvas `F0BQQN9JPB7`.
+
+**Caveats / `[verify]`:** New Foundry uses the AIServices-account + `accounts/projects` model, and the
+agent must be a NEW-API prompt agent (classic Assistants don't surface in the new playground). The app
+calls the agent over REST because the .NET SDK doesn't yet expose the new prompt-agent Responses surface
+— revisit when it does. Briefing is rendered via Markdig as raw HTML (fine for the demo; sanitize for
+production). The app-flow **topology slide** still needs a correct rework (a prompt for that was handed to
+a separate thread).
+
 ## Status
 
 First full authoring pass. The estate design, module map, worksheets, and provisioning kit are drafted.
