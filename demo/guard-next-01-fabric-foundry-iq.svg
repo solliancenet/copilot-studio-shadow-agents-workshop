@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Segoe UI, system-ui, -apple-system, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arru" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0d7a5f"/>
+    </marker>
+  </defs>
+  <rect width="1280" height="720" fill="#f7f9fc"/>
+
+  <!-- Title -->
+  <text x="40" y="66" font-size="26" font-weight="700" fill="#0f172a">Foundry IQ + Fabric IQ — agents ground on governed data products</text>
+  <text x="40" y="92" font-size="15" fill="#475569">Data Mesh domains publish governed data products; every agent grounds on the same source — consistency by design.</text>
+
+  <!-- LEFT: Behind the demo today -->
+  <rect x="40" y="120" width="520" height="392" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="40" y="120" width="520" height="40" rx="14" fill="#fff7ed"/>
+  <rect x="40" y="142" width="520" height="18" fill="#fff7ed"/>
+  <text x="60" y="146" font-size="13" font-weight="700" fill="#b45309">BEHIND THE DEMO TODAY</text>
+
+  <text x="60" y="194" font-size="15" font-weight="700" fill="#0f172a">One agent, hand-wired grounding</text>
+  <rect x="60" y="210" width="480" height="54" rx="9" fill="#f2fbf8" stroke="#5ec5a8"/>
+  <text x="78" y="235" font-size="13.5" font-weight="700" fill="#0f766e">File Search grounding</text>
+  <text x="78" y="254" font-size="12" fill="#475569">claim declarations · claims-handling guide (curated docs)</text>
+
+  <rect x="60" y="274" width="480" height="54" rx="9" fill="#f2fbf8" stroke="#5ec5a8"/>
+  <text x="78" y="299" font-size="13.5" font-weight="700" fill="#0f766e">Claims &amp; Policy API</text>
+  <text x="78" y="318" font-size="12" fill="#475569">reads live claim / policy data via OpenAPI tool</text>
+
+  <text x="60" y="358" font-size="12.5" fill="#64748b" font-style="italic">Grounded and cited — but knowledge is wired per-agent.</text>
+
+  <rect x="60" y="378" width="480" height="116" rx="10" fill="#eef2f7" stroke="#94a3b8"/>
+  <text x="78" y="404" font-size="13" font-weight="700" fill="#334155">The scaling question</text>
+  <text x="78" y="429" font-size="12.5" fill="#475569">6–8 domains × many engineering-role agents, each</text>
+  <text x="78" y="448" font-size="12.5" fill="#475569">grounding itself, is how you get drift, duplicated logic,</text>
+  <text x="78" y="467" font-size="12.5" fill="#475569">and inconsistent answers across the estate.</text>
+
+  <!-- arrow between panels -->
+  <line x1="566" y1="316" x2="646" y2="316" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+  <text x="606" y="305" text-anchor="middle" font-size="11" fill="#64748b">scale</text>
+
+  <!-- RIGHT: What comes next — the grounding model -->
+  <rect x="652" y="120" width="588" height="392" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="652" y="120" width="588" height="40" rx="14" fill="#eff4ff"/>
+  <rect x="652" y="142" width="588" height="18" fill="#eff4ff"/>
+  <text x="672" y="146" font-size="13" font-weight="700" fill="#1d4ed8">GROUND EVERY AGENT ON THE SAME GOVERNED DATA PRODUCTS</text>
+
+  <!-- Data domains -->
+  <rect x="672" y="176" width="548" height="46" rx="9" fill="#fffbeb" stroke="#e5c37a"/>
+  <text x="690" y="197" font-size="13.5" font-weight="700" fill="#92610a">Data domains — 6–8 Data Mesh domains</text>
+  <text x="690" y="214" font-size="11.5" fill="#7c5a12">decide what data becomes a product</text>
+  <line x1="946" y1="222" x2="946" y2="234" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="962" y="232" font-size="10.5" fill="#64748b">publish</text>
+
+  <!-- Fabric + Fabric IQ + Data products -->
+  <rect x="672" y="236" width="548" height="112" rx="10" fill="#e6f7f1" stroke="#5ec5a8"/>
+  <text x="690" y="262" font-size="15" font-weight="700" fill="#0d7a5f">Microsoft Fabric — governed Data products</text>
+  <rect x="690" y="274" width="230" height="30" rx="7" fill="#0d7a5f"/>
+  <text x="805" y="294" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Fabric IQ</text>
+  <text x="936" y="294" font-size="12" fill="#334155">semantic models · business concepts</text>
+  <text x="690" y="328" font-size="12" fill="#475569">certified data products · lineage — one governed source of truth</text>
+
+  <!-- grounds arrow -->
+  <line x1="946" y1="348" x2="946" y2="366" stroke="#0d7a5f" stroke-width="2.5" marker-end="url(#arru)"/>
+  <text x="962" y="361" font-size="10.5" font-weight="700" fill="#0d7a5f">ground on data products</text>
+
+  <!-- Foundry + Foundry IQ -->
+  <rect x="672" y="368" width="548" height="126" rx="10" fill="#f6f9ff" stroke="#2563eb"/>
+  <text x="690" y="394" font-size="15" font-weight="700" fill="#1d4ed8">Microsoft Foundry agents</text>
+  <rect x="690" y="406" width="230" height="30" rx="7" fill="#1d4ed8"/>
+  <text x="805" y="426" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Foundry IQ</text>
+  <text x="936" y="426" font-size="12" fill="#334155">agents ground here — consistently</text>
+  <text x="690" y="462" font-size="11.5" fill="#64748b">The same data products also ground Copilot Studio &amp; M365 Copilot (Work IQ)</text>
+  <text x="690" y="480" font-size="11.5" fill="#64748b">— one source, many surfaces.</text>
+
+  <!-- BOTTOM: why it matters -->
+  <rect x="40" y="536" width="1200" height="120" rx="12" fill="#eef2f7" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="58" y="560" font-size="13" font-weight="700" fill="#334155">WHY IT MATTERS</text>
+
+  <rect x="58" y="572" width="360" height="66" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="74" y="597" font-size="13" font-weight="700" fill="#0d7a5f">Consistency &amp; quality</text>
+  <text x="74" y="618" font-size="11.5" fill="#475569">every agent answers from the same governed</text>
+  <text x="74" y="633" font-size="11.5" fill="#475569">data — no drift across domains</text>
+
+  <rect x="430" y="572" width="360" height="66" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="446" y="597" font-size="13" font-weight="700" fill="#1d4ed8">Governed execution on Fabric</text>
+  <text x="446" y="618" font-size="11.5" fill="#475569">agents act on certified data products,</text>
+  <text x="446" y="633" font-size="11.5" fill="#475569">not raw tables</text>
+
+  <rect x="802" y="572" width="422" height="66" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="818" y="597" font-size="13" font-weight="700" fill="#6d28d9">Scoped by the platform</text>
+  <text x="818" y="618" font-size="11.5" fill="#475569">what an agent can reason over is set by the</text>
+  <text x="818" y="633" font-size="11.5" fill="#475569">governed layer, not the agent author</text>
+</svg>

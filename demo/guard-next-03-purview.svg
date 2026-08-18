@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Segoe UI, system-ui, -apple-system, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="1280" height="720" fill="#f7f9fc"/>
+
+  <!-- Title -->
+  <text x="40" y="66" font-size="26" font-weight="700" fill="#0f172a">Microsoft Purview — visibility &amp; compliance across all data</text>
+  <text x="40" y="92" font-size="15" fill="#475569">The evidence layer the review committee runs on: labels and DLP on the data, plus a full audit trail of what agents did.</text>
+
+  <!-- Org-wide governance quartet strip (Purview highlighted) -->
+  <rect x="40" y="110" width="1200" height="52" rx="10" fill="#eef2f7" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="58" y="131" font-size="10.5" font-weight="700" fill="#64748b">ORG-WIDE</text>
+  <text x="58" y="146" font-size="10.5" font-weight="700" fill="#64748b">GOVERNANCE</text>
+  <rect x="196" y="122" width="120" height="28" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="256" y="141" text-anchor="middle" font-size="12.5" fill="#475569">Entra</text>
+  <rect x="326" y="122" width="150" height="28" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="401" y="141" text-anchor="middle" font-size="12.5" fill="#475569">Agent 365</text>
+  <rect x="486" y="122" width="120" height="28" rx="14" fill="#6d28d9" stroke="#6d28d9"/>
+  <text x="546" y="141" text-anchor="middle" font-size="12.5" font-weight="700" fill="#ffffff">Purview</text>
+  <rect x="616" y="122" width="120" height="28" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="676" y="141" text-anchor="middle" font-size="12.5" fill="#475569">Defender</text>
+  <text x="1222" y="140" text-anchor="end" font-size="12" fill="#334155" font-style="italic">Visibility &amp; compliance across all data</text>
+
+  <!-- LEFT: Behind the demo today -->
+  <rect x="40" y="176" width="470" height="336" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="40" y="176" width="470" height="38" rx="14" fill="#fff7ed"/>
+  <rect x="40" y="197" width="470" height="17" fill="#fff7ed"/>
+  <text x="60" y="200" font-size="13" font-weight="700" fill="#b45309">BEHIND THE DEMO TODAY</text>
+
+  <text x="60" y="244" font-size="15" font-weight="700" fill="#0f172a">The audit trail is the money-shot</text>
+  <rect x="60" y="258" width="430" height="114" rx="10" fill="#faf8ff" stroke="#a78bfa"/>
+  <text x="78" y="283" font-size="13.5" font-weight="700" fill="#6d28d9">Collapsible audit trail (in-app)</text>
+  <text x="78" y="305" font-size="11.5" fill="#475569">every briefing shows what the agent read,</text>
+  <text x="78" y="323" font-size="11.5" fill="#475569">which sources it cited, and what it returned —</text>
+  <text x="78" y="341" font-size="11.5" fill="#475569">the human sees the basis before deciding.</text>
+  <text x="78" y="362" font-size="11" fill="#8b5cf6" font-style="italic">shown live in the Claims Triage console</text>
+
+  <rect x="60" y="382" width="430" height="48" rx="9" fill="#f2fbf8" stroke="#5ec5a8"/>
+  <text x="78" y="403" font-size="13" font-weight="700" fill="#0f766e">Least-privilege data reads</text>
+  <text x="78" y="420" font-size="11.5" fill="#475569">the agent only touches scoped claim/policy data</text>
+
+  <rect x="60" y="440" width="430" height="60" rx="10" fill="#eef2f7" stroke="#94a3b8"/>
+  <text x="78" y="465" font-size="12.5" font-weight="700" fill="#334155">The scaling question</text>
+  <text x="78" y="486" font-size="12" fill="#475569">A committee needs enterprise labels, DLP, and tenant-wide audit.</text>
+
+  <!-- arrow -->
+  <line x1="516" y1="344" x2="556" y2="344" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+  <text x="536" y="333" text-anchor="middle" font-size="11" fill="#64748b">scale</text>
+
+  <!-- RIGHT: What comes next -->
+  <rect x="562" y="176" width="678" height="336" rx="14" fill="#ffffff" stroke="#6d28d9" stroke-width="2"/>
+  <rect x="562" y="176" width="678" height="38" rx="14" fill="#f5f0ff"/>
+  <rect x="562" y="197" width="678" height="17" fill="#f5f0ff"/>
+  <text x="582" y="200" font-size="13" font-weight="700" fill="#6d28d9">ACROSS ALL DATA &amp; ALL AGENTS</text>
+
+  <g>
+    <rect x="582" y="226" width="316" height="82" rx="10" fill="#faf8ff" stroke="#c4b5fd"/>
+    <text x="600" y="252" font-size="14" font-weight="700" fill="#6d28d9">Sensitivity labels</text>
+    <text x="600" y="274" font-size="11.5" fill="#475569">classify claim / PII data; labels gate</text>
+    <text x="600" y="292" font-size="11.5" fill="#475569">what agents may ground on</text>
+
+    <rect x="910" y="226" width="316" height="82" rx="10" fill="#faf8ff" stroke="#c4b5fd"/>
+    <text x="928" y="252" font-size="14" font-weight="700" fill="#6d28d9">DLP for AI</text>
+    <text x="928" y="274" font-size="11.5" fill="#475569">block sensitive data leaving via agent</text>
+    <text x="928" y="292" font-size="11.5" fill="#475569">prompts, tools, or responses</text>
+
+    <rect x="582" y="318" width="316" height="82" rx="10" fill="#faf8ff" stroke="#c4b5fd"/>
+    <text x="600" y="344" font-size="14" font-weight="700" fill="#6d28d9">DSPM for AI</text>
+    <text x="600" y="366" font-size="11.5" fill="#475569">posture view: which agents touch which</text>
+    <text x="600" y="384" font-size="11.5" fill="#475569">sensitive data, and where risk is</text>
+
+    <rect x="910" y="318" width="316" height="82" rx="10" fill="#faf8ff" stroke="#c4b5fd"/>
+    <text x="928" y="344" font-size="14" font-weight="700" fill="#6d28d9">Audit &amp; eDiscovery</text>
+    <text x="928" y="366" font-size="11.5" fill="#475569">tenant-wide record of agent prompts,</text>
+    <text x="928" y="384" font-size="11.5" fill="#475569">responses, and actions — discoverable</text>
+
+    <rect x="582" y="410" width="644" height="88" rx="10" fill="#f5f0ff" stroke="#a78bfa"/>
+    <text x="600" y="436" font-size="14" font-weight="700" fill="#6d28d9">Comms Compliance &amp; Insider Risk · across every source</text>
+    <text x="600" y="459" font-size="11.5" fill="#475569">On-prem · Dataverse · M365 · Azure · Google Cloud · Amazon S3 — the regulatory / ethical</text>
+    <text x="600" y="477" font-size="11.5" fill="#475569">lens applied continuously to live agent activity, not just at intake.</text>
+  </g>
+
+  <!-- BOTTOM: why it matters -->
+  <rect x="40" y="536" width="1200" height="120" rx="12" fill="#eef2f7" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="58" y="560" font-size="13" font-weight="700" fill="#334155">WHY IT MATTERS</text>
+
+  <rect x="58" y="572" width="382" height="66" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="74" y="597" font-size="13" font-weight="700" fill="#6d28d9">Evidence for the committee</text>
+  <text x="74" y="618" font-size="11.5" fill="#475569">security, compliance, and legal get the</text>
+  <text x="74" y="633" font-size="11.5" fill="#475569">audit and posture they need to sign off</text>
+
+  <rect x="452" y="572" width="382" height="66" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="468" y="597" font-size="13" font-weight="700" fill="#0d7a5f">Continuous risk visibility</text>
+  <text x="468" y="618" font-size="11.5" fill="#475569">labels, DLP, and DSPM watch live agent</text>
+  <text x="468" y="633" font-size="11.5" fill="#475569">activity, not just at intake</text>
+
+  <rect x="846" y="572" width="378" height="66" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="862" y="597" font-size="13" font-weight="700" fill="#1d4ed8">Auditable oversight</text>
+  <text x="862" y="618" font-size="11.5" fill="#475569">every claim decision keeps a discoverable</text>
+  <text x="862" y="633" font-size="11.5" fill="#475569">record of the agent's contribution</text>
+</svg>
