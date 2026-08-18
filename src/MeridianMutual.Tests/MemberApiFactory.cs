@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
@@ -8,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using JsonOptions = Microsoft.AspNetCore.Mvc.JsonOptions;
 
@@ -39,7 +43,41 @@ public class MemberApiFactory : WebApplicationFactory<Program>
             }));
 
         builder.ConfigureTestServices(services =>
-            services.AddOptions<MvcOptions>().PostConfigure<IOptions<JsonOptions>>(ReplaceJsonOutputFormatter));
+        {
+            services.AddOptions<MvcOptions>().PostConfigure<IOptions<JsonOptions>>(ReplaceJsonOutputFormatter);
+
+            // The deployed estate wires Entra JWT bearer, but there is no identity provider in the
+            // test host. Supply a scheme that authenticates every request with both app roles, so
+            // the API's [Authorize] gates are satisfied and the tests exercise app behaviour, not
+            // the RBAC layer (that boundary is proven live against the deployed API).
+            services.AddAuthentication(TestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+        });
+    }
+
+    /// <summary>Authenticates every request as an adjuster holding both Claims.Read and Claims.Write.</summary>
+    private sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+    {
+        public const string SchemeName = "Test";
+
+        public TestAuthHandler(
+            IOptionsMonitor<AuthenticationSchemeOptions> options,
+            ILoggerFactory logger,
+            UrlEncoder encoder)
+            : base(options, logger, encoder)
+        {
+        }
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            var identity = new ClaimsIdentity(SchemeName, ClaimTypes.Name, ClaimTypes.Role);
+            identity.AddClaim(new Claim(ClaimTypes.Name, "test-adjuster"));
+            identity.AddClaim(new Claim(ClaimTypes.Role, "Claims.Read"));
+            identity.AddClaim(new Claim(ClaimTypes.Role, "Claims.Write"));
+
+            var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
+            return Task.FromResult(AuthenticateResult.Success(ticket));
+        }
     }
 
     /// <summary>

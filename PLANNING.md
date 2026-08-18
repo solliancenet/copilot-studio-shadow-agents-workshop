@@ -56,6 +56,40 @@ human-in-the-loop, audit).
 | 5 | Deck (reference-arch + topology slides in `demo/`) | shared w/ Michele | Michele |
 | 6 | Scenario variety (collision / hail / deer-strike) | DONE | — |
 | 7 | Brand + style polish (palette, logo, collapsible trace) | DONE | — |
+| 8 | **Phase 0 — enforced RBAC hard-stop + scale audit** | DONE | — |
+
+**Phase 0 (enforced governance) — DONE.** Flips the demo from "we can *see* what the agent did"
+(observability) to "we can *prevent* what the agent does" (enforced control). Proven live end-to-end:
+
+- **RBAC hard-stop:** `/api/*` secured with Entra JWT bearer + app roles `Claims.Read`/`Claims.Write`
+  (`Microsoft.Identity.Web`). New `PUT /api/claims/{n}/status` gated by `Claims.Write`; GETs/POST require
+  `Claims.Read`. The Foundry OpenAPI tool now authenticates with **managed identity**
+  (`OpenApiManagedAuthDetails`, audience = App ID URI). Granted `Claims.Read` **only** → an agent write
+  attempt returns **403/401 at the identity layer**, not by prompt. Verified: read-only identity → GET 200 /
+  PUT 403; anonymous → 401 (confirmed live on the deployed URL); claim never mutated. Reads still produce a
+  full briefing; 23/23 tests pass.
+- **Scale audit:** App Insights `appi-ieveiacpjsr6g` provisioned + a Foundry project↔App Insights
+  connection wired → the Azure Monitor **AI Agents** view / `AppDependencies` shows all runs incl. the
+  denied write span (`execute_tool …put_api_claims_claimNumber_status`) — the "review all at once" answer.
+- **Teardown:** `infra/cleanup-demo.sh` (idempotent, dry-run-able): `azd down --force --purge` +
+  `az ad app delete --id $API_APP_ID` + orphaned app-role-assignment sweep. `API_APP_ID` captured in the
+  azd env (`3016ef29-…`).
+
+**Phase 0 `[verify]` corrections (important — the plan's assumptions were wrong):**
+1. **Caller identity:** the OpenAPI managed-identity caller is the **Foundry *account*'s system-assigned
+   MI** (`appid 779379ac-…`), **not** the project MI (plan assumed project MI) and **not** a per-agent
+   Entra Agent ID. `Claims.Read` was granted to the account MI; the mistaken project-MI grant was revoked.
+2. **App-role claim mapping:** app roles arrive mapped inbound to `ClaimTypes.Role`, not the short `roles`
+   claim — overriding `RoleClaimType="roles"` breaks the match (caused 403 on reads until removed).
+3. **MI token cache (~24h):** the account MI cached a role-less token; fix = a second App ID URI
+   (`api://<appId>/agent`) as a distinct resource → cache-miss → fresh token carrying the role. API accepts
+   both audiences.
+4. **Per-agent Entra Agent IDs:** none exist as separate Entra objects in this build — prompt-agents live
+   in the project and are removed with it (documented in `cleanup-demo.sh`).
+
+Agent re-versioned to **v4** (managed-identity OpenAPI auth). **Later phases** (1: Azure SQL + Blob/AI-Search
+grounding · 2: `propose_claim_decision` fn tool + Approvals queue + Foundry Guardrails · 3: Entra Agent ID
+inventory + Purview + Agent 365) remain planned, not started.
 
 **Key facts / redeploy:** Foundry project endpoint
 `https://aif-ieveiacpjsr6g.services.ai.azure.com/api/projects/proj-ieveiacpjsr6g` · agent `Claims-Triage`

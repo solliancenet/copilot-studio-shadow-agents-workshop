@@ -1,19 +1,19 @@
 using MeridianMutual.Models.Api;
 using MeridianMutual.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MeridianMutual.Controllers.Api;
 
 /// <summary>
-/// Member lookup for the servicing channels.
-///
-/// The member API carries no authentication: this is a self-contained demo estate, and the
-/// endpoints are deliberately reachable by any caller that can see the host. Nothing here
-/// should be pointed at real policyholder data.
+/// Member lookup for the servicing channels. Reads require the Entra <c>Claims.Read</c> app role;
+/// the token is validated against the API's app registration. Nothing here should be pointed at
+/// real policyholder data — it is a demonstration estate.
 /// </summary>
 [ApiController]
 [Route("api/policyholders")]
 [Produces("application/json")]
+[Authorize(Roles = ApiRoles.Read)]
 public class PolicyholdersApiController : ControllerBase
 {
     private readonly PolicyService _policies;

@@ -1,16 +1,18 @@
 using MeridianMutual.Models.Api;
 using MeridianMutual.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MeridianMutual.Controllers.Api;
 
 /// <summary>
-/// Policy and premium lookup for the servicing channels. No authentication — see
-/// <see cref="PolicyholdersApiController"/>.
+/// Policy and premium lookup for the servicing channels. Every read requires the Entra
+/// <c>Claims.Read</c> app role — see <see cref="PolicyholdersApiController"/>.
 /// </summary>
 [ApiController]
 [Route("api/policies")]
 [Produces("application/json")]
+[Authorize(Roles = ApiRoles.Read)]
 public class PoliciesApiController : ControllerBase
 {
     private readonly PolicyService _policies;

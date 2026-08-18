@@ -51,7 +51,8 @@ from azure.ai.projects.models import (
     FileSearchTool,
     OpenApiTool,
     OpenApiFunctionDefinition,
-    OpenApiAnonymousAuthDetails,
+    OpenApiManagedAuthDetails,
+    OpenApiManagedSecurityScheme,
 )
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -78,6 +79,21 @@ SWAGGER_URL = f"{APP_BASE_URL}/swagger/v1/swagger.json"
 CLAIM_NUMBER = os.environ.get("CLAIM_NUMBER", "CLM-2026-00841")
 
 AGENT_NAME = os.environ.get("AGENT_NAME", "Claims-Triage")
+
+# Entra audience the OpenAPI tool authenticates for. The Foundry PROJECT managed identity acquires
+# a token for this audience (the API app registration's App ID URI, api://<appId>) and presents it
+# to the member API. The project MI is granted ONLY the Claims.Read app role, so read operations
+# succeed and the write operation (PUT /api/claims/{n}/status) is refused with 401 at the RBAC
+# layer — the demo's provable least-privilege hard stop. Set API_APP_URI (or API_APP_ID) from the
+# azd env; falls back to the known deployed app registration.
+# Use the agent-scoped App ID URI (api://<appId>/agent) as the token audience. It is a distinct
+# resource from the base api://<appId>, so the Foundry managed identity acquires a separate token
+# for it — which is what makes a freshly-assigned app role take effect immediately instead of
+# waiting out the managed-identity token cache on the base audience. The API accepts both URIs.
+API_APP_URI = os.environ.get("API_APP_URI") or (
+    f"api://{os.environ['API_APP_ID']}/agent" if os.environ.get("API_APP_ID")
+    else "api://3016ef29-db5c-49c6-bce3-5c5197c9546d/agent"
+)
 
 GROUNDING_DOCS = [
     HERE / "policy-declarations.md",
@@ -144,7 +160,9 @@ def create_agent(project: AIProjectClient, openai) -> Any:
 
     file_search = FileSearchTool(vector_store_ids=[vector_store.id])
 
-    # 2) Build the OpenAPI tool from the live app swagger (anonymous auth).
+    # 2) Build the OpenAPI tool from the live app swagger. Managed-identity auth: the Foundry
+    #    project MI presents an Entra token for the API's App ID URI on every tool call. The MI
+    #    holds only Claims.Read, so the write operation returns 401 by RBAC — not by prompt.
     spec = load_openapi_spec()
     openapi = OpenApiTool(
         openapi=OpenApiFunctionDefinition(
@@ -155,10 +173,13 @@ def create_agent(project: AIProjectClient, openai) -> Any:
                 "policyholders."
             ),
             spec=spec,
-            auth=OpenApiAnonymousAuthDetails(),
+            auth=OpenApiManagedAuthDetails(
+                security_scheme=OpenApiManagedSecurityScheme(audience=API_APP_URI),
+            ),
         )
     )
     print(f"  openapi server -> {spec['servers'][0]['url']}")
+    print(f"  openapi auth   -> managed_identity (audience={API_APP_URI})")
 
     # 3) Create (version) the prompt agent with both tools.
     agent = project.agents.create_version(

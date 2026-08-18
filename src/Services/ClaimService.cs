@@ -78,6 +78,33 @@ public class ClaimService
     }
 
     /// <summary>
+    /// Transitions a claim to a decided status and records the rationale in the log. Returns the
+    /// updated claim (with policy context loaded) or <c>null</c> if no claim has that number.
+    /// This is the write behind <c>PUT /api/claims/{claimNumber}/status</c>.
+    /// </summary>
+    public Claim? UpdateStatus(string claimNumber, ClaimStatus newStatus, string? rationale)
+    {
+        var claim = _db.Claims
+            .Include(c => c.Policy)
+            .FirstOrDefault(c => c.ClaimNumber == claimNumber);
+
+        if (claim is null)
+        {
+            return null;
+        }
+
+        var previousStatus = claim.Status;
+        claim.Status = newStatus;
+        _db.SaveChanges();
+
+        _logger.LogInformation(
+            "Transitioned claim {ClaimNumber} from {PreviousStatus} to {NewStatus}. Rationale: {Rationale}",
+            claim.ClaimNumber, previousStatus, newStatus, rationale ?? "(none)");
+
+        return claim;
+    }
+
+    /// <summary>
     /// Claim numbers run <c>CLM-{year}-{sequence}</c>, with the sequence continuing from the
     /// highest one already issued this year.
     /// </summary>

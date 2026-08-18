@@ -2,6 +2,20 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MeridianMutual.Models.Api;
 
+/// <summary>
+/// Entra app-role names exposed by the member API, and required by the API controllers. These
+/// strings must match the app roles defined on the API's app registration (see
+/// <c>infra/</c> and the Entra setup) — they arrive in the <c>roles</c> claim of the caller's token.
+/// </summary>
+public static class ApiRoles
+{
+    /// <summary>Read the estate: claims, policies, premium history, policyholders, and file a claim.</summary>
+    public const string Read = "Claims.Read";
+
+    /// <summary>Decide a claim (transition to Approved/Denied). Not granted to the triage agent.</summary>
+    public const string Write = "Claims.Write";
+}
+
 /// <summary>A member of the mutual.</summary>
 public record PolicyholderResponse(
     long Id,
@@ -75,6 +89,18 @@ public class NewClaimRequest
     [Required]
     [StringLength(1000, MinimumLength = 10)]
     public string Description { get; set; } = "";
+}
+
+/// <summary>Body of a PUT to <c>/api/claims/{claimNumber}/status</c>: an adjuster's decision.</summary>
+public class UpdateClaimStatusRequest
+{
+    /// <summary>The decided status to move the claim to. Must be <c>Approved</c> or <c>Denied</c>.</summary>
+    [Required]
+    public ClaimStatus NewStatus { get; set; }
+
+    /// <summary>Optional free-text rationale recorded with the decision.</summary>
+    [StringLength(1000)]
+    public string? Rationale { get; set; }
 }
 
 /// <summary>Result of filing a claim: the claim number the member should quote from now on.</summary>

@@ -11,6 +11,12 @@ param tags object
 @description('Stable per-environment suffix for globally-unique names.')
 param resourceToken string
 
+@description('AppId of the Entra app registration fronting the member API. Wires the app\'s AzureAd auth (ClientId + Audience api://<appId>). Empty leaves /api/* unauthenticated.')
+param apiAppId string = ''
+
+@description('Entra tenant id the API validates tokens against.')
+param tenantId string = ''
+
 // azd matches this service to the `web` service in azure.yaml via this tag.
 var serviceName = 'web'
 
@@ -27,6 +33,20 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
       name: 'PerGB2018'
     }
     retentionInDays: 30
+  }
+}
+
+// Application Insights (workspace-based) — the sink for both the app's telemetry and the Foundry
+// agent's OTel traces. Agent runs and their tool calls land in the Azure Monitor "AI Agents" view
+// via this resource, so the denied write call is visible alongside the successful reads.
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: 'appi-${resourceToken}'
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
   }
 }
 
@@ -136,6 +156,31 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'AZURE_CLIENT_ID'
               value: appIdentity.properties.clientId
             }
+            // Entra JWT bearer for /api/*. When ClientId is set, Microsoft.Identity.Web validates
+            // the caller's token against this app registration and enforces the Claims.Read /
+            // Claims.Write app roles. Audience is the App ID URI (api://<appId>). Empty ClientId
+            // (e.g. the very first provision before the app reg exists) leaves the API open.
+            {
+              name: 'AzureAd__Instance'
+              value: 'https://login.microsoftonline.com/'
+            }
+            {
+              name: 'AzureAd__TenantId'
+              value: tenantId
+            }
+            {
+              name: 'AzureAd__ClientId'
+              value: apiAppId
+            }
+            {
+              name: 'AzureAd__Audience'
+              value: empty(apiAppId) ? '' : 'api://${apiAppId}'
+            }
+            // Application Insights — app telemetry + the target the Foundry agent traces to.
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              value: appInsights.properties.ConnectionString
+            }
           ]
         }
       ]
@@ -152,6 +197,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
 output WEB_URI string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.properties.ConnectionString
+output APPLICATIONINSIGHTS_NAME string = appInsights.name
 
 // Consumed by the foundry module to grant the app identity the Foundry User data-plane role.
 output APP_IDENTITY_PRINCIPAL_ID string = appIdentity.properties.principalId

@@ -11,6 +11,9 @@ param environmentName string
 @description('Azure region for all resources.')
 param location string
 
+@description('AppId (client id) of the Entra app registration that fronts the member API. Its App ID URI (api://<appId>) is the audience the API validates, and the app roles Claims.Read / Claims.Write are the RBAC gate. Empty leaves the API unauthenticated (local/first-provision).')
+param apiAppId string = ''
+
 // Stable per-environment suffix for globally-unique names (e.g. ACR).
 var resourceToken = uniqueString(subscription().id, environmentName, location)
 var tags = {
@@ -30,6 +33,8 @@ module resources 'resources.bicep' = {
     location: location
     tags: tags
     resourceToken: resourceToken
+    apiAppId: apiAppId
+    tenantId: subscription().tenantId
   }
 }
 
@@ -52,3 +57,5 @@ output AZURE_AI_FOUNDRY_ENDPOINT string = foundry.outputs.AZURE_AI_FOUNDRY_ENDPO
 output AZURE_AI_FOUNDRY_PROJECT string = foundry.outputs.AZURE_AI_FOUNDRY_PROJECT
 output AZURE_AI_FOUNDRY_PROJECT_ENDPOINT string = foundry.outputs.AZURE_AI_FOUNDRY_PROJECT_ENDPOINT
 output AZURE_OPENAI_MODEL string = foundry.outputs.AZURE_OPENAI_MODEL
+output APPLICATIONINSIGHTS_CONNECTION_STRING string = resources.outputs.APPLICATIONINSIGHTS_CONNECTION_STRING
+output APPLICATIONINSIGHTS_NAME string = resources.outputs.APPLICATIONINSIGHTS_NAME
