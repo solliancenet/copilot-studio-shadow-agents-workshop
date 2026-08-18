@@ -91,6 +91,35 @@ Agent re-versioned to **v4** (managed-identity OpenAPI auth). **Later phases** (
 grounding · 2: `propose_claim_decision` fn tool + Approvals queue + Foundry Guardrails · 3: Entra Agent ID
 inventory + Purview + Agent 365) remain planned, not started.
 
+**Two-environment model (protect the demo).** Phase development happens in an ISOLATED azd environment so
+the working Wednesday estate is never re-provisioned. The infra is env-isolated by design:
+`resourceToken = uniqueString(subscription().id, environmentName, location)` (`infra/main.bicep:18`), RG =
+`rg-${environmentName}` — so a new env name yields all-new global names automatically, zero collision.
+
+| Env | RG / token | Purpose | URL |
+|---|---|---|---|
+| **`mmdemo`** | `rg-mmdemo` / `ieveiacpjsr6g` | **Frozen** Wednesday demo — do NOT re-provision | `ca-web-ieveiacpjsr6g…westus3.azurecontainerapps.io` |
+| **`mmdev`** | `rg-mmdev` / `32zp4ye7fj5ay` | Enforced clone for phase work | `ca-web-32zp4ye7fj5ay.redground-76ccf3ae.westus3.azurecontainerapps.io` |
+
+`mmdev` identifiers: Foundry account `aif-32zp4ye7fj5ay` / project `proj-32zp4ye7fj5ay`; app registration
+`Meridian Mutual Member API (mmdev)` appId `f37e43a4-e687-4e72-9f2f-e49ff1867f42`; App Insights
+`appi-32zp4ye7fj5ay`; account MI (Claims.Read grantee) principalId `c2ee4d27-…`. Verified enforced
+(anonymous → 401, read-only identity → GET 200 / PUT 403, reads succeed, 23/23 tests); `rg-mmdemo` confirmed
+untouched (10 resources) throughout.
+
+- **`infra/setup-env.sh <env>`** (new, idempotent, default `mmdev`) stands up an enforced clone end to end:
+  `azd env new/select` → create per-env app registration (roles + App ID URIs) + set `API_APP_ID` →
+  `azd provision` → grant `Claims.Read` to the new Foundry **account** MI → `azd deploy web` → grant the
+  signed-in authoring identity **Foundry User** on the new account → run `create_new_agent.py` + upload
+  grounding. Aborts loudly on any step failure (never prints DONE unless all pass).
+- **`[verify]` correction:** "Foundry User" (`53ca6127-…`) is **not** read-only — its dataAction wildcard
+  `Microsoft.CognitiveServices/*` includes `agents/write`, so it's what authors agents. A fresh Foundry
+  account has NO role assignments, so `create_new_agent.py` 403s until the authoring identity is granted
+  this role — now handled in `setup-env.sh`.
+- **Selected-env footgun:** after `setup-env.sh`, the selected azd env is `mmdev`, so a stray
+  `azd up`/`deploy`/`down` targets the dev estate (safer default). To touch the demo, `azd env select mmdemo`
+  first.
+
 **Key facts / redeploy:** Foundry project endpoint
 `https://aif-ieveiacpjsr6g.services.ai.azure.com/api/projects/proj-ieveiacpjsr6g` · agent `Claims-Triage`
 · model `gpt-4.1`. Redeploy the app with `azd deploy web` (or `azd up` to re-provision); azd env `mmdemo`.
