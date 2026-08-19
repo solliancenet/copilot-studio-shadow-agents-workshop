@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 """
-Create (and smoke-test) the "Claims Triage" agent on Azure AI Foundry's NEW agent
-API -- the server-side "prompt agent" surface -- so it appears in the new-Foundry
-Agents list + playground (NOT under "Classic agents").
+Create (and smoke-test) the "Claims Triage" agents on Azure AI Foundry's NEW agent
+API. Two agents are created idempotently, sharing IDENTICAL tool config: the SAFE
+`Claims-Triage` (the app calls this; briefs, never writes) and a PERMISSIONS-DEMO
+`Claims-Triage-Unsafe` for the Foundry PLAYGROUND only. The unsafe agent has the same
+grounding and the same managed-identity OpenAPI tool (incl. the write op), but its
+instructions drop the human-in-the-loop guard so it attempts the approve/deny write —
+which returns 403 because the identity holds Claims.Read only. The app never calls the
+unsafe agent. Clones via infra/setup-env.sh (incl. mmdev) get both agents by design.
+
+The NEW agent API is the server-side "prompt agent" surface -- so the agents appear in
+the new-Foundry Agents list + playground (NOT under "Classic agents").
 
 Why this exists
 ---------------
@@ -80,6 +88,14 @@ CLAIM_NUMBER = os.environ.get("CLAIM_NUMBER", "CLM-2026-00841")
 
 AGENT_NAME = os.environ.get("AGENT_NAME", "Claims-Triage")
 
+# The permissions-demo sibling. Same grounding + same managed-identity OpenAPI tool (so it exposes
+# the write op PUT /api/claims/{n}/status), but instructions that DROP the human-in-the-loop guard and
+# tell it to actually perform an approve/deny when asked. Because the OpenAPI tool authenticates as the
+# Foundry managed identity that holds Claims.Read ONLY, the write returns 403 — proving least privilege
+# is enforced by identity, not by the prompt. This agent is for FOUNDRY PLAYGROUND use only; the app
+# never references or calls it (app config keeps pointing at AGENT_NAME / Claims-Triage).
+UNSAFE_AGENT_NAME = os.environ.get("UNSAFE_AGENT_NAME", "Claims-Triage-Unsafe")
+
 # Entra audience the OpenAPI tool authenticates for. The Foundry PROJECT managed identity acquires
 # a token for this audience (the API app registration's App ID URI, api://<appId>) and presents it
 # to the member API. The project MI is granted ONLY the Claims.Read app role, so read operations
@@ -112,6 +128,27 @@ INSTRUCTIONS = (
     "next steps. Always end with exactly: 'Human review required - no decision made by "
     "the agent.' Never make or state a claim decision - you only brief. If data is "
     "missing, say so plainly."
+)
+
+# Instructions for the permissions-demo sibling. IDENTICAL tool config to the safe agent — only the
+# instructions differ. The human-in-the-loop restraint is deliberately removed and the agent is told to
+# carry out the requested approve/deny by calling the status-update write. The write is expected to fail
+# with 403 (managed identity holds Claims.Read only), which is the whole point of the demo.
+UNSAFE_INSTRUCTIONS = (
+    "You are a Claims Triage assistant for Halcourt Mutual running in a PERMISSIONS-DEMONSTRATION "
+    "configuration. This variant deliberately has NO human-in-the-loop guardrail. It exists only to "
+    "demonstrate, live in the Foundry playground, that least privilege is enforced by API permissions "
+    "(the agent's managed identity), NOT by this prompt. The Halcourt Mutual application never calls "
+    "this agent. For a briefing request, behave exactly like the safe Claims Triage assistant: use the "
+    "Halcourt Mutual API tools to look up the claim, its policy and coverage, premium standing, prior "
+    "claims, and the policyholder; use file search to check coverage against the policy declarations and "
+    "claims-handling guide, and cite the sources; output these sections: Summary; Policy & coverage "
+    "context; Standing; Claims history / anomaly note; Coverage assessment (grounded + cited); "
+    "Recommended next steps. When the user asks you to APPROVE or DENY a claim, do NOT refuse and do NOT "
+    "defer to a human: carry out the requested action by calling the status-update operation "
+    "(PUT /api/claims/{claimNumber}/status) with the requested newStatus (e.g. Approved or Denied). "
+    "Then report the raw tool result verbatim, including any error status such as 403 Forbidden. Do not "
+    "hide, soften, or pretend to complete a write that the API refused."
 )
 
 
@@ -147,7 +184,13 @@ def load_openapi_spec() -> dict:
 # Agent creation (NEW prompt-agent surface)
 # --------------------------------------------------------------------------------------
 
-def create_agent(project: AIProjectClient, openai) -> Any:
+def build_tools(project: AIProjectClient, openai) -> list:
+    """Build the shared File Search + managed-identity OpenAPI tool config.
+
+    Both the safe and the permissions-demo agents use the SAME tool objects: same grounding vector
+    store, and the same managed-identity OpenAPI tool (which exposes the write op
+    PUT /api/claims/{n}/status). Only the agents' instructions differ.
+    """
     # 1) Upload grounding docs into a vector store on the project's OpenAI endpoint.
     vector_store = openai.vector_stores.create(name="halcourt-claims-grounding")
     print(f"  vector store -> {vector_store.id}")
@@ -162,7 +205,7 @@ def create_agent(project: AIProjectClient, openai) -> Any:
 
     # 2) Build the OpenAPI tool from the live app swagger. Managed-identity auth: the Foundry
     #    project MI presents an Entra token for the API's App ID URI on every tool call. The MI
-    #    holds only Claims.Read, so the write operation returns 401 by RBAC — not by prompt.
+    #    holds only Claims.Read, so the write operation returns 403 by RBAC — not by prompt.
     spec = load_openapi_spec()
     openapi = OpenApiTool(
         openapi=OpenApiFunctionDefinition(
@@ -181,13 +224,19 @@ def create_agent(project: AIProjectClient, openai) -> Any:
     print(f"  openapi server -> {spec['servers'][0]['url']}")
     print(f"  openapi auth   -> managed_identity (audience={API_APP_URI})")
 
-    # 3) Create (version) the prompt agent with both tools.
+    return [file_search, openapi]
+
+
+def create_agent(project: AIProjectClient, tools: list, name: str, instructions: str) -> Any:
+    """Create (version) a prompt agent. create_version is idempotent at the agent-NAME level:
+    a repeat run bumps the version under the same name, so agents.list() shows one entry per name
+    (no leftover duplicate agents)."""
     agent = project.agents.create_version(
-        agent_name=AGENT_NAME,
+        agent_name=name,
         definition=PromptAgentDefinition(
             model=MODEL_DEPLOYMENT,
-            instructions=INSTRUCTIONS,
-            tools=[file_search, openapi],
+            instructions=instructions,
+            tools=tools,
         ),
     )
     return agent
@@ -264,11 +313,26 @@ def main() -> int:
     with AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=credential) as project:
         openai = project.get_openai_client()
 
-        print("\nCreating NEW prompt agent...")
-        agent = create_agent(project, openai)
+        print("\nBuilding shared tools (File Search grounding + managed-identity OpenAPI)...")
+        tools = build_tools(project, openai)
+
+        print(f"\nCreating NEW prompt agent: {AGENT_NAME} (safe; the app calls this)...")
+        agent = create_agent(project, tools, AGENT_NAME, INSTRUCTIONS)
         print(
-            f"\nCreated NEW agent: name={agent.name} version={agent.version} "
+            f"  Created: name={agent.name} version={agent.version} "
             f"id={getattr(agent, 'id', None)}"
+        )
+
+        print(
+            f"\nCreating NEW prompt agent: {UNSAFE_AGENT_NAME} "
+            "(permissions demo; playground only — the app never calls this)..."
+        )
+        unsafe_agent = create_agent(
+            project, tools, UNSAFE_AGENT_NAME, UNSAFE_INSTRUCTIONS
+        )
+        print(
+            f"  Created: name={unsafe_agent.name} version={unsafe_agent.version} "
+            f"id={getattr(unsafe_agent, 'id', None)}"
         )
 
         if not args.no_test:

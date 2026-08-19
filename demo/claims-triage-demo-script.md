@@ -33,7 +33,8 @@ claim itself**.
 - **Enforcement (the point):** `/api/*` is secured with Entra ID + app roles `Claims.Read` / `Claims.Write`.
   The agent's OpenAPI tool authenticates with a **managed identity** that holds **`Claims.Read` only**. A
   write it attempts (approve/deny a claim) is refused with **403 at the RBAC layer** — regardless of what
-  any prompt says.
+  any prompt says. **The app cannot drive this** (it has no prompt box and no write path); the 403 is shown
+  live in the Foundry playground with the **`Claims-Triage-Unsafe`** agent (see the demo arc).
 
 ## What the agent does (steps → tools)
 
@@ -71,21 +72,48 @@ claim itself**.
 > reimbursement available while the vehicle is in an approved shop.
 > **Human review required — no decision made by the agent.**
 
-## Live 30-minute arc
+## Timing — this is a ~5-min demo inside a ~12-min segment (NOT 30 min)
 
-- **(2 min)** Set the scene: "an adjuster just received a new FNOL claim."
-- **(6 min)** Run the agent live → the structured briefing appears; narrate each read tool call as it fires.
-- **(5 min)** **The governance money-shot — enforced, not asserted:**
-  - Open the in-app audit trail: "here's exactly what it touched and why," running as a **read-only managed
-    identity**.
-  - **The 403 hard-stop:** show that when the agent is pushed to *act* — approve/deny the claim, a
-    `Claims.Write` — the API refuses it with **403** because the agent's identity holds `Claims.Read` only.
-    The claim never changes state. *"The boundary is enforced by identity, not by asking the model nicely."*
-  - Flip to the Azure Monitor **AI Agents** view: every run, every tool call, **including the denied write**,
-    in one place — the "review all agent activity at once" answer.
-- **(remainder)** Architecture slide (`demo/guard-foundry-fabric-architecture.svg`) → how this generalizes to
-  their **Foundry + Fabric multi-agent estate** on a governed foundation; what's next
-  (`demo/guard-next-*.svg`, `demo/guard-next-minideck.pptx`).
+The meeting is **one hour** for the whole deck, so the old 30-minute demo is unrealistic. Jim's segment is
+**~12 min**: three slides + the live demo, sequenced so the slides carry the *scale* story and the demo stays
+short and concrete. (Adjust the 12 if the real slice differs.)
+
+| Beat | Time | Notes |
+|---|---|---|
+| **Slide 8 — Foundry IQ + Fabric IQ** | ~2 min | *Where* the agent grounds: governed data products, not per-agent plumbing. Sets up the demo. |
+| **LIVE DEMO** (Slide 11 divider) | **~5 min** | one agent done right — arc below |
+| **Slide 9 — Agent 365** | ~1.5 min | "one governed agent → a governed fleet" — pays off the demo. |
+| **Slide 10 — Purview** | ~1.5 min | "the in-app audit trail → estate-wide evidence" — pays off the demo. |
+
+**Ordering note:** Slides 9 and 10 reference the demo in the past tense, so present them **after** the demo:
+**8 → demo → 9 → 10**. The demo is the pivot between "one agent grounded right" and "govern the fleet."
+
+## Live demo arc (~5 min, TWO surfaces)
+
+The demo spans **two browser tabs** — the app and the Foundry playground. The **403 hard-stop cannot happen
+in the app**: the app has a single *Generate briefing* button wired to the **safe** `Claims-Triage` agent and
+**no free-text prompt and no write path**, so it can never attempt a write. The 403 is proven in the
+**playground** with the unsafe agent. That two-surface split is itself the story: the write isn't even on the
+app surface **and** the identity layer refuses it if something tries directly — **defense in depth**.
+
+- **(0:45) Scene — app.** Open the FNOL claim **CLM-2026-00841** in the Claims Triage Console.
+- **(1:30) Briefing — app, safe agent.** Click *Generate briefing* → one line as it works ("it's pulling the
+  claim, policy, standing, history — all reads"), the cited briefing appears; open the collapsible audit
+  trail. Land it: *"The app hands the adjuster a briefing. Notice there's no button that lets the agent
+  approve or deny — the action isn't even on the surface. Reads only; the human decides."*
+- **(0:20) Switch tabs → Foundry playground** (pre-opened on **`Claims-Triage-Unsafe`**). *"Suppose an agent
+  were built to act — same tools, no human-in-the-loop guard. Can it?"*
+- **(1:30) The 403 money-shot — playground, unsafe agent.** Type *"Approve claim CLM-2026-00841."* It calls
+  `PUT /api/claims/CLM-2026-00841/status` (`newStatus: Approved`) and the trace shows **HTTP 403 Forbidden**;
+  reads still returned 200; the claim stays `UnderReview`. *"That's not the prompt refusing — it's the API's
+  least-privilege identity. Even a willing agent cannot write."* **The app never calls this agent** — it
+  always points at `Claims-Triage`; `Claims-Triage-Unsafe` exists only for this live permissions demo.
+- **(0:30) Scale — one glance.** Azure Monitor **AI Agents** view: every run and tool call, **including the
+  denied write**, in one place. This is the handoff line into Slide 9 (Agent 365).
+
+**Pre-flight (do before you present):** two tabs loaded and signed in — (1) the app on the CLM-2026-00841
+detail page, (2) the Foundry portal playground with **`Claims-Triage-Unsafe`** already selected — so the
+mid-demo switch is one click, not a hunt through the portal. Keep the fallback screen-recording ready.
 
 ## Talking points to weave (GUARD's stated interests)
 
@@ -109,6 +137,9 @@ claim itself**.
 
 ## Environments
 
-- **`mmdemo`** — the frozen estate you demo from (URL above). Do **not** re-provision before the call.
-- **`mmdev`** — an isolated enforced clone (`rg-mmdev`) for phase development; never touch `mmdemo`. See
-  `PLANNING.md` for identifiers and `infra/setup-env.sh` to stand up more.
+- **`mmdemo`** — the **default / primary demo estate** you present from (URL above); the selected azd env.
+  Do **not** re-provision before the call.
+- **`mmdev`** — the **fallback / failsafe** isolated clone (`rg-mmdev`); kept intact as a backup and for
+  phase development. See `PLANNING.md` for identifiers and `infra/setup-env.sh` to stand up more.
+- Both estates carry the same two agents (`Claims-Triage` + the playground-only `Claims-Triage-Unsafe`),
+  since `setup-env.sh` runs `create_new_agent.py`.
