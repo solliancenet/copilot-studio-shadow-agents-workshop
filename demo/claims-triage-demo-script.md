@@ -92,9 +92,18 @@ short and concrete. (Adjust the 12 if the real slice differs.)
 
 The demo spans **two browser tabs** — the app and the Foundry playground. The **403 hard-stop cannot happen
 in the app**: the app has a single *Generate briefing* button wired to the **safe** `Claims-Triage` agent and
-**no free-text prompt and no write path**, so it can never attempt a write. The 403 is proven in the
-**playground** with the unsafe agent. That two-surface split is itself the story: the write isn't even on the
-app surface **and** the identity layer refuses it if something tries directly — **defense in depth**.
+**no free-text chat and no write path**, so it can never even ask for a write. The 403 is proven in the
+**playground** with the unsafe agent.
+
+That's the story — **defense in depth, three layers**, each independent:
+1. **Surface** — the app has no free chat; a user can't ask the agent to act. The action isn't exposed.
+2. **Agent (prompt)** — the safe agent is instructed to brief only, human-in-the-loop; it won't attempt a
+   write.
+3. **API permissions (RBAC)** — even if the prompt guard is removed, the agent's least-privilege identity
+   holds `Claims.Read` only, so the write returns **403**.
+
+The unsafe-agent step deliberately **strips layer 2** (drops the prompt guard) to prove **layer 3** is a real
+control, not the model "asking nicely" — the identity permission is what actually stops it.
 
 - **(0:45) Scene — app.** Open the FNOL claim **CLM-2026-00841** in the Claims Triage Console.
 - **(1:30) Briefing — app, safe agent.** Click *Generate briefing* → one line as it works ("it's pulling the
