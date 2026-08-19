@@ -3,7 +3,7 @@ FACILITATOR-ONLY. Phase 9 — Teardown.
 
 Removes the estate created by the provisioning scripts. Personas in Phase 2 can optionally persist
 between deliveries; pass -RemovePersonas to remove them too. The Azure endpoints are removed separately:
-  az group delete -n rg-meridian-lab --yes
+  az group delete -n rg-halcourt-lab --yes
 
 Lines marked [verify] depend on tenant specifics.
 #>
@@ -22,7 +22,7 @@ Write-Host 'Removing connections (including svc-claims and tom.dean shared conne
 Write-Host 'Removing Dataverse Claim/Customer tables and SharePoint HR-Benefits/Claims-Knowledge sites...'
 # [verify] Remove tables (or delete the solution); Remove-PnPSite for the two sites.
 
-Write-Host 'Removing non-default environments (Meridian-Prod, Claims-Test, Maker-Sandbox)...'
+Write-Host 'Removing non-default environments (Halcourt-Prod, Claims-Test, Maker-Sandbox)...'
 # [verify] Remove-AdminPowerAppEnvironment for each (NOT the default environment).
 
 if ($RemovePersonas) {
@@ -31,4 +31,4 @@ if ($RemovePersonas) {
   # [verify] Remove-MgUser / Remove-MgGroup for each principal created in Phase 2.
 }
 
-Write-Host 'Teardown complete. Remember: az group delete -n rg-meridian-lab --yes'
+Write-Host 'Teardown complete. Remember: az group delete -n rg-halcourt-lab --yes'

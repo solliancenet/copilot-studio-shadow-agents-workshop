@@ -16,10 +16,10 @@
 
   <ItemGroup>
     <!-- The test project sits alongside the app; keep its sources out of the web project. -->
-    <Compile Remove="MeridianMutual.Tests/**" />
-    <Content Remove="MeridianMutual.Tests/**" />
-    <None Remove="MeridianMutual.Tests/**" />
-    <EmbeddedResource Remove="MeridianMutual.Tests/**" />
+    <Compile Remove="HalcourtMutual.Tests/**" />
+    <Content Remove="HalcourtMutual.Tests/**" />
+    <None Remove="HalcourtMutual.Tests/**" />
+    <EmbeddedResource Remove="HalcourtMutual.Tests/**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,8 @@
-using MeridianMutual.Models.ViewModels;
-using MeridianMutual.Services;
+using HalcourtMutual.Models.ViewModels;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeridianMutual.Controllers;
+namespace HalcourtMutual.Controllers;
 
 /// <summary>
 /// The adjuster-facing claim workspace: open a claim from the triage queue, review its policy

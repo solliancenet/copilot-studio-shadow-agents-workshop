@@ -31,8 +31,8 @@ grounded, post-FNOL claim-triage briefing — mapping to GUARD's Claims Domain i
 human-in-the-loop, audit).
 
 **Built & deployed** (Azure sub `6aa3be9e…` "AI Practice Development", RG `rg-mmdemo`, **westus3**):
-- **Meridian Mutual app** — .NET 8 MVC + REST API + EF/SQLite; internal Claims Triage Console (triage
-  queue → claim detail → *Generate triage briefing*), branded (navy/teal, meridian logo), collapsible
+- **Halcourt Mutual app** — .NET 8 MVC + REST API + EF/SQLite; internal Claims Triage Console (triage
+  queue → claim detail → *Generate triage briefing*), branded (navy/teal, halcourt logo), collapsible
   audit trail + governance banner. Live:
   `https://ca-web-ieveiacpjsr6g.thankfulglacier-039daedb.westus3.azurecontainerapps.io`. Deployed via
   `azd` (Bicep in `infra/`, ACR remote build).
@@ -102,7 +102,7 @@ the working Wednesday estate is never re-provisioned. The infra is env-isolated 
 | **`mmdev`** | `rg-mmdev` / `32zp4ye7fj5ay` | Enforced clone for phase work | `ca-web-32zp4ye7fj5ay.redground-76ccf3ae.westus3.azurecontainerapps.io` |
 
 `mmdev` identifiers: Foundry account `aif-32zp4ye7fj5ay` / project `proj-32zp4ye7fj5ay`; app registration
-`Meridian Mutual Member API (mmdev)` appId `f37e43a4-e687-4e72-9f2f-e49ff1867f42`; App Insights
+`Halcourt Mutual Member API (mmdev)` appId `f37e43a4-e687-4e72-9f2f-e49ff1867f42`; App Insights
 `appi-32zp4ye7fj5ay`; account MI (Claims.Read grantee) principalId `c2ee4d27-…`. Verified enforced
 (anonymous → 401, read-only identity → GET 200 / PUT 403, reads succeed, 23/23 tests); `rg-mmdemo` confirmed
 untouched (10 resources) throughout.

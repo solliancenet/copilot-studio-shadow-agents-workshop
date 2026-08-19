@@ -1,16 +1,16 @@
 using System.Globalization;
-using MeridianMutual.Data;
-using MeridianMutual.Models;
+using HalcourtMutual.Data;
+using HalcourtMutual.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace MeridianMutual.Services;
+namespace HalcourtMutual.Services;
 
 public class ClaimService
 {
-    private readonly MeridianMutualDbContext _db;
+    private readonly HalcourtMutualDbContext _db;
     private readonly ILogger<ClaimService> _logger;
 
-    public ClaimService(MeridianMutualDbContext db, ILogger<ClaimService> logger)
+    public ClaimService(HalcourtMutualDbContext db, ILogger<ClaimService> logger)
     {
         _db = db;
         _logger = logger;

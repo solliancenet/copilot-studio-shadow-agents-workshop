@@ -1,4 +1,4 @@
-namespace MeridianMutual.Models;
+namespace HalcourtMutual.Models;
 
 public class ErrorViewModel
 {

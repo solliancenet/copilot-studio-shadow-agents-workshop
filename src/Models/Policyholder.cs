@@ -1,4 +1,4 @@
-namespace MeridianMutual.Models;
+namespace HalcourtMutual.Models;
 
 /// <summary>A member of the mutual. One policyholder can hold several policies.</summary>
 public class Policyholder

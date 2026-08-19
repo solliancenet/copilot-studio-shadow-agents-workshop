@@ -1,5 +1,5 @@
 <#
-FACILITATOR-ONLY. Phase 2 — Entra identities & personas for the Meridian Mutual demo estate.
+FACILITATOR-ONLY. Phase 2 — Entra identities & personas for the Halcourt Mutual demo estate.
 Creates the personas, the service account, the shared mailbox, and the groups from AGENTS.md.
 
 IMPORTANT ordering: create tom.dean ENABLED now. Only AFTER his shared connections exist (Phase 6),
@@ -9,7 +9,7 @@ Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWr
 Lines marked [verify] depend on tenant specifics.
 #>
 param(
-  [string]$DomainSuffix = 'meridianmutual.com',
+  [string]$DomainSuffix = 'halcourtmutual.com',
   [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only
   [switch]$DisableDepartedOwner
 )
@@ -47,7 +47,7 @@ foreach ($p in $people) {
 # it.helpdesk shared mailbox — [verify] created via Exchange Online (New-Mailbox -Shared) not Graph.
 Write-Host '[verify] Create the it.helpdesk shared mailbox in Exchange Online: New-Mailbox -Shared -Name "IT Helpdesk" -PrimarySmtpAddress it.helpdesk@'$DomainSuffix
 
-$groups = 'Meridian-Makers','HR-Team','Claims-Adjusters','All-Employees'
+$groups = 'Halcourt-Makers','HR-Team','Claims-Adjusters','All-Employees'
 foreach ($g in $groups) {
   Write-Host "Creating group $g"
   New-MgGroup -DisplayName $g -MailEnabled:$false -SecurityEnabled:$true -MailNickname $g | Out-Null

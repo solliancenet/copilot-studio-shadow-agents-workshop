@@ -1,4 +1,4 @@
-# Meridian Mutual — Claims Handling Guide (Adjuster Reference)
+# Halcourt Mutual — Claims Handling Guide (Adjuster Reference)
 
 This guide gives claims staff a consistent triage process. It does **not** authorize a coverage
 decision; every claim is settled by a licensed human adjuster.

@@ -1,6 +1,6 @@
-using MeridianMutual.Services;
+using HalcourtMutual.Services;
 
-namespace MeridianMutual.Models.ViewModels;
+namespace HalcourtMutual.Models.ViewModels;
 
 /// <summary>Everything the adjuster claim view needs: the claim, its context, and any briefing.</summary>
 public class ClaimDetailViewModel

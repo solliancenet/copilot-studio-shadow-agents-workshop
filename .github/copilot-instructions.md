@@ -6,7 +6,7 @@ attendee work through these labs, use the framing below.
 
 ## The scenario
 
-The workshop centers on a fictional mid-size regulated insurer, **Meridian Mutual**, whose makers have
+The workshop centers on a fictional mid-size regulated insurer, **Halcourt Mutual**, whose makers have
 shipped Copilot Studio agents faster than anyone tracked them. Attendees play the role of a platform
 owner / security reviewer who must **discover, map, break, and then test the controls around** that
 agent estate.

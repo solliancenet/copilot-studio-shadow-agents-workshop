@@ -1,4 +1,4 @@
-// FACILITATOR-ONLY. Meridian Mutual "internal Policy API" — DELIBERATELY WEAK for the workshop.
+// FACILITATOR-ONLY. Halcourt Mutual "internal Policy API" — DELIBERATELY WEAK for the workshop.
 // Weaknesses (by design, drive Scenario E / C):
 //   1. A single static API key (x-api-key) is the ONLY gate. No per-user authorization.
 //   2. Beyond the intended GET /policy/:id, it also exposes /policy/all and /customer/:id (PII).

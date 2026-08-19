@@ -66,7 +66,7 @@ exclude:
   - README.md
   - setup/
   - scripts/
-  # Meridian Mutual demo app (.NET). Never renders into the attendee site.
+  # Halcourt Mutual demo app (.NET). Never renders into the attendee site.
   - src/
   # azd + Bicep deployment for the demo app. Facilitator-only; not published.
   - azure.yaml

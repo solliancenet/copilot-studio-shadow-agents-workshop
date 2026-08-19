@@ -9,7 +9,7 @@ has_children: true
 
 ## Scenario
 
-**Meridian Mutual** is a mid-size, regulated US insurer. Like most of its peers, it runs on Microsoft
+**Halcourt Mutual** is a mid-size, regulated US insurer. Like most of its peers, it runs on Microsoft
 365 — Outlook, SharePoint, Teams, Dataverse — and it has leaned hard into Power Platform and Copilot
 Studio to move faster. HR, Claims, Sales, Finance, and IT all have makers who can build. Over the last
 few months those makers shipped a fleet of Copilot Studio agents: benefits helpers, a claims lookup
@@ -17,7 +17,7 @@ bot, a policy lookup bot, an underwriting assistant, an onboarding guide, and mo
 got an Entra identity the moment it was created. Every one of them carries the permissions of whatever
 connections it touches.
 
-Nobody at Meridian Mutual can answer three simple questions about that estate:
+Nobody at Halcourt Mutual can answer three simple questions about that estate:
 
 1. **How many agents do you have?**
 2. **Who owns them?**
@@ -35,10 +35,10 @@ This exercise gets you access and oriented. No findings yet — just terrain.
 
 After this exercise you will be able to:
 
-- Sign in to the shared Meridian Mutual demo tenant with your guest account and open the **Power Platform
+- Sign in to the shared Halcourt Mutual demo tenant with your guest account and open the **Power Platform
   admin center** in read-only mode.
 - Download the **artifact pack** and confirm all five CSV exports open.
-- Name Meridian Mutual's **four Power Platform environments** and read their type, DLP, and managed status
+- Name Halcourt Mutual's **four Power Platform environments** and read their type, DLP, and managed status
   straight from the export.
 - Describe the day's arc — **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE** — and restate
   the three questions in your own words.

@@ -1,4 +1,4 @@
-// FACILITATOR-ONLY. Meridian Mutual "Underwriting" MCP-style tool server — DELIBERATELY WEAK.
+// FACILITATOR-ONLY. Halcourt Mutual "Underwriting" MCP-style tool server — DELIBERATELY WEAK.
 // Simplified stand-in for an MCP server (JSON over HTTP, not full JSON-RPC/SSE) so the workshop can
 // demonstrate the tool-boundary failures without a full MCP stack. Weaknesses (by design, Scenario E):
 //   1. A single static bearer token authorizes ALL callers (no per-agent / per-user identity).

@@ -8,7 +8,7 @@ has_children: true
 # Your estate, Monday morning
 
 For six hours you have been the platform owner and security reviewer for a tenant that
-was not yours. You discovered Meridian Mutual's agents, mapped what they could reach,
+was not yours. You discovered Halcourt Mutual's agents, mapped what they could reach,
 broke them in controlled scenarios, and judged whether the controls held. This last
 exercise turns the lens around: the same three questions — *how many agents do we have,
 who owns them, what can they reach* — are unanswered in **your** organization too.
@@ -19,13 +19,13 @@ You go back to work with a real tenant, real makers, and real data behind your a
 You will not finish an inventory in thirty minutes, and that is not the goal. The goal is
 to leave knowing exactly what to pull, which surfaces to open, and which questions you
 cannot yet answer — plus three concrete actions you can take Monday morning and one
-sentence that gets leadership to fund them. Everything you practiced against Meridian
+sentence that gets leadership to fund them. Everything you practiced against Halcourt
 maps directly onto your own estate; this exercise is where you make that translation
 explicit.
 
 ```mermaid
 flowchart LR
-  A[Six hours on<br/>Meridian Mutual] --> B[Seven questions<br/>for YOUR tenant]
+  A[Six hours on<br/>Halcourt Mutual] --> B[Seven questions<br/>for YOUR tenant]
   B --> C[Top three<br/>Monday actions]
   C --> D[One sentence<br/>to leadership]
 ```

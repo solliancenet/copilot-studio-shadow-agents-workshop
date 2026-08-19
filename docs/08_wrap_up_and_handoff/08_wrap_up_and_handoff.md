@@ -9,7 +9,7 @@ has_children: true
 
 ## Scenario
 
-You started the day unable to answer three plain questions about Meridian Mutual: how many agents there
+You started the day unable to answer three plain questions about Halcourt Mutual: how many agents there
 are, who owns them, and what they can reach. You end it with a running **Estate Binder** that answers all
 three — and, harder, with an honest read on whether Microsoft's controls actually reduce the risk you
 found.

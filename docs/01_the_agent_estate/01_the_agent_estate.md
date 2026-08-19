@@ -9,7 +9,7 @@ has_children: true
 
 ## Scenario
 
-You are Ana Reyes, platform admin and CoE lead at **Meridian Mutual**, a mid-size regulated insurer.
+You are Ana Reyes, platform admin and CoE lead at **Halcourt Mutual**, a mid-size regulated insurer.
 Over the last few months your makers have been shipping Copilot Studio agents — a benefits helper, a
 claims assistant, an underwriting tool, a policy lookup bot, and more you have not seen. Leadership asks
 the obvious governance questions and nobody in the room can answer them: *How many agents do we have? Who

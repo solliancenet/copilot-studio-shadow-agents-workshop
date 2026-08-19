@@ -1,4 +1,4 @@
-// Meridian Mutual — Claims Triage Console (presentation-only client behavior)
+// Halcourt Mutual — Claims Triage Console (presentation-only client behavior)
 
 (function () {
   "use strict";

@@ -13,7 +13,7 @@ the **artifact pack** (exported estate data), so you are never blocked when the 
 
 ## The artifact pack
 
-Raw exports of the Meridian Mutual estate — analyze these offline exactly as you would a real tenant
+Raw exports of the Halcourt Mutual estate — analyze these offline exactly as you would a real tenant
 export. Join across them to answer *how many agents, who owns them, what can they reach*.
 
 | Export | What's in it |

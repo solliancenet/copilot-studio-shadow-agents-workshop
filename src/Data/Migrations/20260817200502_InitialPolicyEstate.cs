@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MeridianMutual.Data.Migrations
+namespace HalcourtMutual.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialPolicyEstate : Migration

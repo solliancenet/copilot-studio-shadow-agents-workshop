@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# cleanup-demo.sh — fully tear down the Meridian Mutual Claims Triage demo.
+# cleanup-demo.sh — fully tear down the Halcourt Mutual Claims Triage demo.
 #
 # Idempotent and safe to re-run. It removes, in order:
 #   1. All Azure resources in the azd environment  (azd down --force --purge)
@@ -36,7 +36,7 @@ run() {
 }
 
 echo "=================================================================="
-echo " Meridian Mutual demo teardown"
+echo " Halcourt Mutual demo teardown"
 echo " repo:   $HERE"
 [ "$DRY_RUN" = "1" ] && echo " MODE:   DRY RUN (no changes will be made)"
 echo "=================================================================="

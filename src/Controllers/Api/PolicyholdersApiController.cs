@@ -1,9 +1,9 @@
-using MeridianMutual.Models.Api;
-using MeridianMutual.Services;
+using HalcourtMutual.Models.Api;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeridianMutual.Controllers.Api;
+namespace HalcourtMutual.Controllers.Api;
 
 /// <summary>
 /// Member lookup for the servicing channels. Reads require the Entra <c>Claims.Read</c> app role;

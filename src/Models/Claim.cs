@@ -1,4 +1,4 @@
-namespace MeridianMutual.Models;
+namespace HalcourtMutual.Models;
 
 /// <summary>Where a claim sits in the adjusting workflow.</summary>
 public enum ClaimStatus

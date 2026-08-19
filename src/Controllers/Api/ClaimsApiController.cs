@@ -1,10 +1,10 @@
-using MeridianMutual.Models;
-using MeridianMutual.Models.Api;
-using MeridianMutual.Services;
+using HalcourtMutual.Models;
+using HalcourtMutual.Models.Api;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeridianMutual.Controllers.Api;
+namespace HalcourtMutual.Controllers.Api;
 
 /// <summary>
 /// Claim lookup, first notice of loss, and claim-status transitions. Every operation is gated by

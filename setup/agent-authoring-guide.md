@@ -22,7 +22,7 @@ as Tom, then attach them.
 
 ## Per-agent recipe
 
-### Benefits Buddy  (Meridian-Prod, owner marcus.webb)
+### Benefits Buddy  (Halcourt-Prod, owner marcus.webb)
 - Ground on the **whole `HR-Benefits` site**, including `Leadership/`. Do not scope it down.
 - Connection: SharePoint as Marcus (user/delegated).
 - No custom actions. Publish. Verify Scenario A (poisoned FAQ steers the answer) and Scenario B
@@ -34,23 +34,23 @@ as Tom, then attach them.
 - Ground on `Claims-Knowledge`. Publish. Verify Scenarios C (reads all rows + PII), D (Jordan Blake can
   read/modify any claim), F (it is a "test" env doing prod work).
 
-### Policy Lookup Bot  (Meridian-Prod, owner = it.helpdesk shared mailbox)
-- Add an **HTTP action** to `https://api.meridianmutual-lab.com/policy/{id}`, with the **static API key in
+### Policy Lookup Bot  (Halcourt-Prod, owner = it.helpdesk shared mailbox)
+- Add an **HTTP action** to `https://api.halcourtmutual-lab.com/policy/{id}`, with the **static API key in
   the action header config** (the key you deployed in Phase 1). Take `{id}` straight from user input.
 - No input validation. Publish. Verify Scenario E (key in config; input crosses; `/policy/all` and
   `/customer/{id}` reachable).
 
-### Underwriting Assistant  (Meridian-Prod, owner priya.nair)
-- Add the **Underwriting MCP** tool connection to `https://mcp.meridianmutual-lab.com/underwriting` with
+### Underwriting Assistant  (Halcourt-Prod, owner priya.nair)
+- Add the **Underwriting MCP** tool connection to `https://mcp.halcourtmutual-lab.com/underwriting` with
   the **static bearer**. Import the full tool set including `run_query`.
 - Publish. Verify Scenario E (weak auth; over-wide tool schema; `run_query` returns broad rows).
 
-### Expense Helper  (Meridian (default), owner sam.olsen)
+### Expense Helper  (Halcourt (default), owner sam.olsen)
 - Add a Power Automate flow **"Submit and auto-approve expense under $500"** that runs as **Sam** (an
   approver). Trigger it from the agent.
 - Publish. Verify Scenario D (a requester auto-approves via the agent's authority, not their own).
 
-### Onboarding Guide  (Meridian (default), owner tom.dean → later disabled)
+### Onboarding Guide  (Halcourt (default), owner tom.dean → later disabled)
 - Build **as Tom**: SharePoint + Office 365 Outlook (send mail) connections **owned by Tom**.
 - Publish. In **Phase 6.5**, disable Tom (`01_provision_entra.ps1 -DisableDepartedOwner`). Leave the agent
   and connections live. Verify Scenario F / orphan (still published, still can send mail, no owner).
@@ -59,12 +59,12 @@ as Tom, then attach them.
 - Build **as Dev**: SharePoint + Microsoft Graph search across the sites Dev can see (broad).
 - Publish. Verify it is a **shadow** agent — present only if you inventory the sandbox environment.
 
-### Sales Nudge  (Meridian-Prod, owner lena.ford; connection owned by tom.dean)
+### Sales Nudge  (Halcourt-Prod, owner lena.ford; connection owned by tom.dean)
 - Agent owned by **Lena**, but attach a **CRM/Dataverse shared connection owned by `tom.dean`**.
 - Publish. Verify the shared-connection / hidden-effective-owner finding (agent owner present, connection
   owner departed).
 
-### HR FAQ v2 (copy)  — DECOY  (Meridian-Prod, owner marcus.webb)
+### HR FAQ v2 (copy)  — DECOY  (Halcourt-Prod, owner marcus.webb)
 - Read-only. Ground on a **single all-staff FAQ library only** (not the whole site, no `Leadership/`).
   No actions. Publish. This must be genuinely clean — it is the noise that teaches "risk = effective
   access, not vibes."

@@ -1,14 +1,14 @@
-using MeridianMutual.Data;
-using MeridianMutual.Models;
+using HalcourtMutual.Data;
+using HalcourtMutual.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace MeridianMutual.Services;
+namespace HalcourtMutual.Services;
 
 public class PolicyService
 {
-    private readonly MeridianMutualDbContext _db;
+    private readonly HalcourtMutualDbContext _db;
 
-    public PolicyService(MeridianMutualDbContext db)
+    public PolicyService(HalcourtMutualDbContext db)
     {
         _db = db;
     }

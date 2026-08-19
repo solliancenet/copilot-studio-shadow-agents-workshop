@@ -1,4 +1,4 @@
-# Meridian Mutual — Auto Policy Declarations
+# Halcourt Mutual — Auto Policy Declarations
 
 **Policy number:** MM-AUTO-004417
 **Named insured:** Dana Whitfield

@@ -11,7 +11,7 @@ attendee experience is a **Jekyll + `just-the-docs`** site (`index.md` + `docs/`
 answer key, and provisioning kit are facilitator-only and excluded from the site.
 
 The narrative arc is **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE** against a fictional
-insurer, **Meridian Mutual**.
+insurer, **Halcourt Mutual**.
 
 ## Commands
 

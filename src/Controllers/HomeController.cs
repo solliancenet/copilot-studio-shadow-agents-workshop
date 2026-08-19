@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using MeridianMutual.Models;
-using MeridianMutual.Services;
+using HalcourtMutual.Models;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeridianMutual.Controllers;
+namespace HalcourtMutual.Controllers;
 
 public class HomeController : Controller
 {

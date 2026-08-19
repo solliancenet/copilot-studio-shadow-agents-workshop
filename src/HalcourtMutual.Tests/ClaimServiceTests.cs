@@ -1,9 +1,9 @@
-using MeridianMutual.Models;
-using MeridianMutual.Services;
+using HalcourtMutual.Models;
+using HalcourtMutual.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace MeridianMutual.Tests;
+namespace HalcourtMutual.Tests;
 
 public class ClaimServiceTests : IClassFixture<EstateFixture>
 {

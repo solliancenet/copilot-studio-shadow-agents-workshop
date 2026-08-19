@@ -1,11 +1,11 @@
 upn,display_name,account_enabled,last_sign_in_utc,is_service_account,is_shared_mailbox
-ana.reyes@meridianmutual.com,Ana Reyes,TRUE,2026-08-13,FALSE,FALSE
-marcus.webb@meridianmutual.com,Marcus Webb,TRUE,2026-08-12,FALSE,FALSE
-priya.nair@meridianmutual.com,Priya Nair,TRUE,2026-08-13,FALSE,FALSE
-sam.olsen@meridianmutual.com,Sam Olsen,TRUE,2026-08-11,FALSE,FALSE
-lena.ford@meridianmutual.com,Lena Ford,TRUE,2026-08-12,FALSE,FALSE
-dev.kim@meridianmutual.com,Dev Kim,TRUE,2026-08-13,FALSE,FALSE
-tom.dean@meridianmutual.com,Tom Dean,FALSE,2026-01-30,FALSE,FALSE
-jordan.blake@meridianmutual.com,Jordan Blake,TRUE,2026-08-13,FALSE,FALSE
-svc-claims@meridianmutual.com,Claims Service Account,TRUE,2026-08-13,TRUE,FALSE
-it.helpdesk@meridianmutual.com,IT Helpdesk,TRUE,2026-08-10,FALSE,TRUE
+ana.reyes@halcourtmutual.com,Ana Reyes,TRUE,2026-08-13,FALSE,FALSE
+marcus.webb@halcourtmutual.com,Marcus Webb,TRUE,2026-08-12,FALSE,FALSE
+priya.nair@halcourtmutual.com,Priya Nair,TRUE,2026-08-13,FALSE,FALSE
+sam.olsen@halcourtmutual.com,Sam Olsen,TRUE,2026-08-11,FALSE,FALSE
+lena.ford@halcourtmutual.com,Lena Ford,TRUE,2026-08-12,FALSE,FALSE
+dev.kim@halcourtmutual.com,Dev Kim,TRUE,2026-08-13,FALSE,FALSE
+tom.dean@halcourtmutual.com,Tom Dean,FALSE,2026-01-30,FALSE,FALSE
+jordan.blake@halcourtmutual.com,Jordan Blake,TRUE,2026-08-13,FALSE,FALSE
+svc-claims@halcourtmutual.com,Claims Service Account,TRUE,2026-08-13,TRUE,FALSE
+it.helpdesk@halcourtmutual.com,IT Helpdesk,TRUE,2026-08-10,FALSE,TRUE

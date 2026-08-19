@@ -35,7 +35,7 @@ reduce the risk.
 
 > **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE**
 
-You will work an intentionally imperfect agent estate for a fictional insurer, **Meridian Mutual**,
+You will work an intentionally imperfect agent estate for a fictional insurer, **Halcourt Mutual**,
 building a running **Estate Binder** of deliverables as you go. For every failure you find, you will say
 plainly whether a control **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
 
@@ -86,7 +86,7 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 - A modern browser and the lab access details handed out at the start of Module 0.
 - The downloadable **artifact pack** (exported inventory + screenshots) — used whenever you are working
   offline or tenant access is slow.
-- Read access to the shared **Meridian Mutual** demo tenant (guest account provided by the facilitator).
+- Read access to the shared **Halcourt Mutual** demo tenant (guest account provided by the facilitator).
 - Optional: a Copilot-enabled editor for the analysis tasks (see `.github/copilot-instructions.md`).
 
 {: .warning }

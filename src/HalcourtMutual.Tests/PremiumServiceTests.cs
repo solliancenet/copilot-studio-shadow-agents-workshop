@@ -1,8 +1,8 @@
-using MeridianMutual.Models;
-using MeridianMutual.Services;
+using HalcourtMutual.Models;
+using HalcourtMutual.Services;
 using Xunit;
 
-namespace MeridianMutual.Tests;
+namespace HalcourtMutual.Tests;
 
 /// <summary>
 /// "Did my premium clear?" is the question the member portal is asked most, so the payment

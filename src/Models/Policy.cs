@@ -1,4 +1,4 @@
-namespace MeridianMutual.Models;
+namespace HalcourtMutual.Models;
 
 /// <summary>The lines of business the portal covers.</summary>
 public enum PolicyType

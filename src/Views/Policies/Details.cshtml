@@ -1,10 +1,10 @@
-@model MeridianMutual.Models.Policy
+@model HalcourtMutual.Models.Policy
 @{
     ViewData["Title"] = Model.PolicyNumber;
-    var payments = ViewData["Payments"] as List<MeridianMutual.Models.PremiumPayment>
-        ?? new List<MeridianMutual.Models.PremiumPayment>();
-    var claims = ViewData["Claims"] as List<MeridianMutual.Models.Claim>
-        ?? new List<MeridianMutual.Models.Claim>();
+    var payments = ViewData["Payments"] as List<HalcourtMutual.Models.PremiumPayment>
+        ?? new List<HalcourtMutual.Models.PremiumPayment>();
+    var claims = ViewData["Claims"] as List<HalcourtMutual.Models.Claim>
+        ?? new List<HalcourtMutual.Models.Claim>();
 }
 
 <nav aria-label="breadcrumb">

@@ -1,6 +1,6 @@
-using MeridianMutual.Models;
+using HalcourtMutual.Models;
 
-namespace MeridianMutual.Data;
+namespace HalcourtMutual.Data;
 
 /// <summary>
 /// Loads the demonstration data set. The member portal is a pilot workload, so it ships with a
@@ -9,7 +9,7 @@ namespace MeridianMutual.Data;
 /// </summary>
 public static class PolicySeeder
 {
-    public static void Seed(MeridianMutualDbContext db)
+    public static void Seed(HalcourtMutualDbContext db)
     {
         if (db.Policyholders.Any())
         {
@@ -96,7 +96,7 @@ public static class PolicySeeder
     /// Two more policyholders with active policies and open/under-review claims, so the triage
     /// queue has several rows. Kept deliberately separate from the primary demo member.
     /// </summary>
-    private static void SeedAdditionalQueue(MeridianMutualDbContext db, DateTime today, DateTime thisMonth)
+    private static void SeedAdditionalQueue(HalcourtMutualDbContext db, DateTime today, DateTime thisMonth)
     {
         var reyes = new Policyholder
         {

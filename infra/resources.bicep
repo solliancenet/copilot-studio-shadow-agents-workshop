@@ -1,4 +1,4 @@
-// Resource-group-scoped resources for the Meridian Mutual demo app:
+// Resource-group-scoped resources for the Halcourt Mutual demo app:
 // Log Analytics, Container Apps environment, ACR, a user-assigned identity with
 // AcrPull, and the Container App itself.
 

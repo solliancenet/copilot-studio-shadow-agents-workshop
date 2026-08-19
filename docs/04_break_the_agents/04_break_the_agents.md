@@ -12,7 +12,7 @@ has_children: true
 You have inventoried the estate (Module 2) and mapped effective access (Module 3). You already know, on
 paper, that some of these agents can reach more than the people who talk to them. This module makes that
 concrete. Instead of a slide deck about "prompt injection" and "the confused deputy," you drive six
-Meridian Mutual agents into six distinct failure modes and watch each one happen.
+Halcourt Mutual agents into six distinct failure modes and watch each one happen.
 
 Every scenario returns to the same two questions: **whose authority is this agent exercising, and what
 can it reach when it does?** You are not here to build attack tools. You are here to observe controlled
@@ -20,8 +20,8 @@ failures on a training estate and write down what you saw, so that in Module 5 y
 Microsoft control actually removes each one.
 
 > **This is a deliberately-broken TRAINING estate.** Every agent, connection, key, and grounded document
-> in `meridianmutual.onmicrosoft.com` was provisioned by the facilitator to fail in a specific, contained
-> way against safe `*.meridianmutual-lab.com` and `example` hosts. The techniques you observe here —
+> in `halcourtmutual.onmicrosoft.com` was provisioned by the facilitator to fail in a specific, contained
+> way against safe `*.halcourtmutual-lab.com` and `example` hosts. The techniques you observe here —
 > indirect prompt injection, data exfiltration, confused-deputy escalation, credential exposure — are
 > real and are damaging against systems you do not own. **Never apply them to any tenant, agent, API, or
 > data you are not explicitly authorized to test.** Observe and record; do not weaponize.

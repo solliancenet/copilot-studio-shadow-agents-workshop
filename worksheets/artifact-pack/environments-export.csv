@@ -1,5 +1,5 @@
 environment,type,dlp_policy,managed,maker_access
-Meridian (default),Default,,No,All users
-Meridian-Prod,Production,Meridian-Prod-DLP,Yes,Makers group
+Halcourt (default),Default,,No,All users
+Halcourt-Prod,Production,Halcourt-Prod-DLP,Yes,Makers group
 Claims-Test,Sandbox,,No,Claims team
 Maker-Sandbox,Developer,,No,Individual maker

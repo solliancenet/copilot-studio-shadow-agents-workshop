@@ -1,8 +1,8 @@
-using MeridianMutual.Data;
+using HalcourtMutual.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace MeridianMutual.Tests;
+namespace HalcourtMutual.Tests;
 
 /// <summary>
 /// Builds a throwaway policy database on disk and hands out the connection string, so tests
@@ -14,7 +14,7 @@ public sealed class EstateFixture : IDisposable
 
     public EstateFixture()
     {
-        _databasePath = Path.Combine(Path.GetTempPath(), $"meridianmutual-tests-{Guid.NewGuid():N}.db");
+        _databasePath = Path.Combine(Path.GetTempPath(), $"halcourtmutual-tests-{Guid.NewGuid():N}.db");
         ConnectionString = $"Data Source={_databasePath}";
 
         using var db = CreateContext();
@@ -28,12 +28,12 @@ public sealed class EstateFixture : IDisposable
         new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:MeridianMutualDb"] = ConnectionString
+                ["ConnectionStrings:HalcourtMutualDb"] = ConnectionString
             })
             .Build();
 
-    public MeridianMutualDbContext CreateContext() =>
-        new(new DbContextOptionsBuilder<MeridianMutualDbContext>().UseSqlite(ConnectionString).Options);
+    public HalcourtMutualDbContext CreateContext() =>
+        new(new DbContextOptionsBuilder<HalcourtMutualDbContext>().UseSqlite(ConnectionString).Options);
 
     public void Dispose()
     {

@@ -1,11 +1,11 @@
-using MeridianMutual.Models;
+using HalcourtMutual.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace MeridianMutual.Data;
+namespace HalcourtMutual.Data;
 
-public class MeridianMutualDbContext : DbContext
+public class HalcourtMutualDbContext : DbContext
 {
-    public MeridianMutualDbContext(DbContextOptions<MeridianMutualDbContext> options)
+    public HalcourtMutualDbContext(DbContextOptions<HalcourtMutualDbContext> options)
         : base(options)
     {
     }

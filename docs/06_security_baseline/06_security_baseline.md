@@ -7,7 +7,7 @@ has_children: true
 
 # Build an Agent Security Baseline
 
-You spent the morning finding out what Meridian Mutual's agents can actually do. Now turn that into
+You spent the morning finding out what Halcourt Mutual's agents can actually do. Now turn that into
 something you can hand to a colleague on Monday: an operating model that any agent must pass through
 before it earns production trust.
 
@@ -23,7 +23,7 @@ This exercise assembles that standard as five plain-English stages and a gate:
 **KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT → the production promotion gate.**
 
 Each stage takes one of the artifacts you already built and distils it into a reusable checklist section.
-The Meridian estate is your worked example: you run its agents through the checklist, watch which ones
+The Halcourt estate is your worked example: you run its agents through the checklist, watch which ones
 stall at which gate, and write the rule so the *next* estate — including your own — clears the same bar.
 
 ```mermaid
@@ -38,7 +38,7 @@ flowchart LR
 ```
 
 {: .note }
-> This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Meridian-specific by the end:
+> This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Halcourt-specific by the end:
 > the deliverable is a checklist you take home and apply to agents that don't exist yet.
 
 ## Objectives

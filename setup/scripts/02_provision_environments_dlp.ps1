@@ -15,9 +15,9 @@ $ErrorActionPreference = 'Stop'
 Add-PowerAppsAccount | Out-Null
 
 # --- Environments ------------------------------------------------------------
-# The default environment already exists; rename/adopt it as "Meridian (default)".
+# The default environment already exists; rename/adopt it as "Halcourt (default)".
 $envs = @(
-  @{ Name='Meridian-Prod';   Sku='Production'; Managed=$true  }
+  @{ Name='Halcourt-Prod';   Sku='Production'; Managed=$true  }
   @{ Name='Claims-Test';     Sku='Sandbox';    Managed=$false }
   @{ Name='Maker-Sandbox';   Sku='Developer';  Managed=$false }
 )
@@ -26,17 +26,17 @@ foreach ($e in $envs) {
   # [verify] exact params for New-AdminPowerAppEnvironment in the delivery-date module version
   New-AdminPowerAppEnvironment -DisplayName $e.Name -LocationName $Location -EnvironmentSku $e.Sku | Out-Null
 }
-Write-Host '[verify] Mark Meridian-Prod as a Managed Environment in PPAC (or via pac admin).'
+Write-Host '[verify] Mark Halcourt-Prod as a Managed Environment in PPAC (or via pac admin).'
 
 # --- DLP: PROD ONLY ----------------------------------------------------------
-# Baseline business/non-business split applied to Meridian-Prod only. Everything else stays open.
-Write-Host 'Creating Meridian-Prod-DLP (business/non-business split), scoped to Meridian-Prod only.'
+# Baseline business/non-business split applied to Halcourt-Prod only. Everything else stays open.
+Write-Host 'Creating Halcourt-Prod-DLP (business/non-business split), scoped to Halcourt-Prod only.'
 # [verify] Use New-DlpPolicy / Set-DlpPolicy (Microsoft.PowerApps.Administration.PowerShell) or pac admin.
 # Intent:
 #   - Business group: Dataverse, SharePoint, Office 365 Outlook, Office 365 Users
 #   - Non-business (default) group: everything else
 #   - Blocked: HTTP with Entra ID / HTTP action / custom connectors in Prod (Scenario E lever for Module 5)
-#   - Scope: environment = Meridian-Prod
+#   - Scope: environment = Halcourt-Prod
 Write-Host 'DEALER''S CHOICE for Module 5: leave the HTTP/custom-connector block OFF at start so Scenario E fires,'
 Write-Host 'then have attendees turn it on during Module 5 and retest.'
 

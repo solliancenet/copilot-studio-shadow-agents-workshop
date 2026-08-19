@@ -1,4 +1,4 @@
-namespace MeridianMutual.Models;
+namespace HalcourtMutual.Models;
 
 /// <summary>How the premium reached us.</summary>
 public enum PaymentMethod

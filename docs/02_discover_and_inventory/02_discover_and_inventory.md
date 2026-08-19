@@ -9,7 +9,7 @@ has_children: true
 
 ## Scenario
 
-You are Ana Reyes, the platform owner and CoE lead at Meridian Mutual. Leadership has asked a simple
+You are Ana Reyes, the platform owner and CoE lead at Halcourt Mutual. Leadership has asked a simple
 question that turns out to be hard to answer: **"what do we actually have?"** Copilot Studio has been
 open to makers for months. IT can name a handful of production agents — the customer service and HR bots
 everyone talks about — but nobody has a defensible count, and nobody can say who owns each one, what it
@@ -20,10 +20,10 @@ one between the **sanctioned inventory** (the agents IT believes exist) and the 
 (every agent in every environment, including the personal and "test" ones nobody registered). Agents you
 cannot see are agents you cannot govern. Before you assess a single control, you build the map.
 
-In this exercise you work from the exported **artifact pack** — five CSVs pulled from the Meridian Mutual
+In this exercise you work from the exported **artifact pack** — five CSVs pulled from the Halcourt Mutual
 tenant — and, where the live tenant is available, the Power Platform admin center and CoE inventory. You
-join those exports into a single inventory, one row per agent, across **all four environments**: `Meridian
-(default)`, `Meridian-Prod`, `Claims-Test`, and `Maker-Sandbox`. Then you start flagging the conditions
+join those exports into a single inventory, one row per agent, across **all four environments**: `Halcourt
+(default)`, `Halcourt-Prod`, `Claims-Test`, and `Maker-Sandbox`. Then you start flagging the conditions
 that will drive the rest of the day — while keeping the discipline that an agent which only *looks* risky
 is not a finding until you can say why.
 

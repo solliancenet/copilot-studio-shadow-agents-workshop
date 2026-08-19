@@ -1,9 +1,9 @@
-using MeridianMutual.Models.Api;
-using MeridianMutual.Services;
+using HalcourtMutual.Models.Api;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeridianMutual.Controllers.Api;
+namespace HalcourtMutual.Controllers.Api;
 
 /// <summary>
 /// Policy and premium lookup for the servicing channels. Every read requires the Entra

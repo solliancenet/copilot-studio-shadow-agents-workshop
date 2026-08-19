@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
-using MeridianMutual.Models;
-using MeridianMutual.Models.Api;
+using HalcourtMutual.Models;
+using HalcourtMutual.Models.Api;
 using Xunit;
 
-namespace MeridianMutual.Tests;
+namespace HalcourtMutual.Tests;
 
 /// <summary>
 /// The member API is the surface an external caller talks to, so it is asserted through real
@@ -159,6 +159,6 @@ public class MemberApiTests : IClassFixture<MemberApiFactory>
 
         response.EnsureSuccessStatusCode();
         Assert.Contains("/api/policies/{policyNumber}/premium-payments", document);
-        Assert.Contains("Meridian Mutual Member API", document);
+        Assert.Contains("Halcourt Mutual Member API", document);
     }
 }

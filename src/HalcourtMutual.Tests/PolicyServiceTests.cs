@@ -1,8 +1,8 @@
-using MeridianMutual.Models;
-using MeridianMutual.Services;
+using HalcourtMutual.Models;
+using HalcourtMutual.Services;
 using Xunit;
 
-namespace MeridianMutual.Tests;
+namespace HalcourtMutual.Tests;
 
 public class PolicyServiceTests : IClassFixture<EstateFixture>
 {

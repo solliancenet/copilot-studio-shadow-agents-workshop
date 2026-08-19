@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# setup-env.sh — stand up a fully-isolated, ENFORCED clone of the Meridian Mutual
+# setup-env.sh — stand up a fully-isolated, ENFORCED clone of the Halcourt Mutual
 # Claims Triage estate in its own azd environment (RG rg-<env>).
 #
 # The infra is env-isolated by design: resourceToken = uniqueString(sub, env, location)
@@ -39,10 +39,10 @@ cd "$HERE"
 ENV_NAME="${1:-${ENV_NAME:-mmdev}}"
 SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:-6aa3be9e-6130-409f-882c-cdc4e4816a36}"
 LOCATION="${AZURE_LOCATION:-westus3}"
-APP_DISPLAY_NAME="Meridian Mutual Member API (${ENV_NAME})"
+APP_DISPLAY_NAME="Halcourt Mutual Member API (${ENV_NAME})"
 
 echo "=================================================================="
-echo " Meridian Mutual — stand up ENFORCED clone"
+echo " Halcourt Mutual — stand up ENFORCED clone"
 echo "   env:          ${ENV_NAME}   (RG rg-${ENV_NAME})"
 echo "   subscription: ${SUBSCRIPTION_ID}"
 echo "   location:     ${LOCATION}"

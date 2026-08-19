@@ -12,7 +12,7 @@ test — honestly — whether Microsoft's controls close the gap, dent it, or mi
 
 **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE**
 
-Attendees work an intentionally imperfect estate for the fictional insurer **Meridian Mutual**, build a
+Attendees work an intentionally imperfect estate for the fictional insurer **Halcourt Mutual**, build a
 running "Estate Binder" of deliverables, and leave with a repeatable method and a top-3 Monday-morning
 action list for their own tenant.
 

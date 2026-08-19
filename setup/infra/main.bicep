@@ -1,4 +1,4 @@
-// FACILITATOR-ONLY lab infrastructure for the Meridian Mutual demo estate.
+// FACILITATOR-ONLY lab infrastructure for the Halcourt Mutual demo estate.
 // Deploys two Container Apps that back workshop scenarios:
 //   - Policy API   (Scenario E, C) : intentionally over-scoped, authed by a single static key.
 //   - Underwriting MCP (Scenario E) : intentionally over-scoped, authed by a static bearer token.
@@ -8,7 +8,7 @@
 param location string = resourceGroup().location
 
 @description('Prefix for resource names.')
-param namePrefix string = 'meridian-lab'
+param namePrefix string = 'halcourt-lab'
 
 @description('Static API key that will be planted in the Policy Lookup Bot HTTP action (lab-only).')
 @secure()

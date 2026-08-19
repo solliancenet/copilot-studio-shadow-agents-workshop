@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
-using MeridianMutual.Data;
-using MeridianMutual.Services;
+using HalcourtMutual.Data;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
@@ -62,7 +62,7 @@ if (apiAuthConfigured)
 
                 var logger = context.HttpContext.RequestServices
                     .GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("MeridianMutual.Api.Auth");
+                    .CreateLogger("HalcourtMutual.Api.Auth");
                 var principal = context.Principal;
                 var appId = principal?.FindFirst("azp")?.Value
                     ?? principal?.FindFirst("appid")?.Value;
@@ -92,23 +92,23 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Meridian Mutual Member API",
+        Title = "Halcourt Mutual Member API",
         Version = "v1",
         Description =
-            "Policy, premium and claim lookup for Meridian Mutual members. "
+            "Policy, premium and claim lookup for Halcourt Mutual members. "
             + "Demonstration estate: the API is unauthenticated and serves seeded data only."
     });
 
-    var xmlDocumentation = Path.Combine(AppContext.BaseDirectory, "MeridianMutual.xml");
+    var xmlDocumentation = Path.Combine(AppContext.BaseDirectory, "HalcourtMutual.xml");
     if (File.Exists(xmlDocumentation))
     {
         options.IncludeXmlComments(xmlDocumentation);
     }
 });
 
-builder.Services.AddDbContext<MeridianMutualDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("MeridianMutualDb")
-        ?? "Data Source=meridianmutual.db"));
+builder.Services.AddDbContext<HalcourtMutualDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("HalcourtMutualDb")
+        ?? "Data Source=halcourtmutual.db"));
 
 builder.Services.AddScoped<PolicyService>();
 builder.Services.AddScoped<PremiumService>();
@@ -130,7 +130,7 @@ var app = builder.Build();
 // Bring the schema up to date on start-up, then load the demonstration data set.
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<MeridianMutualDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<HalcourtMutualDbContext>();
     db.Database.Migrate();
     PolicySeeder.Seed(db);
 }
@@ -146,8 +146,8 @@ if (!app.Environment.IsDevelopment())
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Meridian Mutual Member API v1");
-    options.DocumentTitle = "Meridian Mutual Member API";
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Halcourt Mutual Member API v1");
+    options.DocumentTitle = "Halcourt Mutual Member API";
 });
 
 app.UseStaticFiles();

@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using Azure.Core;
 using Azure.Identity;
 
-namespace MeridianMutual.Services;
+namespace HalcourtMutual.Services;
 
 /// <summary>
 /// Binds the Foundry connection settings (project endpoint + agent name) from configuration.

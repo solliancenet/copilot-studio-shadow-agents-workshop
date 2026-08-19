@@ -29,7 +29,7 @@ In this exercise you separate three things people routinely conflate:
 - **Effective access** — what actually becomes reachable once you **stack** identity, permissions,
   connector, tool, accessible data, and user input together. Each layer can look harmless alone.
 
-You work the Meridian Mutual estate from the artifact pack, confirm what you can in the tenant, and produce
+You work the Halcourt Mutual estate from the artifact pack, confirm what you can in the tenant, and produce
 an Access Map for three agents that answers one blunt question for each: **can this agent obtain data, or
 cause an action, that its intended users could not?**
 

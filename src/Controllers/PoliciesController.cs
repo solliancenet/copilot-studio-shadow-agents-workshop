@@ -1,7 +1,7 @@
-using MeridianMutual.Services;
+using HalcourtMutual.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MeridianMutual.Controllers;
+namespace HalcourtMutual.Controllers;
 
 public class PoliciesController : Controller
 {

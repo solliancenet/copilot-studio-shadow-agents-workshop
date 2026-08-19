@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MeridianMutual.Models.Api;
+namespace HalcourtMutual.Models.Api;
 
 /// <summary>
 /// Entra app-role names exposed by the member API, and required by the API controllers. These

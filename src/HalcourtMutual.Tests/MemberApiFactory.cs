@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using JsonOptions = Microsoft.AspNetCore.Mvc.JsonOptions;
 
-namespace MeridianMutual.Tests;
+namespace HalcourtMutual.Tests;
 
 /// <summary>
 /// Boots the portal in-process against a throwaway SQLite file, so the member API is exercised
@@ -24,7 +24,7 @@ namespace MeridianMutual.Tests;
 public class MemberApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _databasePath =
-        Path.Combine(Path.GetTempPath(), $"meridianmutual-api-{Guid.NewGuid():N}.db");
+        Path.Combine(Path.GetTempPath(), $"halcourtmutual-api-{Guid.NewGuid():N}.db");
 
     /// <summary>Matches the enum-as-name serialisation the app is configured with.</summary>
     public static JsonSerializerOptions Json { get; } = new(JsonSerializerDefaults.Web)
@@ -39,7 +39,7 @@ public class MemberApiFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:MeridianMutualDb"] = $"Data Source={_databasePath}"
+                ["ConnectionStrings:HalcourtMutualDb"] = $"Data Source={_databasePath}"
             }));
 
         builder.ConfigureTestServices(services =>

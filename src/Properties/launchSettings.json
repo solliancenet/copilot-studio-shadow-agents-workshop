@@ -8,7 +8,7 @@
     }
   },
   "profiles": {
-    "MeridianMutual": {
+    "HalcourtMutual": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

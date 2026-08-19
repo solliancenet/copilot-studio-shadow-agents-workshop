@@ -1,7 +1,7 @@
 # RUNBOOK.md — Facilitator provisioning
 
 > **FACILITATOR-ONLY. Not published** (the whole `setup/` folder is excluded in `_config.yml`).
-> Provisions the intentionally-vulnerable **Meridian Mutual** demo estate for the workshop. Everything
+> Provisions the intentionally-vulnerable **Halcourt Mutual** demo estate for the workshop. Everything
 > here is keyed to the canon in [`../AGENTS.md`](../AGENTS.md) — that file is the source of truth; this
 > file is how you build it.
 
@@ -17,7 +17,7 @@
 {: important}
 The estate is deliberately broken. Provision it in an **isolated training tenant** you control. Never
 point these scripts at a production tenant. All external endpoints live under
-`*.meridianmutual-lab.com`, which you own for the lab.
+`*.halcourtmutual-lab.com`, which you own for the lab.
 
 ## Prerequisites (technician)
 
@@ -30,7 +30,7 @@ point these scripts at a production tenant. All external endpoints live under
   - Power Platform CLI (`pac`).
   - PowerShell 7 with modules: `Microsoft.Graph`, `Microsoft.PowerApps.Administration.PowerShell`,
     `Microsoft.PowerApps.PowerShell`, `PnP.PowerShell`, `Microsoft.Xrm.Data.PowerShell` (or `pac`).
-- DNS for `api.meridianmutual-lab.com` and `mcp.meridianmutual-lab.com` (CNAME to the Container Apps).
+- DNS for `api.halcourtmutual-lab.com` and `mcp.halcourtmutual-lab.com` (CNAME to the Container Apps).
 
 ## Phase order (do NOT reorder)
 
@@ -55,8 +55,8 @@ intentionally weak (static-secret auth, over-scoped surface) — see `infra/poli
 `infra/mcp-underwriting/`.
 
 ```bash
-az group create -n rg-meridian-lab -l eastus
-az deployment group create -g rg-meridian-lab -f setup/infra/main.bicep \
+az group create -n rg-halcourt-lab -l eastus
+az deployment group create -g rg-halcourt-lab -f setup/infra/main.bicep \
   -p policyApiKey='<generate-a-lab-only-key>' mcpBearer='<generate-a-lab-only-token>'
 ```
 
@@ -80,8 +80,8 @@ after his connections are created in later phases — the script leaves a marker
 pwsh setup/scripts/02_provision_environments_dlp.ps1
 ```
 
-Creates the four environments (`Meridian (default)`, `Meridian-Prod`, `Claims-Test`, `Maker-Sandbox`),
-applies `Meridian-Prod-DLP` to **Prod only**, and creates the baseline CA policies
+Creates the four environments (`Halcourt (default)`, `Halcourt-Prod`, `Claims-Test`, `Maker-Sandbox`),
+applies `Halcourt-Prod-DLP` to **Prod only**, and creates the baseline CA policies
 (`CA-Require-MFA-Admins`, `CA-Block-Legacy-Auth`). It deliberately leaves Default / Claims-Test / Sandbox
 **without DLP** and creates **no** CA policy targeting workload identities — those gaps drive Module 5.
 
@@ -139,7 +139,7 @@ Walk `AGENTS.md` and confirm, in the live tenant:
 
 ```powershell
 pwsh setup/scripts/99_teardown.ps1        # removes agents, connections, sites, tables, personas
-az group delete -n rg-meridian-lab --yes  # removes the Azure endpoints
+az group delete -n rg-halcourt-lab --yes  # removes the Azure endpoints
 ```
 
 To reseed between deliveries, re-run Phases 3–7 (Entra personas in Phase 2 can persist).

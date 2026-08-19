@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Create (and smoke-test) the "Claims Triage" agent in the Meridian Mutual Azure AI
+Create (and smoke-test) the "Claims Triage" agent in the Halcourt Mutual Azure AI
 Foundry project.
 
 The agent is wired to two tools:
   * File Search  -> grounding docs (policy declarations + claims-handling guide)
-  * OpenAPI      -> the live Meridian Mutual Member API (anonymous / demo)
+  * OpenAPI      -> the live Halcourt Mutual Member API (anonymous / demo)
 
 Auth is DefaultAzureCredential (run `az login` first). The signed-in identity needs
 a data-plane role on the Foundry account -- "Foundry User" (the role formerly named
@@ -75,8 +75,8 @@ GROUNDING_DOCS = [
 ]
 
 INSTRUCTIONS = (
-    "You are a Claims Triage assistant for Meridian Mutual. Given a claim number, "
-    "produce a structured triage briefing for a human adjuster. Use the Meridian "
+    "You are a Claims Triage assistant for Halcourt Mutual. Given a claim number, "
+    "produce a structured triage briefing for a human adjuster. Use the Halcourt "
     "Mutual API tools to look up the claim, its policy and coverage, premium standing, "
     "prior claims on the policy, and the policyholder. Use file search to check "
     "coverage against the policy declarations and claims-handling guide, and cite the "
@@ -132,7 +132,7 @@ def create_agent(agents: AgentsClient) -> str:
         file_ids.append(uploaded.id)
 
     vector_store = agents.vector_stores.create_and_poll(
-        file_ids=file_ids, name="meridian-claims-grounding"
+        file_ids=file_ids, name="halcourt-claims-grounding"
     )
     print(f"  vector store -> {vector_store.id} (status={vector_store.status})")
 
@@ -141,9 +141,9 @@ def create_agent(agents: AgentsClient) -> str:
     # 2) Build the OpenAPI tool from the live app swagger (anonymous auth).
     spec = load_openapi_spec()
     openapi = OpenApiTool(
-        name="meridian_member_api",
+        name="halcourt_member_api",
         description=(
-            "Meridian Mutual Member API: look up claims (by number or by policy), "
+            "Halcourt Mutual Member API: look up claims (by number or by policy), "
             "policies and coverage summaries, premium payment history, and "
             "policyholders."
         ),

@@ -20,7 +20,7 @@ The agent is wired to the same two tools as the classic build:
   * File Search  -> grounding docs (policy declarations + claims-handling guide),
                     indexed in a vector store on the project's OpenAI-compatible
                     endpoint.
-  * OpenAPI      -> the live Meridian Mutual Member API (anonymous / demo),
+  * OpenAPI      -> the live Halcourt Mutual Member API (anonymous / demo),
                     spec patched so servers[0].url points at the live app and every
                     operation has an operationId.
 
@@ -102,8 +102,8 @@ GROUNDING_DOCS = [
 
 # Same instructions as create_agent.py.
 INSTRUCTIONS = (
-    "You are a Claims Triage assistant for Meridian Mutual. Given a claim number, "
-    "produce a structured triage briefing for a human adjuster. Use the Meridian "
+    "You are a Claims Triage assistant for Halcourt Mutual. Given a claim number, "
+    "produce a structured triage briefing for a human adjuster. Use the Halcourt "
     "Mutual API tools to look up the claim, its policy and coverage, premium standing, "
     "prior claims on the policy, and the policyholder. Use file search to check "
     "coverage against the policy declarations and claims-handling guide, and cite the "
@@ -149,7 +149,7 @@ def load_openapi_spec() -> dict:
 
 def create_agent(project: AIProjectClient, openai) -> Any:
     # 1) Upload grounding docs into a vector store on the project's OpenAI endpoint.
-    vector_store = openai.vector_stores.create(name="meridian-claims-grounding")
+    vector_store = openai.vector_stores.create(name="halcourt-claims-grounding")
     print(f"  vector store -> {vector_store.id}")
     for doc in GROUNDING_DOCS:
         with open(doc, "rb") as fh:
@@ -166,9 +166,9 @@ def create_agent(project: AIProjectClient, openai) -> Any:
     spec = load_openapi_spec()
     openapi = OpenApiTool(
         openapi=OpenApiFunctionDefinition(
-            name="meridian_member_api",
+            name="halcourt_member_api",
             description=(
-                "Meridian Mutual Member API: look up claims (by number or by policy), "
+                "Halcourt Mutual Member API: look up claims (by number or by policy), "
                 "policies and coverage summaries, premium payment history, and "
                 "policyholders."
             ),

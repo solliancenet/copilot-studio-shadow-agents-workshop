@@ -1,13 +1,13 @@
-using MeridianMutual.Data;
-using MeridianMutual.Models;
+using HalcourtMutual.Data;
+using HalcourtMutual.Models;
 
-namespace MeridianMutual.Services;
+namespace HalcourtMutual.Services;
 
 public class PremiumService
 {
-    private readonly MeridianMutualDbContext _db;
+    private readonly HalcourtMutualDbContext _db;
 
-    public PremiumService(MeridianMutualDbContext db)
+    public PremiumService(HalcourtMutualDbContext db)
     {
         _db = db;
     }

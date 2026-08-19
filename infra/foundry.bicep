@@ -69,7 +69,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-0
   }
   properties: {
     displayName: 'Claims Triage'
-    description: 'Foundry project for the Meridian Mutual Claims Triage demo agent.'
+    description: 'Foundry project for the Halcourt Mutual Claims Triage demo agent.'
   }
 }
 

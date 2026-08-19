@@ -83,7 +83,7 @@
   <text x="848" y="421" font-size="16" font-weight="700" fill="#6d28d9">Systems of record</text>
   <text x="848" y="449" font-size="13" fill="#334155">IIS — Insurance Information System (FNOL)</text>
   <rect x="846" y="461" width="388" height="28" rx="6" fill="#fff4e6" stroke="#d97706"/>
-  <text x="856" y="480" font-size="12.5" font-weight="700" fill="#b45309">Claims &amp; Policy API — Meridian Mutual (demo)</text>
+  <text x="856" y="480" font-size="12.5" font-weight="700" fill="#b45309">Claims &amp; Policy API — Halcourt Mutual (demo)</text>
   <text x="848" y="510" font-size="13" fill="#334155">Line-of-business data</text>
 
   <!-- Band 4: Governance & security foundation -->
@@ -113,5 +113,5 @@
     <text x="1014" y="624" font-size="11.5" fill="#475569">tracing · full audit trail</text>
   </g>
 
-  <text x="40" y="690" font-size="12" fill="#94a3b8">Wednesday demo: the highlighted Claims Triage Briefing agent, backed by the Meridian Mutual Claims &amp; Policy API — human stays in the loop.</text>
+  <text x="40" y="690" font-size="12" fill="#94a3b8">Wednesday demo: the highlighted Claims Triage Briefing agent, backed by the Halcourt Mutual Claims &amp; Policy API — human stays in the loop.</text>
 </svg>

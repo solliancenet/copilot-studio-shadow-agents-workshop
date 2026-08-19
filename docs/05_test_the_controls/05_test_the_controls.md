@@ -11,7 +11,7 @@ has_children: true
 
 You spent Module 4 breaking things. Every scenario ended the same way: you reproduced a failure, wrote
 down what worked, and moved on. That was the point — you now hold a list of concrete, demonstrated ways
-the Meridian Mutual estate misbehaves.
+the Halcourt Mutual estate misbehaves.
 
 This module returns to that list. For each failure you take a Microsoft control, **configure it against
 the real estate**, then **re-run the exact same attack** and see what changed. You are not here to admire
@@ -46,7 +46,7 @@ flowchart LR
 > boundary sits. Recording an honest *DENTS IT* or *MISSES IT* is worth more than a hopeful *CLOSES IT*.
 
 Each task in this exercise takes one control family, explains what it actually governs (and where its
-boundary lies), walks you through configuring it against the Meridian Mutual estate, and sends you back to
+boundary lies), walks you through configuring it against the Halcourt Mutual estate, and sends you back to
 the specific Module 4 scenario to retest. You will not be told the verdict — you have to reach it. You
 *will* be told what to look for and where the control stops being able to help.
 

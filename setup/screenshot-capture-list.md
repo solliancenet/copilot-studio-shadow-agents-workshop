@@ -1,14 +1,14 @@
 # Screenshot capture list
 
 > **FACILITATOR-ONLY.** Screenshots the lab pages reference. Capture each from the provisioned
-> Meridian Mutual demo tenant and save to `media/<filename>`. Naming: `exNN_tMM_ktKK_sSS.png`
+> Halcourt Mutual demo tenant and save to `media/<filename>`. Naming: `exNN_tMM_ktKK_sSS.png`
 > (exercise, task, key-task, step). Redact any real values that are not part of the canon.
 
 Total: 13 screenshots.
 
 | File (`media/`) | Referenced by | What to capture (alt text) |
 |---|---|---|
-| `ex00_t01_kt01_s01.png` | `docs/00_lab_environment/00_01.md` | Power Platform admin center showing the Meridian Mutual environments list in read-only view |
+| `ex00_t01_kt01_s01.png` | `docs/00_lab_environment/00_01.md` | Power Platform admin center showing the Halcourt Mutual environments list in read-only view |
 | `ex01_t01_kt01_s01.png` | `docs/01_the_agent_estate/01_01.md` | Screenshot of agents-export.csv open in a spreadsheet, one row per agent |
 | `ex02_t01_kt01_s01.png` | `docs/02_discover_and_inventory/02_01.md` | Power Platform admin center Agents view listing agents across environments |
 | `ex02_t02_kt01_s01.png` | `docs/02_discover_and_inventory/02_02.md` | The five artifact-pack exports joined on agent name, owner UPN, and environment |

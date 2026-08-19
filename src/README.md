@@ -1,6 +1,6 @@
-# Meridian Mutual Claims Triage Console
+# Halcourt Mutual Claims Triage Console
 
-The internal, adjuster-facing **Claims Triage Console** for **Meridian Mutual**, the fictional
+The internal, adjuster-facing **Claims Triage Console** for **Halcourt Mutual**, the fictional
 insurer the workshop is built around. It is an ASP.NET Core MVC app on .NET 8 with EF Core over
 SQLite. The home page is a **triage queue** of claims needing review; opening a claim shows the
 claim and policy context and a **Generate triage briefing** action that calls the Foundry
@@ -99,7 +99,7 @@ src/
 │       ├── PoliciesApiController.cs
 │       └── ClaimsApiController.cs
 ├── Data/
-│   ├── MeridianMutualDbContext.cs
+│   ├── HalcourtMutualDbContext.cs
 │   ├── PolicySeeder.cs
 │   └── Migrations/
 ├── Models/
@@ -109,6 +109,6 @@ src/
 │   ├── PolicyService.cs, PremiumService.cs, ClaimService.cs
 ├── Views/
 │   ├── Home/Index.cshtml, Policies/Details.cshtml, Shared/_Layout.cshtml
-├── MeridianMutual.Tests/                 # xUnit
+├── HalcourtMutual.Tests/                 # xUnit
 └── wwwroot/                              # Bootstrap, jQuery (vendored)
 ```
