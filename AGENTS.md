@@ -26,9 +26,9 @@
 | Org | **Halcourt Mutual** (mid-size regulated insurer) |
 | Tenant | `halcourtmutual.onmicrosoft.com` |
 | Vanity domain | `halcourtmutual.com` |
-| Lab infra domain | `*.halcourtmutual-lab.com` (facilitator-controlled, safe) |
-| Internal Policy API | `https://api.halcourtmutual-lab.com/policy` |
-| Underwriting MCP server | `https://mcp.halcourtmutual-lab.com/underwriting` |
+| Lab infra endpoints | Azure Container Apps default FQDNs (`*.azurecontainerapps.io`) recorded from the Phase 1 deployment outputs — facilitator-controlled, safe; no custom domain or DNS |
+| Internal Policy API | `https://<policy-api-fqdn>/policy` (`<policy-api-fqdn>` = `ca-policyapi-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
+| Underwriting MCP server | `https://<mcp-fqdn>/underwriting` (`<mcp-fqdn>` = `ca-underwritingmcp-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
 
 ### Environments
 
@@ -64,7 +64,7 @@ teaches attendees to enumerate.
 
 | Asset | Detail | Why it exists |
 |---|---|---|
-| Policy API | Container App at `api.halcourtmutual-lab.com/policy`. Endpoints: `GET /policy/{id}` (intended), **plus** `GET /policy/all` and `GET /customer/{id}` (excess). Auth: a **single static API key**, full scope. | Scenario E (HTTP), Scenario C (excess). |
+| Policy API | Container App at `<policy-api-fqdn>/policy`. Endpoints: `GET /policy/{id}` (intended), **plus** `GET /policy/all` and `GET /customer/{id}` (excess). Auth: a **single static API key**, full scope. | Scenario E (HTTP), Scenario C (excess). |
 | Underwriting MCP | MCP server exposing `get_quote`, `get_risk_score`, **plus** `run_query` (arbitrary DB query). Auth: **static shared bearer token**. | Scenario E (MCP). |
 | SharePoint `HR-Benefits` | Whole-site indexed for grounding, **including** subfolder `Leadership/` with `2026-comp-bands.xlsx` (exec comp). Contains planted `Open-Enrollment-FAQ.docx`. | Scenario A, B. |
 | SharePoint `Claims-Knowledge` | Claims procedures. Grounds Claims Copilot. | Context. |
@@ -213,7 +213,7 @@ What a complete inventory must surface (attendees start from the exported artifa
 
 ## SPOILER: Injection payload (plant inside `Open-Enrollment-FAQ.docx`)
 
-> *Training artifact. Points at safe `*.halcourtmutual-lab.com` / `example` hosts only.*
+> *Training artifact. Points at safe facilitator-controlled Azure Container Apps (`*.azurecontainerapps.io`) / `example` hosts only.*
 
 Hidden (white text / trailing "Notes" section) inside the FAQ:
 

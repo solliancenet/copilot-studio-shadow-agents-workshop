@@ -35,13 +35,15 @@ as Tom, then attach them.
   read/modify any claim), F (it is a "test" env doing prod work).
 
 ### Policy Lookup Bot  (Halcourt-Prod, owner = it.helpdesk shared mailbox)
-- Add an **HTTP action** to `https://api.halcourtmutual-lab.com/policy/{id}`, with the **static API key in
+- Add an **HTTP action** to `https://<policy-api-fqdn>/policy/{id}` (`<policy-api-fqdn>` = the Policy API
+  Container App FQDN from the Phase 1 deployment outputs), with the **static API key in
   the action header config** (the key you deployed in Phase 1). Take `{id}` straight from user input.
 - No input validation. Publish. Verify Scenario E (key in config; input crosses; `/policy/all` and
   `/customer/{id}` reachable).
 
 ### Underwriting Assistant  (Halcourt-Prod, owner priya.nair)
-- Add the **Underwriting MCP** tool connection to `https://mcp.halcourtmutual-lab.com/underwriting` with
+- Add the **Underwriting MCP** tool connection to `https://<mcp-fqdn>/underwriting` (`<mcp-fqdn>` = the
+  Underwriting MCP Container App FQDN from the Phase 1 deployment outputs) with
   the **static bearer**. Import the full tool set including `run_query`.
 - Publish. Verify Scenario E (weak auth; over-wide tool schema; `run_query` returns broad rows).
 

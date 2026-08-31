@@ -16,25 +16,21 @@
 
 {: important}
 The estate is deliberately broken. Provision it in an **isolated training tenant** you control. Never
-point these scripts at a production tenant. All external endpoints live under
-`*.halcourtmutual-lab.com`, which you own for the lab.
+point these scripts at a production tenant. All external endpoints are Azure Container Apps with
+their own default `*.azurecontainerapps.io` FQDNs, assigned at deploy time — no custom domain or DNS.
 
 ## Prerequisites (technician)
 
-- An **isolated M365 / Power Platform tenant** with: Power Platform admin, Entra admin, SharePoint admin,
-  and (for Module 5) Purview, Conditional Access, and Defender access.
-- Licensing: **Copilot Studio**, **M365 E5 / Agent 365**, **Purview**. Confirm current SKUs — see the
-  `[verify]` list in [`../PLANNING.md`](../PLANNING.md).
 - Tooling on the build box:
   - Azure CLI (`az`) + Bicep, an Azure subscription for the Container Apps.
   - Power Platform CLI (`pac`).
   - PowerShell 7 with modules: `Microsoft.Graph`, `Microsoft.PowerApps.Administration.PowerShell`,
     `Microsoft.PowerApps.PowerShell`, `PnP.PowerShell`, `Microsoft.Xrm.Data.PowerShell` (or `pac`).
-- DNS for `api.halcourtmutual-lab.com` and `mcp.halcourtmutual-lab.com` (CNAME to the Container Apps).
 
 ## Phase order (do NOT reorder)
 
 ```
+0. Provision isolated tenant   → fresh *.onmicrosoft.com, licensing, Power Platform
 1. Azure infra (Bicep)        → Policy API + Underwriting MCP endpoints
 2. Entra identities/personas  → users, groups, DISABLE tom.dean
 3. Environments + DLP + CA     → 4 environments, prod DLP, CA policies
@@ -48,6 +44,88 @@ point these scripts at a production tenant. All external endpoints live under
 
 ---
 
+### Phase 0 — Provision the isolated training tenant
+
+Stands up the **brand-new, isolated** M365 / Power Platform tenant the rest of this runbook assumes.
+Do this once per lab tenant; it is mostly a portal flow, so the steps below are UI actions, not scripts.
+
+{: important}
+This tenant **must not** be linked to any production or corporate tenant. Sign up with a **personal or
+lab-dedicated admin credential — never corporate SSO**. The estate you are about to build is
+deliberately vulnerable; it has to live somewhere you can break without touching a real org.
+
+1. **Sign up for a new M365 tenant.**
+   - Preferred path: get **Microsoft 365 E5** via the **Microsoft 365 Developer Program** —
+     https://developer.microsoft.com/microsoft-365/dev-program — which provisions an instant E5 sandbox
+     tenant. When it offers a sandbox type, choose **"Instant sandbox (Add-on purchases enabled)"** — this
+     is the variant that lets you buy Copilot / add-on services directly from the sandbox, which later
+     steps need. The sandbox is a **90-day renewable E5 subscription** preloaded with ~16 sample users
+     (Phase 2 adds the lab personas alongside these).
+   - Setup requires an **Azure billing account** for a one-time verification. You are **not charged** —
+     it is used only to transfer the developer subscription. Note that a **newly created billing account
+     can take ~15 minutes to a few hours** to appear in the setup dialog's billing-account dropdown, so
+     create it ahead of time if you can.
+   - The sandbox **domain is preconfigured and not customizable** — it is auto-assigned an
+     `*.onmicrosoft.com` domain. The **data-center region is chosen at signup and cannot be changed
+     afterward**, so pick the region you deliver from.
+   - If for any reason the Dev Program path is unavailable to you, you can fall back to a **paid
+     Microsoft 365 E5 trial** at https://www.microsoft.com/microsoft-365/enterprise/e5.
+   - When asked to sign in, choose **"Create a new account" / use a personal or lab email** — do **not**
+     authenticate with your corporate identity. The result is a standalone tenant with its own
+     auto-assigned `*.onmicrosoft.com` domain that shares no trust with production.
+
+2. **Complete initial tenant setup.**
+   - Finish the sign-up wizard: create the **global administrator** account (record the UPN — this is the
+     technician identity the rest of the runbook uses).
+   - In **Entra admin center** (https://entra.microsoft.com) → the admin user → **Authentication
+     methods**, register **MFA** on the global admin. Do this before assigning any other access.
+   - In **Microsoft 365 admin center** (https://admin.microsoft.com) → **Settings → Org settings →
+     Organization profile**, set the **tenant region / data location** to the region you deliver from.
+   - This global admin ends up holding every admin role the rest of the runbook needs: **Power Platform
+     admin, Entra admin, SharePoint admin**, and — for the Module 5 CONTROL work — **Purview,
+     Conditional Access, and Defender** access. In a fresh tenant the Global Administrator covers all of
+     these; if you split duties onto a separate technician later, grant those roles explicitly in Entra.
+
+3. **Add and assign licensing.**
+   - The estate needs **Copilot Studio**, **M365 E5 / Agent 365**, and **Purview** (same set the
+     Prerequisites section lists). In **M365 admin center → Billing → Purchase services**, add the
+     trial/purchased SKUs that cover them.
+   - In **Billing → Licenses**, assign the SKUs to the global admin (and later to the personas Phase 2
+     creates).
+   - `[verify]` exact 2026 SKU names and whether Copilot Studio / Agent 365 / Purview are bundled into
+     E5 or purchased separately — this is the same open dependency tracked in
+     [`../PLANNING.md`](../PLANNING.md). Do not hard-code SKU strings here; confirm against the tenant.
+
+4. **Enable the Power Platform side.**
+   - Open the **Power Platform admin center** (PPAC, https://admin.powerplatform.microsoft.com) as the
+     global admin and confirm the **default environment** exists (M365 provisions one automatically). If
+     it is missing, `[verify]` tenant provisioning has finished and create it.
+   - Open **Copilot Studio** (https://copilotstudio.microsoft.com) as the same admin and confirm it loads
+     and can reach the default environment — this is where Phase 6 authors the agents.
+
+5. **Phase 0 verification checklist.**
+   - Global admin can **sign in** to https://admin.microsoft.com with MFA satisfied.
+   - **PPAC loads** and shows the default environment.
+   - **Copilot Studio loads** for the admin.
+   - **Licensing shows assigned** (Copilot Studio / E5-Agent 365 / Purview) on the admin account.
+   - The build-box tooling from **Prerequisites** is installed and authenticated **against the new
+     tenant**:
+
+     ```bash
+     az login --allow-no-subscriptions          # sign in as the lab global admin
+     az account show                            # confirm the new tenant id
+     pac auth create --name halcourt-lab        # Power Platform CLI → new tenant
+     pac org list                               # confirm the default environment is visible
+     ```
+
+     ```powershell
+     Connect-MgGraph -TenantId <yourlab>.onmicrosoft.com   # Microsoft.Graph
+     Get-MgOrganization | Select DisplayName, Id           # confirm the new tenant
+     Add-PowerAppsAccount                                  # PowerApps admin modules
+     ```
+
+   Once all five check, proceed to Phase 1.
+
 ### Phase 1 — Azure infrastructure (Bicep)
 
 Deploys the internal **Policy API** and the **Underwriting MCP** server as Container Apps. Both are
@@ -60,8 +138,13 @@ az deployment group create -g rg-halcourt-lab -f setup/infra/main.bicep \
   -p policyApiKey='<generate-a-lab-only-key>' mcpBearer='<generate-a-lab-only-token>'
 ```
 
-Record the two FQDNs from the deployment outputs; map DNS. The **static API key** you pass here is the
-one that will sit in Policy Lookup Bot's HTTP action config (that exposure is the point of Scenario E).
+Record the two Container App FQDNs from the deployment outputs — of the form
+`ca-policyapi-<suffix>.<region>.azurecontainerapps.io` and
+`ca-underwritingmcp-<suffix>.<region>.azurecontainerapps.io`. These default `*.azurecontainerapps.io`
+FQDNs (no custom domain, no DNS to configure) are exactly what the agents' actions point at: they become
+the `<policy-api-fqdn>` and `<mcp-fqdn>` values used in `agent-authoring-guide.md`. The **static API key**
+you pass here is the one that will sit in Policy Lookup Bot's HTTP action config (that exposure is the
+point of Scenario E).
 
 ### Phase 2 — Entra identities & personas
 
