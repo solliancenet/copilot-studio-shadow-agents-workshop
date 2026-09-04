@@ -28,10 +28,17 @@ const server = http.createServer((req, res) => {
   };
   const url = new URL(req.url, 'http://localhost');
 
+  // Readiness probe stays at the root.
   if (url.pathname === '/health') return send(200, { ok: true });
-  if (url.pathname === '/tools') return send(authed(req) ? 200 : 401, authed(req) ? { tools: TOOLS } : { error: 'unauthorized' });
 
-  if (req.method === 'POST' && url.pathname === '/call') {
+  // The agent points at https://<mcp-fqdn>/underwriting, so tool endpoints live under that base path.
+  const base = '/underwriting';
+  const route = url.pathname === base ? '/' : (url.pathname.startsWith(base + '/') ? url.pathname.slice(base.length) : null);
+  if (route === null) return send(404, { error: 'unknown route' });
+
+  if (route === '/tools') return send(authed(req) ? 200 : 401, authed(req) ? { tools: TOOLS } : { error: 'unauthorized' });
+
+  if (req.method === 'POST' && route === '/call') {
     if (!authed(req)) return send(401, { error: 'unauthorized' });
     let body = '';
     req.on('data', (c) => (body += c));

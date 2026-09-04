@@ -1,11 +1,11 @@
 upn,display_name,account_enabled,last_sign_in_utc,is_service_account,is_shared_mailbox
-ana.reyes@halcourtmutual.com,Ana Reyes,TRUE,2026-08-13,FALSE,FALSE
-marcus.webb@halcourtmutual.com,Marcus Webb,TRUE,2026-08-12,FALSE,FALSE
-priya.nair@halcourtmutual.com,Priya Nair,TRUE,2026-08-13,FALSE,FALSE
-sam.olsen@halcourtmutual.com,Sam Olsen,TRUE,2026-08-11,FALSE,FALSE
-lena.ford@halcourtmutual.com,Lena Ford,TRUE,2026-08-12,FALSE,FALSE
-dev.kim@halcourtmutual.com,Dev Kim,TRUE,2026-08-13,FALSE,FALSE
-tom.dean@halcourtmutual.com,Tom Dean,FALSE,2026-01-30,FALSE,FALSE
-jordan.blake@halcourtmutual.com,Jordan Blake,TRUE,2026-08-13,FALSE,FALSE
-svc-claims@halcourtmutual.com,Claims Service Account,TRUE,2026-08-13,TRUE,FALSE
-it.helpdesk@halcourtmutual.com,IT Helpdesk,TRUE,2026-08-10,FALSE,TRUE
+ana.reyes@halcourtmutual.onmicrosoft.com,Ana Reyes,TRUE,2026-08-13,FALSE,FALSE
+marcus.webb@halcourtmutual.onmicrosoft.com,Marcus Webb,TRUE,2026-08-12,FALSE,FALSE
+priya.nair@halcourtmutual.onmicrosoft.com,Priya Nair,TRUE,2026-08-13,FALSE,FALSE
+sam.olsen@halcourtmutual.onmicrosoft.com,Sam Olsen,TRUE,2026-08-11,FALSE,FALSE
+lena.ford@halcourtmutual.onmicrosoft.com,Lena Ford,TRUE,2026-08-12,FALSE,FALSE
+dev.kim@halcourtmutual.onmicrosoft.com,Dev Kim,TRUE,2026-08-13,FALSE,FALSE
+tom.dean@halcourtmutual.onmicrosoft.com,Tom Dean,FALSE,2026-01-30,FALSE,FALSE
+jordan.blake@halcourtmutual.onmicrosoft.com,Jordan Blake,TRUE,2026-08-13,FALSE,FALSE
+svc-claims@halcourtmutual.onmicrosoft.com,Claims Service Account,TRUE,2026-08-13,TRUE,FALSE
+it.helpdesk@halcourtmutual.onmicrosoft.com,IT Helpdesk,TRUE,2026-08-10,FALSE,TRUE

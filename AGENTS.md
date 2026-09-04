@@ -25,7 +25,6 @@
 |---|---|
 | Org | **Halcourt Mutual** (mid-size regulated insurer) |
 | Tenant | `halcourtmutual.onmicrosoft.com` |
-| Vanity domain | `halcourtmutual.com` |
 | Lab infra endpoints | Azure Container Apps default FQDNs (`*.azurecontainerapps.io`) recorded from the Phase 1 deployment outputs — facilitator-controlled, safe; no custom domain or DNS |
 | Internal Policy API | `https://<policy-api-fqdn>/policy` (`<policy-api-fqdn>` = `ca-policyapi-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
 | Underwriting MCP server | `https://<mcp-fqdn>/underwriting` (`<mcp-fqdn>` = `ca-underwritingmcp-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
@@ -43,16 +42,16 @@
 
 | Principal | UPN | Role | Notes |
 |---|---|---|---|
-| Ana Reyes | `ana.reyes@halcourtmutual.com` | Platform admin / CoE lead | The attendee's vantage point. Global-ish read. |
-| Marcus Webb | `marcus.webb@halcourtmutual.com` | HR maker | Owns Benefits Buddy, HR FAQ v2. |
-| Priya Nair | `priya.nair@halcourtmutual.com` | Claims/underwriting maker | Owns Claims Copilot, Underwriting Assistant. |
-| Sam Olsen | `sam.olsen@halcourtmutual.com` | Finance approver + maker | Owns Expense Helper; a real expense approver. |
-| Lena Ford | `lena.ford@halcourtmutual.com` | Sales manager | *Maker* owner of Sales Nudge. |
-| Dev Kim | `dev.kim@halcourtmutual.com` | Developer (broad SharePoint) | Owns Team Wiki, Meeting Notes Summarizer. |
-| **Tom Dean** | `tom.dean@halcourtmutual.com` | **Departed admin — account DISABLED** | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. |
-| Jordan Blake | `jordan.blake@halcourtmutual.com` | Low-privilege employee | The "requesting user" for confused-deputy demos. Can chat with agents; personally entitled to almost nothing. |
-| svc-claims | `svc-claims@halcourtmutual.com` | **Service account** | Owns the shared Dataverse connection Claims Copilot runs on. Over-permissioned. |
-| IT Helpdesk | `it.helpdesk@halcourtmutual.com` | **Shared mailbox** | Ambiguous "owner" of Policy Lookup Bot — nobody personally accountable. |
+| Ana Reyes | `ana.reyes@halcourtmutual.onmicrosoft.com` | Platform admin / CoE lead | The attendee's vantage point. Global-ish read. |
+| Marcus Webb | `marcus.webb@halcourtmutual.onmicrosoft.com` | HR maker | Owns Benefits Buddy, HR FAQ v2. |
+| Priya Nair | `priya.nair@halcourtmutual.onmicrosoft.com` | Claims/underwriting maker | Owns Claims Copilot, Underwriting Assistant. |
+| Sam Olsen | `sam.olsen@halcourtmutual.onmicrosoft.com` | Finance approver + maker | Owns Expense Helper; a real expense approver. |
+| Lena Ford | `lena.ford@halcourtmutual.onmicrosoft.com` | Sales manager | *Maker* owner of Sales Nudge. |
+| Dev Kim | `dev.kim@halcourtmutual.onmicrosoft.com` | Developer (broad SharePoint) | Owns Team Wiki, Meeting Notes Summarizer. |
+| **Tom Dean** | `tom.dean@halcourtmutual.onmicrosoft.com` | **Departed admin — account DISABLED** | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. |
+| Jordan Blake | `jordan.blake@halcourtmutual.onmicrosoft.com` | Low-privilege employee | The "requesting user" for confused-deputy demos. Can chat with agents; personally entitled to almost nothing. |
+| svc-claims | `svc-claims@halcourtmutual.onmicrosoft.com` | **Service account** | Owns the shared Dataverse connection Claims Copilot runs on. Over-permissioned. |
+| IT Helpdesk | `it.helpdesk@halcourtmutual.onmicrosoft.com` | **Shared mailbox** | Ambiguous "owner" of Policy Lookup Bot — nobody personally accountable. |
 
 **Groups:** `Halcourt-Makers`, `HR-Team`, `Claims-Adjusters`, `All-Employees`.
 

@@ -9,13 +9,16 @@ Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWr
 Lines marked [verify] depend on tenant specifics.
 #>
 param(
-  [string]$DomainSuffix = 'halcourtmutual.com',
+  [string]$TenantId,                                 # optional; target lab tenant (id or *.onmicrosoft.com)
+  [string]$DomainSuffix = 'halcourtmutual.onmicrosoft.com',
   [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only
   [switch]$DisableDepartedOwner
 )
 
 $ErrorActionPreference = 'Stop'
-Connect-MgGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All' | Out-Null
+$connectArgs = @{ Scopes = @('User.ReadWrite.All','Group.ReadWrite.All') }
+if ($TenantId) { $connectArgs['TenantId'] = $TenantId }
+Connect-MgGraph @connectArgs | Out-Null
 
 if ($DisableDepartedOwner) {
   Write-Host 'Disabling departed owner tom.dean (run this ONLY after his connections exist)...'
@@ -33,13 +36,14 @@ $people = @(
   @{ First='Dev';    Last='Kim';   Upn="dev.kim@$DomainSuffix";      Note='Developer (broad SharePoint)' }
   @{ First='Tom';    Last='Dean';  Upn="tom.dean@$DomainSuffix";     Note='Departed admin (disable in Phase 6.5)' }
   @{ First='Jordan'; Last='Blake'; Upn="jordan.blake@$DomainSuffix"; Note='Low-privilege employee (confused-deputy path)' }
-  @{ First='Claims'; Last='Service'; Upn="svc-claims@$DomainSuffix"; Note='Service account for the shared Dataverse connection' }
+  @{ First='Claims'; Last='Service'; Upn="svc-claims@$DomainSuffix"; DisplayName='Claims Service Account'; Note='Service account for the shared Dataverse connection' }
 )
 
 foreach ($p in $people) {
   $pwProfile = @{ Password = $InitialPassword; ForceChangePasswordNextSignIn = $false }
+  $displayName = if ($p.DisplayName) { $p.DisplayName } else { "$($p.First) $($p.Last)" }
   Write-Host "Creating $($p.Upn) - $($p.Note)"
-  New-MgUser -AccountEnabled -DisplayName "$($p.First) $($p.Last)" `
+  New-MgUser -AccountEnabled -DisplayName $displayName `
     -UserPrincipalName $p.Upn -MailNickname ($p.Upn.Split('@')[0]) `
     -PasswordProfile $pwProfile | Out-Null
 }

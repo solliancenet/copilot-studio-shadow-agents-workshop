@@ -1,12 +1,12 @@
 connection_name,connector,environment,connection_owner_upn,shared_with,used_by_agent,auth_type
-SP-HR-Benefits,SharePoint,Halcourt-Prod,marcus.webb@halcourtmutual.com,,Benefits Buddy,User (delegated)
-DV-Claims-Shared,Microsoft Dataverse,Claims-Test,svc-claims@halcourtmutual.com,Claims-Adjusters,Claims Copilot,Service account
-HTTP-PolicyAPI,HTTP action,Halcourt-Prod,it.helpdesk@halcourtmutual.com,,Policy Lookup Bot,API key in action config
-MCP-Underwriting,MCP (custom),Halcourt-Prod,priya.nair@halcourtmutual.com,,Underwriting Assistant,Static bearer token
-PA-Expense-AutoApprove,Power Automate,Halcourt (default),sam.olsen@halcourtmutual.com,All-Employees,Expense Helper,Runs as owner
-SP-Onboarding,SharePoint,Halcourt (default),tom.dean@halcourtmutual.com,,Onboarding Guide,User (delegated)
-O365-Outlook-Onboarding,Office 365 Outlook,Halcourt (default),tom.dean@halcourtmutual.com,,Onboarding Guide,User (delegated)
-Graph-DevKim,Microsoft Graph,Maker-Sandbox,dev.kim@halcourtmutual.com,,Team Wiki,User (delegated)
-DV-CRM-Shared,Microsoft Dataverse,Halcourt-Prod,tom.dean@halcourtmutual.com,Sales,Sales Nudge,User (delegated)
-SP-HR-FAQ,SharePoint,Halcourt-Prod,marcus.webb@halcourtmutual.com,,HR FAQ v2 (copy),User (delegated)
-OneDrive-DevKim,OneDrive for Business,Maker-Sandbox,dev.kim@halcourtmutual.com,,Meeting Notes Summarizer,User (delegated)
+SP-HR-Benefits,SharePoint,Halcourt-Prod,marcus.webb@halcourtmutual.onmicrosoft.com,,Benefits Buddy,User (delegated)
+DV-Claims-Shared,Microsoft Dataverse,Claims-Test,svc-claims@halcourtmutual.onmicrosoft.com,Claims-Adjusters,Claims Copilot,Service account
+HTTP-PolicyAPI,HTTP action,Halcourt-Prod,it.helpdesk@halcourtmutual.onmicrosoft.com,,Policy Lookup Bot,API key in action config
+MCP-Underwriting,MCP (custom),Halcourt-Prod,priya.nair@halcourtmutual.onmicrosoft.com,,Underwriting Assistant,Static bearer token
+PA-Expense-AutoApprove,Power Automate,Halcourt (default),sam.olsen@halcourtmutual.onmicrosoft.com,All-Employees,Expense Helper,Runs as owner
+SP-Onboarding,SharePoint,Halcourt (default),tom.dean@halcourtmutual.onmicrosoft.com,,Onboarding Guide,User (delegated)
+O365-Outlook-Onboarding,Office 365 Outlook,Halcourt (default),tom.dean@halcourtmutual.onmicrosoft.com,,Onboarding Guide,User (delegated)
+Graph-DevKim,Microsoft Graph,Maker-Sandbox,dev.kim@halcourtmutual.onmicrosoft.com,,Team Wiki,User (delegated)
+DV-CRM-Shared,Microsoft Dataverse,Halcourt-Prod,tom.dean@halcourtmutual.onmicrosoft.com,Halcourt-Makers,Sales Nudge,User (delegated)
+SP-HR-FAQ,SharePoint,Halcourt-Prod,marcus.webb@halcourtmutual.onmicrosoft.com,,HR FAQ v2 (copy),User (delegated)
+OneDrive-DevKim,OneDrive for Business,Maker-Sandbox,dev.kim@halcourtmutual.onmicrosoft.com,,Meeting Notes Summarizer,User (delegated)

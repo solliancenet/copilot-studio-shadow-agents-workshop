@@ -51,7 +51,7 @@ resource cae 'Microsoft.App/managedEnvironments@2024-03-01' = {
 }
 
 resource policyApi 'Microsoft.App/containerApps@2024-03-01' = {
-  name: '${namePrefix}-policy-api'
+  name: 'ca-policyapi'
   location: location
   properties: {
     managedEnvironmentId: cae.id
@@ -76,7 +76,7 @@ resource policyApi 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 resource mcp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: '${namePrefix}-underwriting-mcp'
+  name: 'ca-underwritingmcp'
   location: location
   properties: {
     managedEnvironmentId: cae.id

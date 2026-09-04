@@ -73,6 +73,10 @@ deliberately vulnerable; it has to live somewhere you can break without touching
    - When asked to sign in, choose **"Create a new account" / use a personal or lab email** — do **not**
      authenticate with your corporate identity. The result is a standalone tenant with its own
      auto-assigned `*.onmicrosoft.com` domain that shares no trust with production.
+   - The `*.onmicrosoft.com` prefix comes from the **organization name** you type in the wizard, so choose
+     it to land `halcourtmutual.onmicrosoft.com` if that prefix is free — the estate identities are written
+     against that canonical domain. If it is already taken, pick a close variant and pass it to the
+     provisioning scripts with `-DomainSuffix <your-domain>.onmicrosoft.com`.
 
 2. **Complete initial tenant setup.**
    - Finish the sign-up wizard: create the **global administrator** account (record the UPN — this is the
@@ -80,7 +84,8 @@ deliberately vulnerable; it has to live somewhere you can break without touching
    - In **Entra admin center** (https://entra.microsoft.com) → the admin user → **Authentication
      methods**, register **MFA** on the global admin. Do this before assigning any other access.
    - In **Microsoft 365 admin center** (https://admin.microsoft.com) → **Settings → Org settings →
-     Organization profile**, set the **tenant region / data location** to the region you deliver from.
+     Organization profile**, confirm the **tenant region / data location** shows the region you chose at
+     signup (it is read-only here — the region was fixed at signup and cannot be changed).
    - This global admin ends up holding every admin role the rest of the runbook needs: **Power Platform
      admin, Entra admin, SharePoint admin**, and — for the Module 5 CONTROL work — **Purview,
      Conditional Access, and Defender** access. In a fresh tenant the Global Administrator covers all of
@@ -171,7 +176,9 @@ applies `Halcourt-Prod-DLP` to **Prod only**, and creates the baseline CA polici
 ### Phase 4 — SharePoint seed (plant the poisoned doc)
 
 ```powershell
-pwsh setup/scripts/03_provision_sharepoint.ps1
+pwsh setup/scripts/03_provision_sharepoint.ps1 `
+  -TenantAdminUrl https://<tenant>-admin.sharepoint.com `
+  -RootSiteUrl https://<tenant>.sharepoint.com
 ```
 
 Creates `HR-Benefits` (with a `Leadership/` subfolder holding `2026-comp-bands.xlsx`) and
@@ -182,7 +189,8 @@ in `AGENTS.md`). The whole-site grounding + the leadership folder are what make 
 ### Phase 5 — Dataverse seed
 
 ```powershell
-pwsh setup/scripts/04_provision_dataverse.ps1
+pwsh setup/scripts/04_provision_dataverse.ps1 `
+  -ClaimsTestEnvUrl https://<org>.crm.dynamics.com
 ```
 
 Creates `Claim` and `Customer` tables in `Claims-Test`, seeds rows from `setup/data/claims.csv` and
@@ -203,7 +211,7 @@ connections must remain live — that is the orphan.
 ### Phase 7 — Export the artifact pack
 
 ```powershell
-pwsh setup/scripts/05_export_artifact_pack.ps1 -OutDir ../worksheets/artifact-pack
+pwsh setup/scripts/05_export_artifact_pack.ps1
 ```
 
 Pulls agents/connections/identities/users/environments from PPAC admin APIs + Microsoft Graph and writes
