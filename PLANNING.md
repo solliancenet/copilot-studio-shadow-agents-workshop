@@ -17,8 +17,32 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. |
 | 4 | Capture the 13 screenshots | OPEN | Referenced by the labs; list in `setup/screenshot-capture-list.md`. |
 | 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). |
+| 6 | **TOP BLOCKER — Dataverse capacity + Copilot Studio credits gated on billing** | BLOCKED | E5 Developer sandbox ships **0 GB Dataverse** → can't create a Dataverse-backed env → can't author agents (Phase 3/6 hard-stop). Copilot Studio is **credit-powered (Copilot Credits), metered, needs billing** — not a flat per-user license. Both unblock only after the **MCA billing profile has an active Azure Plan** (see sequencing note below). Resolve before any tenant build. |
+| 7 | Validate/dry-run on a **developer sandbox** tenant first (do NOT build the paid conference tenant yet) | IN PROGRESS | Sequencing decision recorded below. Fix the Azure-plan linkage, dry-run `setup/RUNBOOK.md` end-to-end on a throwaway dev sandbox, prove the estate reproduces — *then* decide on a permanent paid tenant. |
 
 _Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
+
+### Sequencing decision + top blocker (live-tenant walkthrough findings)
+
+**Decision — validate on a dev sandbox first; do not build a paid permanent conference tenant yet.** A live
+walkthrough of the Dev Program E5 sandbox surfaced hard gates that must be proven out before we commit money
+or a permanent tenant. Sequence:
+1. Stand up the isolated **E5 Developer sandbox** (throwaway), using the **Add-on-purchases-enabled** variant.
+2. **Fix the Azure-plan linkage** — an MCA billing account with a billing profile + invoice section still
+   won't appear in the Dev Program setup dropdown until it has an **active Azure Plan**; create the Azure Plan
+   subscription under that profile/invoice section (Azure portal → Subscriptions → Add). This same Azure Plan
+   also carries the Phase 1 Container Apps spend and enables Copilot Studio credits — one setup, done once.
+3. **Dry-run `setup/RUNBOOK.md`** end-to-end on that sandbox; confirm every PLANTED PROBLEM reproduces and
+   the artifact pack diffs clean.
+4. Only after that passes, decide whether to build a permanent paid conference tenant.
+
+**Top blocker (current):** **Dataverse database capacity** — the E5 dev sandbox ships with **0 GB**, and
+without ≥ 1 GB you cannot create a Dataverse-backed environment or any agent (RUNBOOK Phase 3/6 fail with
+*"org needs at least 1 GB of database capacity"*). Compounded by **Copilot Studio being credit-powered**
+(metered Copilot Credits, requires billing — not a per-seat SKU). **Both are gated on the same billing
+setup** (active Azure Plan under the MCA billing profile). Until billing is sorted, the estate cannot be
+built. Obtaining Dataverse capacity is itself `[verify]` — likely a paid per-GB capacity add-on under that
+billing account.
 
 ## GUARD Foundry demo (separate pursuit) — progress
 
@@ -189,7 +213,11 @@ before delivery and update `AGENTS.md` if reality differs:
    auto-labeling latency).
 5. **Defender / audit signal:** which agent activities actually surface (Defender for Cloud Apps /
    Copilot detections; unified audit log schema for agent actions; the confused-deputy attribution gap).
-6. **Licensing** for the shared demo tenant: Copilot Studio, M365 E5 / Agent 365, Purview.
+6. **Licensing** for the shared demo tenant — de-bundled: **E5** (incl. Developer SKU) covers most
+   **Purview**; **Copilot Studio is separate and credit-powered** (Copilot Credits, metered, needs billing —
+   not a flat per-user license); **Agent 365** tracked separately. Confirm a **trial/sandbox license can
+   actually PUBLISH** the 10 estate agents beyond personal testing. Also `[verify]` how to **obtain ≥ 1 GB
+   Dataverse capacity** (0 GB in the E5 dev sandbox; likely a paid per-GB add-on under the billing account).
 
 ## Delivery risks
 
