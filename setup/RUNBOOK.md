@@ -62,15 +62,18 @@ lab-dedicated admin credential — never corporate SSO**.
    - Choose **"Create a new account" / personal or lab email** — never corporate SSO.
    - Set the **organization name** to land `halcourtmutual.onmicrosoft.com` (auto-assigned from the org
      name). If taken, pick a variant and pass it to the scripts with `-DomainSuffix <domain>.onmicrosoft.com`.
-   - Do **not** install the optional content / sample-data pack (see Errata).
+   - The optional **content / sample-data pack** is fine to install — its ~16 users can be mapped to
+     Halcourt personas in Phase 2, saving license seats (see Errata).
 
 2. **Complete initial tenant setup.**
    - Finish the wizard: create the **global administrator** account and record the UPN (the technician
      identity the rest of the runbook uses).
-   - In **Entra admin center** (https://entra.microsoft.com) → admin user → **Authentication methods**,
-     register **MFA** on the global admin before assigning any other access.
-   - In **Microsoft 365 admin center** (https://admin.microsoft.com) → **Settings → Org settings →
-     Organization profile**, confirm the **tenant region / data location** matches the region chosen at signup.
+   - **Confirm MFA is registered** on the global admin account (the tenant wizard may have already required
+     this). Verify in **Entra admin center** (https://entra.microsoft.com) → admin user → **Authentication
+     methods**.
+   - **Record the tenant's data-center region:** in the admin center, **Settings → Org settings → Organization
+     profile → Data location** (or Entra → Properties). Note the region — you will use it for the Phase 1
+     `az group create -l` flag. The region is immutable; if it is wrong the only fix is a new tenant.
    - Confirm the global admin holds **Power Platform admin, Entra admin, SharePoint admin, Purview,
      Conditional Access, and Defender** access (in a fresh tenant Global Administrator covers all of these;
      see Errata if splitting duties).
@@ -78,15 +81,11 @@ lab-dedicated admin credential — never corporate SSO**.
 3. **Add and assign licensing** (two separate things — see Errata for how they meter and bill).
    - **M365 E5** (incl. the Developer SKU): already provided by the sandbox; covers the Purview features the
      labs use.
-   - **Copilot Studio (publish-capable license)** — pick one; see Errata for the full comparison:
-     - **Standalone prepaid Copilot Credit pack** (default): **Billing → Purchase services**. Publishes on any
-       channel; **no Azure subscription required**.
-     - **Pay-as-you-go:** nothing to buy in the M365 admin center — Copilot Studio PAYG is set up later as a
-       **PPAC billing plan** (PPAC → Licensing → **Billing Plans**) with the **Copilot Studio** meter, linked
-       to the estate environments when they're created (Phase 3). All Phase 0 needs is an **Azure subscription
-       on which you hold Contributor** (see Errata — Azure subscription for PAYG).
-     - **Do NOT rely on the trial license** — it can create and test agents but **cannot publish**, so it
-       cannot build this estate.
+   - **Copilot Studio:** enable **Copilot Credits** via **Marketplace** (main left nav) → search "Copilot."
+     For a lab tenant, the **Microsoft Copilot Studio Trial** ("License granting message capacity") avoids the
+     $200/mo paid SKU. Both options need the active Azure Plan from step 1's billing setup.
+   - To check assigned per-seat licenses: **Billing → Licenses**. To purchase add-ons or enable Copilot
+     Credits: **Marketplace** (main nav).
    - Assign the **E5 per-seat SKUs** in **Billing → Licenses** to the global admin (and the Phase 2 personas
      later).
 
@@ -142,6 +141,13 @@ point of Scenario E).
 ```powershell
 pwsh setup/scripts/01_provision_entra.ps1 -TenantId <tenant>
 ```
+
+If the Dev Program **content pack** was installed (~16 sample users such as Adele Vance, Alex Wilber, etc.
+visible in **Users → Active users**), map existing content-pack users to Halcourt personas instead of
+creating duplicates — the sandbox has a 25-seat cap. Only create accounts the pack does not cover (e.g.
+`svc-claims` service account, `it.helpdesk` shared mailbox, and any persona with no reasonable content-pack
+match). Pass `-ReuseContentPack` (or equivalent) to the script, and update `AGENTS.md` with the actual UPN
+mappings.
 
 Creates every persona in `AGENTS.md` (Ana, Marcus, Priya, Sam, Lena, Dev, Jordan), the service account
 `svc-claims`, the `it.helpdesk` shared mailbox, and the groups. **Critically, it disables `tom.dean`**
@@ -319,10 +325,10 @@ https://www.microsoft.com/microsoft-365/enterprise/e5.
 ### Phase 0 · content pack / sample users
 
 The Dev Program offers an optional **content pack** that seeds the tenant with ~16 sample users and demo
-data. It is optional — **do not install it**. If installed, those ~16 sample users land in
-`users-export.csv` at Phase 7 and **pollute the Phase 8 diff** against the committed artifact pack (the pack
-expects only the Phase 2 personas). If you have already installed it, either remove the sample users before
-Phase 7 or explicitly account for them when diffing.
+data. If installed, those users appear in `users-export.csv` at Phase 7 and change the diff against the
+committed artifact pack. **Preferred approach:** map content-pack users to Halcourt personas (see Phase 2)
+so they serve double duty. If that is not feasible, either remove the sample users before Phase 7 or filter
+them from the diff. The committed artifact pack must reflect whichever approach you chose.
 
 ### Phase 0 · splitting admin duties
 
