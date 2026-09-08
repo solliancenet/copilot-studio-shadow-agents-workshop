@@ -75,21 +75,21 @@ lab-dedicated admin credential — never corporate SSO**.
      Conditional Access, and Defender** access (in a fresh tenant Global Administrator covers all of these;
      see Errata if splitting duties).
 
-3. **Add and assign licensing** (three separate things — see Errata for how they meter and bill).
+3. **Add and assign licensing** (two separate things — see Errata for how they meter and bill).
    - **M365 E5** (incl. the Developer SKU): already provided by the sandbox; covers the Purview features the
      labs use.
    - **Copilot Studio (publish-capable license)** — pick one; see Errata for the full comparison:
      - **Standalone prepaid Copilot Credit pack** (default): **Billing → Purchase services**. Publishes on any
        channel; **no Azure subscription required**.
-     - **Pay-as-you-go:** **Billing → Pay-as-you-go → Add a billing policy** (bind an Azure subscription) →
-       **Services** tab → enable Copilot Studio. Needs the active Azure Plan from step 1's billing setup.
+     - **Pay-as-you-go:** create the billing policy — **Billing → Pay-as-you-go → Add a billing policy**
+       (Name, Azure subscription, Resource group, Region, accept ToS; Users = All; optional budget). This only
+       *creates* the policy — Copilot Studio is **not** in the M365 "Services" tab. The Copilot Studio ↔
+       subscription link is **per-environment** and happens in **Phase 3** (PPAC → Licensing → Pay-as-you-go
+       plans). Needs a usable Azure subscription (see Errata — Azure subscription for PAYG).
      - **Do NOT rely on the trial license** — it can create and test agents but **cannot publish**, so it
        cannot build this estate.
    - Assign the **E5 per-seat SKUs** in **Billing → Licenses** to the global admin (and the Phase 2 personas
      later).
-   - **Agent 365 / agent-identity surfaces:** track separately (see Errata).
-   - Confirm the sandbox can **publish agents** beyond personal test-bot use before building the estate (see
-     Errata — publish-capability risk).
 
 4. **Enable the Power Platform side.**
    - Open the **Power Platform admin center** (PPAC, https://admin.powerplatform.microsoft.com) as the
@@ -104,8 +104,9 @@ lab-dedicated admin credential — never corporate SSO**.
    - Global admin can **sign in** to https://admin.microsoft.com with MFA satisfied.
    - **PPAC loads** and shows the default environment.
    - **Copilot Studio loads** for the admin.
-   - **Licensing shows assigned** (E5) on the admin account, and **Copilot Studio credits are enabled**
-     (metered/credit-powered — see step 3, not a per-seat license).
+   - **Licensing shows assigned** (E5) on the admin account.
+   - **A PAYG billing policy exists** (e.g. `ppcc-dev`) bound to an Azure subscription (Billing →
+     Pay-as-you-go → Billing policies). The per-environment Copilot Studio link is deferred to Phase 3.
    - **Dataverse database capacity ≥ 1 GB** shows in PPAC → Resources → Capacity (the Phase 3 gate — a
      0 GB sandbox will fail Phase 3).
    - The build-box tooling from **Prerequisites** is installed and authenticated **against the new
@@ -331,8 +332,8 @@ separate technician later, grant those roles explicitly in Entra.
 
 ### Phase 0 · licensing details
 
-The licensing in step 3 is **three separate things** — do NOT treat "Copilot Studio / M365 E5 / Agent 365 /
-Purview" as one bundle you buy once. They license, meter, and bill differently:
+The licensing in step 3 is **two separate things** — do NOT treat "Copilot Studio / M365 E5 / Purview" as
+one bundle you buy once. They license, meter, and bill differently:
 
 - **M365 E5 (incl. the Developer SKU):** what the Dev Program sandbox already gives you. It covers most of
   **Purview** — sensitivity labels, DLP, audit — used in the Module 5 CONTROL work. No separate purchase for
@@ -354,11 +355,9 @@ Purview" as one bundle you buy once. They license, meter, and bill differently:
   zero-rates only **authenticated, employee-facing (B2E)** agent use — it does **not** cover the estate's
   autonomously-triggered agents or web/unauthenticated channels, and the E5 dev sandbox does not include it.
   Full model comparison + verified sources: [`../reference/copilot-studio-billing.md`](../reference/copilot-studio-billing.md).
-- **Agent 365 / agent-identity surfaces:** track separately; `[verify]` what is bundled vs. add-on at
-  delivery date (2026 surfaces still settling).
 - Do not hard-code SKU strings; confirm against the tenant.
 
-### Phase 0 · publish-capability risk
+### Phase 0 · publish capability (resolved)
 
 **RESOLVED — trial licenses cannot publish.** Per Microsoft's Copilot Studio licensing docs, a **trial
 license can create and test agents (test-chat panel) but cannot publish them**. The estate publishes 10
@@ -366,6 +365,23 @@ agents, so a trial is a dead end — the tenant needs a **publish-capable** lice
 Credit pack, pay-as-you-go, or CCCU prepurchase; see "Phase 0 · licensing details" above). This is the same
 billing/Azure-Plan dependency as the Dataverse-capacity gate — resolve the Azure Plan once (or use a prepaid
 pack, which needs no Azure subscription). See [`../reference/copilot-studio-billing.md`](../reference/copilot-studio-billing.md) and [`../PLANNING.md`](../PLANNING.md).
+
+### Phase 0 · Azure subscription for Copilot Studio PAYG
+
+Pay-as-you-go bills Copilot Studio consumption to an **Azure subscription** via a billing policy. Before
+creating the policy you need a subscription on which you hold **Owner or Contributor**.
+
+- **Check for an EXISTING subscription first.** The Dev Program sandbox often already has one or more Azure
+  subscriptions. If the billing-policy wizard's **Subscription** dropdown is empty or shows *"You don't have
+  the Owner or Contributor role on any Azure subscription,"* the problem is usually **RBAC, not a missing
+  subscription** — do **not** use "Create a new Azure subscription" (it fails with a generic *"we couldn't
+  create the subscription"* when the real gap is permissions).
+- **Grant yourself access:** **Entra admin center → Azure resources → "Access management for Azure
+  resources"** → toggle on (elevates you to **User Access Administrator at root scope**), then **Azure portal
+  → each Subscription → Access control (IAM) → Add role assignment → Contributor → yourself**. Wait a few
+  minutes for propagation, then reopen the billing-policy wizard — the subscription now appears.
+- **Only create a new subscription if none exist**, and only if you hold the **Azure subscription creator**
+  role on the billing account.
 
 ### Phase 0 / Phase 3 · Dataverse capacity gate
 
@@ -379,17 +395,31 @@ capacity"*. If you see that error, stop and resolve the gate; do not retry the s
 - **Check current capacity:** PPAC → **Resources → Capacity** (Monitor / capacity view). Confirm **Database
   (Dataverse) ≥ 1 GB** available, not just File/Log capacity.
 - **`[verify]` how to OBTAIN capacity:** the sandbox does not grant it for free. Likely a **paid capacity
-  add-on** purchased under the billing account (per-GB Dataverse database capacity), which requires the
-  **active Azure Plan** from step 1's billing setup. Confirm the exact add-on SKU and whether the Dev Program
-  tenant can purchase it at delivery date; do not assume it appears automatically.
+  add-on** (per-GB Dataverse database capacity) purchased under the billing account, or drawn against the
+  **Azure subscription** wired up for PAYG (see "Phase 0 · Azure subscription for Copilot Studio PAYG").
+  Confirm the exact add-on SKU and whether the Dev Program tenant can purchase it at delivery date; do not
+  assume it appears automatically.
 
 ### Phase 1 · Azure spend / shared billing setup
 
-These Container Apps need an **Azure subscription** to bill against. The **~$200 / 30-day credit on a new MCA
-subscription** comfortably covers the two Container Apps for the build/validate window. Crucially this is the
-**same billing-profile / Azure-plan step from Phase 0** — the active Azure Plan that populates the Dev
-Program dropdown and enables Copilot Studio credits *is* the subscription these Container Apps deploy into.
-**Do it once, together with Phase 0**, so you are not chasing billing propagation twice.
+These Container Apps need an **Azure subscription** to bill against — the **same subscription** used for the
+Phase 0 Copilot Studio PAYG billing policy. The Dev Program sandbox often already carries an Azure
+subscription; the usual gate is **RBAC on it, not a missing Azure Plan** — resolve access once in Phase 0
+(see "Phase 0 · Azure subscription for Copilot Studio PAYG") and reuse the same subscription here. `[verify]`
+whether that subscription includes usable credit (the frequently-cited *~$200 / 30-day* MCA credit is
+unconfirmed for the Dev Program subscription) or whether it bills straight through.
+
+### Phase 3 · link environments to the PAYG billing policy
+
+After creating `Halcourt-Prod` and `Claims-Test` (Dataverse-backed), link each to the Phase 0 pay-as-you-go
+policy so Copilot Studio consumption meters to the Azure subscription: **PPAC → Licensing → Pay-as-you-go
+plans → New billing plan** (or edit the existing `ppcc-dev`) → **Azure subscription** → choose the **Power
+Platform products** meters → **Select environments** → add each environment. Linking is per-environment and
+available for **production/sandbox** environments only.
+
+**Do NOT** create the special **"Microsoft 365 Copilot Chat"** billing plan (it auto-provisions a
+`Microsoft 365 Copilot Chat` environment) — that path is for unlicensed users consuming agents inside Copilot
+Chat, not the custom published estate. Use the standard plan linked to your own environments.
 
 ### Phase 6 · agents require a Dataverse-backed environment
 

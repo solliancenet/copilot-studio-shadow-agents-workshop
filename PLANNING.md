@@ -17,8 +17,9 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. |
 | 4 | Capture the 13 screenshots | OPEN | Referenced by the labs; list in `setup/screenshot-capture-list.md`. |
 | 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). |
-| 6 | **TOP BLOCKER — Dataverse capacity + Copilot Studio credits gated on billing** | BLOCKED | E5 Developer sandbox ships **0 GB Dataverse** → can't create a Dataverse-backed env → can't author agents (Phase 3/6 hard-stop). Copilot Studio is **credit-powered (Copilot Credits), metered, needs billing** — not a flat per-user license. Both unblock only after the **MCA billing profile has an active Azure Plan** (see sequencing note below). Resolve before any tenant build. |
+| 6 | **TOP BLOCKER — Dataverse capacity (Copilot Studio billing now resolved)** | PARTIALLY RESOLVED | Copilot Studio billing is **handled**: a **PAYG billing policy (`ppcc-dev`)** was created on the dev sandbox after fixing **RBAC** (self-elevate in Entra → Access management for Azure resources → Contributor on the existing subscription). Remaining blocker = **Dataverse ≥ 1 GB** (E5 sandbox ships **0 GB** → no Dataverse-backed env → no agents, Phase 3/6 hard-stop); resolve with the now-usable Azure subscription. Per-env Copilot Studio link happens in Phase 3. |
 | 7 | Validate/dry-run on a **developer sandbox** tenant first (do NOT build the paid conference tenant yet) | IN PROGRESS | Sequencing decision recorded below. Fix the Azure-plan linkage, dry-run `setup/RUNBOOK.md` end-to-end on a throwaway dev sandbox, prove the estate reproduces — *then* decide on a permanent paid tenant. |
+| 8 | **Agent 365** — not a provisioning prerequisite; a govern-the-fleet concern for a future module | DEFERRED | Cut from RUNBOOK Phase 0 (not on the build/publish critical path). If a future "govern the fleet" module is added, check Agent 365 licensing (bundled vs add-on) and admin/identity surfaces then. Relevant to the GUARD "what's next" governance story, not the estate build. |
 
 _Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
 
@@ -38,11 +39,11 @@ or a permanent tenant. Sequence:
 
 **Top blocker (current):** **Dataverse database capacity** — the E5 dev sandbox ships with **0 GB**, and
 without ≥ 1 GB you cannot create a Dataverse-backed environment or any agent (RUNBOOK Phase 3/6 fail with
-*"org needs at least 1 GB of database capacity"*). Compounded by **Copilot Studio being credit-powered**
-(metered Copilot Credits, requires billing — not a per-seat SKU). **Both are gated on the same billing
-setup** (active Azure Plan under the MCA billing profile). Until billing is sorted, the estate cannot be
-built. Obtaining Dataverse capacity is itself `[verify]` — likely a paid per-GB capacity add-on under that
-billing account.
+*"org needs at least 1 GB of database capacity"*). **Copilot Studio billing is no longer blocking** — a PAYG
+billing policy (`ppcc-dev`) was created on the sandbox after fixing **RBAC** (self-elevate in Entra → Access
+management for Azure resources → Contributor on the existing subscription); the subscription that carries it
+also covers the Dataverse capacity need. Obtaining ≥ 1 GB Dataverse capacity is itself `[verify]` — likely a
+paid per-GB capacity add-on under the billing account, or drawn against that PAYG Azure subscription.
 
 ## GUARD Foundry demo (separate pursuit) — progress
 
@@ -214,10 +215,12 @@ before delivery and update `AGENTS.md` if reality differs:
 5. **Defender / audit signal:** which agent activities actually surface (Defender for Cloud Apps /
    Copilot detections; unified audit log schema for agent actions; the confused-deputy attribution gap).
 6. **Licensing** for the shared demo tenant — de-bundled: **E5** (incl. Developer SKU) covers most
-   **Purview**; **Copilot Studio is separate and credit-powered** (Copilot Credits, metered, needs billing —
-   not a flat per-user license); **Agent 365** tracked separately. Confirm a **trial/sandbox license can
-   actually PUBLISH** the 10 estate agents beyond personal testing. Also `[verify]` how to **obtain ≥ 1 GB
-   Dataverse capacity** (0 GB in the E5 dev sandbox; likely a paid per-GB add-on under the billing account).
+   **Purview**; **Copilot Studio is separate and publish-capable via three models** (standalone prepaid
+   Copilot Credit pack / pay-as-you-go / CCCU prepurchase). **RESOLVED — a trial license CANNOT publish**
+   (create + test-chat only), so the estate needs one of the three publish-capable models; full detail in
+   [`reference/copilot-studio-billing.md`](reference/copilot-studio-billing.md). Still `[verify]`: how to
+   **obtain ≥ 1 GB Dataverse capacity** (0 GB in the E5 dev sandbox; likely a paid per-GB add-on or drawn
+   against the PAYG Azure subscription).
 
 ## Delivery risks
 

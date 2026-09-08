@@ -73,19 +73,44 @@ surfaces change often.
 - Reasoning models bill twice: *feature rate* + *text and generative AI tools (premium)* per 1K
   tokens.
 
-## Live blocker (2026-09-08, halcourtmutual.onmicrosoft.com sandbox)
+## Live blocker (2026-09-08, 0zwdt94t.onmicrosoft.com dev sandbox)
 
 Attempting Copilot Studio PAYG on the E5 dev sandbox:
 - `Billing → Pay-as-you-go → Add a billing policy` requires an **Azure subscription**; the admin
   (JC) had **none** ("You don't have the Owner or Contributor role on any Azure subscription").
 - The inline **"Create a new Azure subscription"** flyout failed twice: *"We couldn't create the
-  subscription. Please try again later."* — not transient; the connected MCA (Galen Keene's) does
-  not let JC create a subscription.
-- **Fix (PAYG path):** the MCA billing admin (Galen) enables the **Azure Plan** on the billing
-  profile **and** grants JC the **Azure subscription creator** role on the billing account /
-  invoice section; then JC re-runs the create step.
-- **Faster fix (no Azure sub):** buy a **standalone prepaid Copilot Credit pack** (model 2).
-- Same Azure-Plan root cause also gates **Dataverse capacity** (Phase 3) — resolve once.
+  subscription. Please try again later."* — a red herring. **The problem was NOT a missing
+  subscription:** two Azure subscriptions already existed under the tenant/MCA; the admin (JC)
+  simply had **no RBAC role on them**, so they didn't appear in the billing-policy dropdown and
+  the wizard's "you have no Owner/Contributor subscription" banner fired.
+- **ACTUAL FIX (what worked, 2026-09-08):** in **Entra admin center → Azure/tenant properties →
+  "Access management for Azure resources"**, JC elevated to **User Access Administrator at the
+  root scope**, then assigned themselves **Contributor** on each of the two existing
+  subscriptions (Azure portal → Subscription → Access control (IAM) → Add role assignment). After
+  that the subscriptions appear in the PAYG billing-policy dropdown and the policy can be created.
+- Lesson: before assuming you must *create* a subscription (or chase a billing-admin grant),
+  check whether subscriptions already exist and you just lack **RBAC** — self-elevate via Entra
+  and assign **Contributor**. Creating a new subscription is only needed if none exist.
+- Alternative (no Azure sub at all): buy a **standalone prepaid Copilot Credit pack** (model 2).
+- Same Azure subscription unblocks the **Dataverse capacity** need (Phase 3) — resolve once.
+
+## How Copilot Studio connects to the subscription (PAYG)
+
+Creating the pay-as-you-go **billing policy** (M365 admin center → Billing → Pay-as-you-go) does not by
+itself meter Copilot Studio — Copilot Studio is **not** listed on that page's **Services** tab (its entries
+are M365 Backup, Microsoft 365 Copilot [the USL chat product], High Volume Email, SharePoint/OneDrive
+Storage, Perception). The Copilot Studio ↔ subscription link is **per-environment**, done in the **Power
+Platform admin center**:
+
+- **PPAC → Licensing → Pay-as-you-go plans → New billing plan** (or edit an existing one) → select the
+  **Azure subscription** → choose **Power Platform products** meters → **Select environments** → add each
+  environment. Available for **production/sandbox** environments only, so it happens in **Phase 3** once the
+  Dataverse-backed environments exist (the default environment has no Dataverse).
+- **Do not** create the special **"Microsoft 365 Copilot Chat"** billing plan — it auto-provisions a
+  `Microsoft 365 Copilot Chat` environment for unlicensed users consuming agents in Copilot Chat, which is
+  not the custom published estate. Use the standard plan linked to your own environments.
+
+Source: https://learn.microsoft.com/en-us/power-platform/admin/pay-as-you-go-set-up
 
 ## Sources (Microsoft Learn)
 
