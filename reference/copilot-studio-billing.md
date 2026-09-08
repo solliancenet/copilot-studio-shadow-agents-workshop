@@ -1,0 +1,97 @@
+# Copilot Studio — billing & licensing models
+
+Background reference for the facilitator build. **Not attendee content.** Verified against
+Microsoft Learn primary sources (doc dates noted); re-verify before each delivery — these
+surfaces change often.
+
+## TL;DR for this workshop
+
+- To **publish** the 10-agent estate you need a **publish-capable** license. The **trial license
+  cannot publish** (create + test-chat only).
+- The only publish-capable path that does **not** require an Azure subscription is the
+  **standalone prepaid Copilot Credit pack subscription**. Everything else with "publish" either
+  needs an Azure subscription (pay-as-you-go, CCCU prepurchase) or only partially covers the
+  estate (Microsoft 365 Copilot USL — authenticated B2E only).
+- Copilot Studio metering currency is **Copilot Credits** (renamed from "messages" on
+  2025-09-01).
+
+## The billing/licensing models
+
+### 1. Microsoft 365 Copilot USL (per-user license)
+- Employee-facing (**B2E**), **authenticated** agent usage is **included at no charge** when the
+  agent runs under the authenticated M365 Copilot user's identity (subject to fair-use limits).
+- **No Azure subscription required.**
+- **Does not cover:** Computer-Using Agents (CUA); agent flows except via the *"When an agent
+  calls the flow"* trigger; **autonomously-triggered agents and web/unauthenticated channels** —
+  all bill at standard credit rates.
+- The E5 **Developer sandbox does not include** M365 Copilot USL (separate paid license).
+- For this estate: only partial cover (the estate has autonomous + web channels), so USL alone
+  is insufficient.
+
+### 2. Standalone Copilot Studio subscription (prepaid Copilot Credit pack)
+- Build/publish agents on **any supported channel** + premium connectors.
+- Bought as a product in the **Microsoft 365 admin center** (Billing → Purchase services).
+  **No Azure subscription required.**
+- Tenant-pooled credit capacity; **enforced monthly**, unused credits **do not carry over**;
+  **overage at 125% disables custom agents** until capacity is increased/reset.
+- The "free" Copilot Studio **maker/user license presupposes** a tenant prepaid pack:
+  > "You need a Copilot Studio tenant prepaid Copilot Credit pack subscription before you can get
+  > this user license."
+- **Recommended default for the workshop** — publish-capable and avoids the Azure-Plan blocker.
+
+### 3. Pay-as-you-go (PAYG) meter
+- Pay for Copilot Studio via an **Azure subscription**, no upfront commitment; monthly billing of
+  actual credits consumed. Link environments to the subscription with a **billing policy**
+  (Power Platform admin center, or M365 admin center → Billing → Pay-as-you-go).
+- **Requires an Azure subscription** with the admin as Owner/Contributor. With PAYG there is no
+  125% cutoff (overage just bills through).
+- **This is the blocker we hit** (see "Live blocker" below).
+
+### 4. Copilot Credits prepurchase plan (CCCUs)
+- One-year prepaid pool of **Copilot Credit Commit Units**, usable across eligible Microsoft
+  products. Purchased in the **Azure portal**.
+- **Also requires** a billing policy → **Azure subscription**.
+
+### 5. Trial license
+- Sign up as an individual to **create agents and test in the test-chat panel only**.
+  > "The trial license gives you access to Copilot Studio to create agents. You can test your
+  > agents using the test chat panel. However, you can't publish the agent."
+- **Cannot publish.** Dead end for the estate build. Admins can also block viral trial signups.
+
+## Copilot Credits — how metering works (standard harness)
+
+- Currency = **Copilot Credits**; total cost = sum of credits consumed. Rate depends on agent
+  design, interaction volume, and features used.
+- Sample rates (per the rates page; verify before delivery):
+  - Classic answer = 1 · Generative answer = 2 · Agent action = 5 · Tenant graph grounding = 10
+  - Agent flow actions = 13 per 100 · AI tools basic/standard/premium = 1 / 15 / 100
+  - Voice: Classic 10, GenAI 35, Premium GenAI 75 (credits/min)
+- Whole **"Used by Microsoft 365 Copilot licensed user"** column = **No charge** (the USL B2E
+  inclusion, with the exclusions listed under model 1).
+- **Overage enforcement (prepaid model):** at **125%** of prepaid capacity, custom agents are
+  disabled; admin notified by email + PPAC. PAYG environments are not subject to the cutoff.
+- Reasoning models bill twice: *feature rate* + *text and generative AI tools (premium)* per 1K
+  tokens.
+
+## Live blocker (2026-09-08, halcourtmutual.onmicrosoft.com sandbox)
+
+Attempting Copilot Studio PAYG on the E5 dev sandbox:
+- `Billing → Pay-as-you-go → Add a billing policy` requires an **Azure subscription**; the admin
+  (JC) had **none** ("You don't have the Owner or Contributor role on any Azure subscription").
+- The inline **"Create a new Azure subscription"** flyout failed twice: *"We couldn't create the
+  subscription. Please try again later."* — not transient; the connected MCA (Galen Keene's) does
+  not let JC create a subscription.
+- **Fix (PAYG path):** the MCA billing admin (Galen) enables the **Azure Plan** on the billing
+  profile **and** grants JC the **Azure subscription creator** role on the billing account /
+  invoice section; then JC re-runs the create step.
+- **Faster fix (no Azure sub):** buy a **standalone prepaid Copilot Credit pack** (model 2).
+- Same Azure-Plan root cause also gates **Dataverse capacity** (Phase 3) — resolve once.
+
+## Sources (Microsoft Learn)
+
+- Standard harness licensing — https://learn.microsoft.com/en-us/microsoft-copilot-studio/billing-licensing (ms.date 2026-08-03)
+- Billing rates and management — https://learn.microsoft.com/en-us/microsoft-copilot-studio/requirements-messages-management (ms.date 2026-08-03)
+- Manage Copilot Credits and capacity (Power Platform admin) — https://learn.microsoft.com/en-us/power-platform/admin/manage-copilot-studio-messages-capacity
+- FAQ for Copilot Studio billing and licensing — https://learn.microsoft.com/en-us/microsoft-copilot-studio/faq-billing-licensing
+- Prepaid Capacity Packs vs Pay-as-you-go (M365 Copilot) — https://learn.microsoft.com/en-us/microsoft-365/copilot/pay-as-you-go/copilot-capacity-packs
+- Copilot Studio Licensing Guide (canonical PDF) — https://go.microsoft.com/fwlink/?linkid=2320995

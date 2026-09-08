@@ -76,6 +76,8 @@ exclude:
   - foundry/
   # GUARD Foundry pursuit slides (SVG). Internal; not published to the site.
   - demo/
+  # Background research / vendor-doc digests. Facilitator- and agent-readable; not published.
+  - reference/
   - worksheets/answer-keys/
   - vendor/
   - Gemfile

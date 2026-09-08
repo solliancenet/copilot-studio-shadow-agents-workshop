@@ -78,8 +78,13 @@ lab-dedicated admin credential — never corporate SSO**.
 3. **Add and assign licensing** (three separate things — see Errata for how they meter and bill).
    - **M365 E5** (incl. the Developer SKU): already provided by the sandbox; covers the Purview features the
      labs use.
-   - **Copilot Studio:** enable **Copilot Credits** via **Billing → Purchase services / Copilot** (needs the
-     active Azure Plan from step 1's billing setup).
+   - **Copilot Studio (publish-capable license)** — pick one; see Errata for the full comparison:
+     - **Standalone prepaid Copilot Credit pack** (default): **Billing → Purchase services**. Publishes on any
+       channel; **no Azure subscription required**.
+     - **Pay-as-you-go:** **Billing → Pay-as-you-go → Add a billing policy** (bind an Azure subscription) →
+       **Services** tab → enable Copilot Studio. Needs the active Azure Plan from step 1's billing setup.
+     - **Do NOT rely on the trial license** — it can create and test agents but **cannot publish**, so it
+       cannot build this estate.
    - Assign the **E5 per-seat SKUs** in **Billing → Licenses** to the global admin (and the Phase 2 personas
      later).
    - **Agent 365 / agent-identity surfaces:** track separately (see Errata).
@@ -333,23 +338,34 @@ Purview" as one bundle you buy once. They license, meter, and bill differently:
   **Purview** — sensitivity labels, DLP, audit — used in the Module 5 CONTROL work. No separate purchase for
   the Purview features the labs touch; confirm the specific Purview capabilities against the tenant rather
   than assuming E5 covers every one.
-- **Copilot Studio — SEPARATE, and NOT a flat per-user license.** The current Copilot Studio is
-  **credit-powered (Copilot Credits)** — consumption is **metered** and **requires billing** (a payment
-  instrument / Azure-plan-linked billing account), not a per-seat license you assign in Billing → Licenses.
-  You buy/enable a Copilot Credits capacity, and agent runs draw down credits. This is why step 1 pushes the
-  **Add-on-purchases-enabled** sandbox and the billing/Azure-plan setup — without them you cannot turn on
-  Copilot Studio metering at all.
+- **Copilot Studio — a SEPARATE, publish-capable license, with three ways to buy it.** The tenant needs one
+  of these before it can *publish* agents (the estate publishes 10):
+  - **Standalone prepaid Copilot Credit pack subscription** — tenant-pooled Copilot Credits bought as a
+    product in **Billing → Purchase services**. Publishes on any channel; **no Azure subscription needed**.
+    Capacity is enforced monthly (unused credits do not roll over; **125% overage disables custom agents**).
+    Note the "free" Copilot Studio maker/user license itself **requires** a tenant prepaid pack first — there
+    is no truly-free publish path.
+  - **Pay-as-you-go (PAYG)** — consumption billed to an **Azure subscription** via a billing policy
+    (**Billing → Pay-as-you-go**, or Power Platform admin center). Needs the active Azure Plan from step 1;
+    no 125% cutoff (overage just bills through).
+  - **Copilot Credits prepurchase plan (CCCUs)** — one-year prepaid pool bought in the Azure portal; **also**
+    needs a billing policy → Azure subscription.
+  Currency is **Copilot Credits** (renamed from "messages" on 2025-09-01). A **Microsoft 365 Copilot USL**
+  zero-rates only **authenticated, employee-facing (B2E)** agent use — it does **not** cover the estate's
+  autonomously-triggered agents or web/unauthenticated channels, and the E5 dev sandbox does not include it.
+  Full model comparison + verified sources: [`../reference/copilot-studio-billing.md`](../reference/copilot-studio-billing.md).
 - **Agent 365 / agent-identity surfaces:** track separately; `[verify]` what is bundled vs. add-on at
   delivery date (2026 surfaces still settling).
 - Do not hard-code SKU strings; confirm against the tenant.
 
 ### Phase 0 · publish-capability risk
 
-`[verify]` **RISK — can a trial/sandbox license actually PUBLISH agents beyond personal testing?** Confirm
-that the sandbox's Copilot Studio entitlement permits **publishing** agents to real channels for shared use,
-not just personal test-bot use. **The estate publishes 10 agents** — if the sandbox caps publishing or
-requires paid credits to publish, the whole estate build stalls here. This is the same open dependency
-tracked in [`../PLANNING.md`](../PLANNING.md).
+**RESOLVED — trial licenses cannot publish.** Per Microsoft's Copilot Studio licensing docs, a **trial
+license can create and test agents (test-chat panel) but cannot publish them**. The estate publishes 10
+agents, so a trial is a dead end — the tenant needs a **publish-capable** license (standalone prepaid Copilot
+Credit pack, pay-as-you-go, or CCCU prepurchase; see "Phase 0 · licensing details" above). This is the same
+billing/Azure-Plan dependency as the Dataverse-capacity gate — resolve the Azure Plan once (or use a prepaid
+pack, which needs no Azure subscription). See [`../reference/copilot-studio-billing.md`](../reference/copilot-studio-billing.md) and [`../PLANNING.md`](../PLANNING.md).
 
 ### Phase 0 / Phase 3 · Dataverse capacity gate
 
