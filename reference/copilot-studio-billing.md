@@ -30,7 +30,7 @@ surfaces change often.
 
 ### 2. Standalone Copilot Studio subscription (prepaid Copilot Credit pack)
 - Build/publish agents on **any supported channel** + premium connectors.
-- Bought as a product in the **Microsoft 365 admin center** (Billing → Purchase services).
+- Bought via **Marketplace** (main left nav in the Microsoft 365 admin center) → search "Copilot."
   **No Azure subscription required.**
 - Tenant-pooled credit capacity; **enforced monthly**, unused credits **do not carry over**;
   **overage at 125% disables custom agents** until capacity is increased/reset.
