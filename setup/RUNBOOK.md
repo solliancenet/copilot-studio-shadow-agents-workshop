@@ -78,15 +78,9 @@ lab-dedicated admin credential — never corporate SSO**.
      Conditional Access, and Defender** access (in a fresh tenant Global Administrator covers all of these;
      see Errata if splitting duties).
 
-3. **Add and assign licensing** (two separate things — see Errata for how they meter and bill).
+3. **Add and assign licensing.**
    - **M365 E5** (incl. the Developer SKU): already provided by the sandbox; covers the Purview features the
      labs use.
-   - **Copilot Studio:** the estate publishes 10 agents, which requires a **publish-capable** license — the
-     trial license can create/test but **cannot publish** (see Errata). Use **pay-as-you-go (PAYG)** via a
-     PPAC billing plan linked to an Azure subscription, or a **standalone prepaid Copilot Credit pack** (no
-     Azure subscription needed). Details and alternatives in Errata → "licensing details."
-   - To check assigned per-seat licenses: **Billing → Licenses**. To purchase add-ons or enable Copilot
-     Credits: **Marketplace** (main nav).
    - Assign the **E5 per-seat SKUs** in **Billing → Licenses** to the global admin (and the Phase 2 personas
      later).
 
