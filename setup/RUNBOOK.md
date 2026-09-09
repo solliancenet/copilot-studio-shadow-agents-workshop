@@ -81,34 +81,20 @@ lab-dedicated admin credential — never corporate SSO**.
    - **Copilot Studio (publish-capable license)** — pick one; see Errata for the full comparison:
      - **Standalone prepaid Copilot Credit pack** (default): **Billing → Purchase services**. Publishes on any
        channel; **no Azure subscription required**.
-     - **Pay-as-you-go:** create the billing policy — **Billing → Pay-as-you-go → Add a billing policy**
-       (Name, Azure subscription, Resource group, Region, accept ToS; Users = All; optional budget). This only
-       *creates* the policy — Copilot Studio is **not** in the M365 "Services" tab. The Copilot Studio ↔
-       subscription link is **per-environment** and happens in **Phase 3** (PPAC → Licensing → Pay-as-you-go
-       plans). Needs a usable Azure subscription (see Errata — Azure subscription for PAYG).
+     - **Pay-as-you-go:** nothing to buy in the M365 admin center — Copilot Studio PAYG is set up later as a
+       **PPAC billing plan** (PPAC → Licensing → **Billing Plans**) with the **Copilot Studio** meter, linked
+       to the estate environments when they're created (Phase 3). All Phase 0 needs is an **Azure subscription
+       on which you hold Contributor** (see Errata — Azure subscription for PAYG).
      - **Do NOT rely on the trial license** — it can create and test agents but **cannot publish**, so it
        cannot build this estate.
    - Assign the **E5 per-seat SKUs** in **Billing → Licenses** to the global admin (and the Phase 2 personas
      later).
 
-4. **Enable the Power Platform side.**
-   - Open the **Power Platform admin center** (PPAC, https://admin.powerplatform.microsoft.com) as the
-     global admin and confirm the **default environment** exists. If it is missing, `[verify]` tenant
-     provisioning has finished and create it.
-   - Open **Copilot Studio** (https://copilotstudio.microsoft.com) as the same admin and confirm it loads
-     and can reach the default environment.
-   - **GATE for Phase 3:** confirm **Database (Dataverse) ≥ 1 GB** in **PPAC → Resources → Capacity** before
-     any environment provisioning (the E5 sandbox ships with 0 GB; to obtain capacity see Errata).
-
-5. **Phase 0 verification checklist.**
+4. **Phase 0 verification checklist.**
    - Global admin can **sign in** to https://admin.microsoft.com with MFA satisfied.
-   - **PPAC loads** and shows the default environment.
-   - **Copilot Studio loads** for the admin.
    - **Licensing shows assigned** (E5) on the admin account.
-   - **A PAYG billing policy exists** (e.g. `ppcc-dev`) bound to an Azure subscription (Billing →
-     Pay-as-you-go → Billing policies). The per-environment Copilot Studio link is deferred to Phase 3.
-   - **Dataverse database capacity ≥ 1 GB** shows in PPAC → Resources → Capacity (the Phase 3 gate — a
-     0 GB sandbox will fail Phase 3).
+   - **An Azure subscription is usable** — you hold **Contributor** on it (the basis for later Copilot Studio
+     PAYG billing plans; see Errata).
    - The build-box tooling from **Prerequisites** is installed and authenticated **against the new
      tenant**:
 
@@ -125,7 +111,7 @@ lab-dedicated admin credential — never corporate SSO**.
      Add-PowerAppsAccount                                  # PowerApps admin modules
      ```
 
-   Once all five check, proceed to Phase 1.
+   Once these pass, proceed to Phase 1.
 
 ### Phase 1 — Azure infrastructure (Bicep)
 
@@ -164,10 +150,6 @@ after his connections are created in later phases — the script leaves a marker
 
 ### Phase 3 — Environments, DLP, Conditional Access
 
-{: important}
-**Pre-check:** confirm **Dataverse database capacity ≥ 1 GB** (PPAC → Resources → Capacity) before running
-(if the script errors on capacity, see Errata).
-
 ```powershell
 pwsh setup/scripts/02_provision_environments_dlp.ps1
 ```
@@ -176,6 +158,25 @@ Creates the four environments (`Halcourt (default)`, `Halcourt-Prod`, `Claims-Te
 applies `Halcourt-Prod-DLP` to **Prod only**, and creates the baseline CA policies
 (`CA-Require-MFA-Admins`, `CA-Block-Legacy-Auth`). It deliberately leaves Default / Claims-Test / Sandbox
 **without DLP** and creates **no** CA policy targeting workload identities — those gaps drive Module 5.
+
+**Then wire Copilot Studio pay-as-you-go billing (manual).** Do this only after the environments exist —
+the billing plan is region-locked and must match the environment's region, so the environment has to come
+first. Work in this order:
+
+1. **Confirm what region each Dataverse-backed environment landed in.** In PPAC
+   (https://admin.powerplatform.microsoft.com) → **Manage → Environments**, open each estate environment
+   (`Halcourt-Prod`, `Claims-Test`) and read the **Region** column / detail. The script pins
+   `-Location 'unitedstates'`, so they should read **United States** — but verify, because this region
+   drives the next step.
+2. **Create the billing plan in that SAME region.** PPAC → **Licensing → Billing Plans → + New billing
+   plan → Azure subscription**. Name it → pick the **Azure subscription** and **resource group** → set the
+   **Meter** to **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select environments**, set
+   the **Region** filter to match the environment's region (**United States**), then **check** the
+   Dataverse-backed estate environments (`Halcourt-Prod`, `Claims-Test`) → **Save**.
+3. **Mind the region-lock.** A billing plan is locked to one region and only lists environments in that
+   region. If an environment landed in a different region than the plan, the two will **not** link — the
+   environment won't appear in the plan's picker, and the plan won't appear in the environment's billing-plan
+   dropdown. Keep both in **United States** (see Errata for the full region-lock explanation).
 
 ### Phase 4 — SharePoint seed (plant the poisoned doc)
 
@@ -346,9 +347,11 @@ one bundle you buy once. They license, meter, and bill differently:
     Capacity is enforced monthly (unused credits do not roll over; **125% overage disables custom agents**).
     Note the "free" Copilot Studio maker/user license itself **requires** a tenant prepaid pack first — there
     is no truly-free publish path.
-  - **Pay-as-you-go (PAYG)** — consumption billed to an **Azure subscription** via a billing policy
-    (**Billing → Pay-as-you-go**, or Power Platform admin center). Needs the active Azure Plan from step 1;
-    no 125% cutoff (overage just bills through).
+  - **Pay-as-you-go (PAYG)** — consumption billed to an **Azure subscription** via a **PPAC billing plan**
+    (PPAC → Licensing → **Billing Plans** → New billing plan → Azure subscription → Meter = **Copilot
+    Studio** → Select environments). The M365 admin center's own "Pay-as-you-go" page does **not** meter
+    Copilot Studio (its Services tab has no Copilot Studio entry) — don't create a policy there for this.
+    Needs an Azure subscription with Contributor; no 125% cutoff (overage just bills through).
   - **Copilot Credits prepurchase plan (CCCUs)** — one-year prepaid pool bought in the Azure portal; **also**
     needs a billing policy → Azure subscription.
   Currency is **Copilot Credits** (renamed from "messages" on 2025-09-01). A **Microsoft 365 Copilot USL**
@@ -383,22 +386,23 @@ creating the policy you need a subscription on which you hold **Owner or Contrib
 - **Only create a new subscription if none exist**, and only if you hold the **Azure subscription creator**
   role on the billing account.
 
-### Phase 0 / Phase 3 · Dataverse capacity gate
+### Phase 0 / Phase 3 · Dataverse capacity (the "0 GB gate" was disproven)
 
-**HARD PREREQUISITE — Dataverse database capacity (GATE for Phase 3).** Before **any** environment
-provisioning, the tenant must have **≥ 1 GB Dataverse database capacity**. The **E5 Developer sandbox ships
-with 0 GB Dataverse capacity** — with 0 GB you **cannot create a Dataverse-backed environment** and
-therefore **cannot author any agent** (agents require Dataverse; see Phase 6). This gate **must pass before
-Phase 3** or `02_provision_environments_dlp.ps1` fails with *"this org needs at least 1 GB of database
-capacity"*. If you see that error, stop and resolve the gate; do not retry the script.
+An earlier version of this runbook claimed the E5 Developer sandbox ships with **0 GB Dataverse capacity** and
+therefore blocks creating a Dataverse-backed environment. **A live run on 2026-09-08 disproved that:** the
+sandbox carried **5 GB prepaid Database capacity** (PPAC → Licensing → **Capacity add-ons → Dataverse** showed
+Database 1 GB / 5 GB), and `Claims-Test` (Sandbox + Dataverse) provisioned normally, consuming 1 GB of prepaid
+— **no PAYG, no add-on, no capacity error.**
 
-- **Check current capacity:** PPAC → **Resources → Capacity** (Monitor / capacity view). Confirm **Database
-  (Dataverse) ≥ 1 GB** available, not just File/Log capacity.
-- **`[verify]` how to OBTAIN capacity:** the sandbox does not grant it for free. Likely a **paid capacity
-  add-on** (per-GB Dataverse database capacity) purchased under the billing account, or drawn against the
-  **Azure subscription** wired up for PAYG (see "Phase 0 · Azure subscription for Copilot Studio PAYG").
-  Confirm the exact add-on SKU and whether the Dev Program tenant can purchase it at delivery date; do not
-  assume it appears automatically.
+- **Check current capacity:** PPAC → **Licensing → Capacity add-ons → Dataverse** (or the new Dataverse
+  licensing experience). Confirm **Database (Dataverse)** prepaid capacity exists; this replaced the old
+  "Resources → Capacity" page.
+- **Do not treat capacity as a hard gate.** Verify the actual number per tenant (don't assume 0, and don't
+  assume 5 — it may differ). Only if a tenant genuinely has **0 GB** would you need a **per-GB capacity
+  add-on** or a **PAYG billing plan** (which grants 1 GB per pay-as-you-go environment).
+- **Reactive check only:** if a Dataverse environment ever **fails to create citing capacity**, check
+  **PPAC → Licensing → Capacity add-ons → Dataverse**; only a genuinely **0 GB** tenant needs an add-on or
+  PAYG. Do not pre-check capacity before provisioning — it is not a gate.
 
 ### Phase 1 · Azure spend / shared billing setup
 
@@ -409,13 +413,20 @@ subscription; the usual gate is **RBAC on it, not a missing Azure Plan** — res
 whether that subscription includes usable credit (the frequently-cited *~$200 / 30-day* MCA credit is
 unconfirmed for the Dev Program subscription) or whether it bills straight through.
 
-### Phase 3 · link environments to the PAYG billing policy
+### Phase 3 · PAYG billing plan — region-lock & the wrong-plan trap
 
-After creating `Halcourt-Prod` and `Claims-Test` (Dataverse-backed), link each to the Phase 0 pay-as-you-go
-policy so Copilot Studio consumption meters to the Azure subscription: **PPAC → Licensing → Pay-as-you-go
-plans → New billing plan** (or edit the existing `ppcc-dev`) → **Azure subscription** → choose the **Power
-Platform products** meters → **Select environments** → add each environment. Linking is per-environment and
-available for **production/sandbox** environments only.
+The click-by-click for creating and linking the Copilot Studio PAYG billing plan now lives in the main
+**Phase 3** section above. This is the background on *why* the order and region matter.
+
+**Region-lock (verified live, bit us on 2026-09-08):** a billing plan is **locked to one region** and only
+lists environments **in that same region**. The New-environment picker uses a **Macro Region Geography**
+("North America") that **auto-assigns a specific region** (it landed us in **Canada**), while the plan's
+region list uses **specific** regions ("United States"). If they don't match, the environment won't appear in
+the plan and the plan won't appear in the env's billing-plan dropdown. This is why the environment must be
+created first and its actual region confirmed before you create the plan — the provisioning script pins
+`-Location 'unitedstates'`, so create the billing plan in **United States** to match. Linking is
+per-environment, production/sandbox only; it can also be turned on at environment-creation time via the
+**"Pay-as-you-go with Azure?"** toggle.
 
 **Do NOT** create the special **"Microsoft 365 Copilot Chat"** billing plan (it auto-provisions a
 `Microsoft 365 Copilot Chat` environment) — that path is for unlicensed users consuming agents inside Copilot

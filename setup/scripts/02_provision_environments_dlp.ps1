@@ -15,6 +15,12 @@ The org URLs / environment IDs of the created environments are echoed at the end
 
 Requires: Microsoft.PowerApps.Administration.PowerShell (Add-PowerAppsAccount) and pac CLI.
 Lines marked [verify] depend on tenant specifics / evolving 2026 surfaces.
+
+NOTE (2026-09-08 live run): the "0 GB Dataverse capacity blocks env creation" fear was disproven — the E5
+dev sandbox carried 5 GB prepaid and a Dataverse env created normally. Do NOT treat capacity as a hard gate;
+verify actual prepaid capacity per tenant. Environments here are pinned to -Location 'unitedstates': if you
+later link a PAYG billing plan for Copilot Studio metering, create that plan in the SAME region (United
+States) — billing plans are region-locked and won't list environments from a different region.
 #>
 param(
   [string]$Location = 'unitedstates',

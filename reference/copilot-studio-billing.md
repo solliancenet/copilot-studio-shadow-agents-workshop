@@ -92,7 +92,17 @@ Attempting Copilot Studio PAYG on the E5 dev sandbox:
   check whether subscriptions already exist and you just lack **RBAC** — self-elevate via Entra
   and assign **Contributor**. Creating a new subscription is only needed if none exist.
 - Alternative (no Azure sub at all): buy a **standalone prepaid Copilot Credit pack** (model 2).
-- Same Azure subscription unblocks the **Dataverse capacity** need (Phase 3) — resolve once.
+- **Follow-up (same live run):** the Dataverse "0 GB capacity" blocker turned out to be **false** — the
+  sandbox carried **5 GB prepaid Database capacity**, and `Claims-Test` (Sandbox + Dataverse) created
+  normally, consuming 1 GB of prepaid, with **no PAYG needed** for the environment itself.
+- **Region-lock lesson:** a PPAC billing plan is **locked to one region** and only lists environments in that
+  region. The New-environment picker's **Macro Region** ("North America") auto-assigned **Canada**, which did
+  not match a **United States** plan — the env couldn't be linked. Fix: make the environment and the billing
+  plan land in the **same region**. A region-matched plan (`ppccdevcanada`, Copilot Studio meter) then linked
+  to Claims-Test cleanly.
+- **Where Copilot Studio PAYG actually lives:** not the M365 admin center's Pay-as-you-go page (no Copilot
+  Studio there) — it's a **PPAC billing plan** (Licensing → Billing Plans) with the Copilot Studio meter,
+  linked per-environment.
 
 ## How Copilot Studio connects to the subscription (PAYG)
 
@@ -102,7 +112,7 @@ are M365 Backup, Microsoft 365 Copilot [the USL chat product], High Volume Email
 Storage, Perception). The Copilot Studio ↔ subscription link is **per-environment**, done in the **Power
 Platform admin center**:
 
-- **PPAC → Licensing → Pay-as-you-go plans → New billing plan** (or edit an existing one) → select the
+- **PPAC → Licensing → Billing Plans → New billing plan** (or edit an existing one) → select the
   **Azure subscription** → choose **Power Platform products** meters → **Select environments** → add each
   environment. Available for **production/sandbox** environments only, so it happens in **Phase 3** once the
   Dataverse-backed environments exist (the default environment has no Dataverse).

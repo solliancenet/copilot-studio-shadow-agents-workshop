@@ -17,7 +17,7 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. |
 | 4 | Capture the 13 screenshots | OPEN | Referenced by the labs; list in `setup/screenshot-capture-list.md`. |
 | 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). |
-| 6 | **TOP BLOCKER — Dataverse capacity (Copilot Studio billing now resolved)** | PARTIALLY RESOLVED | Copilot Studio billing is **handled**: a **PAYG billing policy (`ppcc-dev`)** was created on the dev sandbox after fixing **RBAC** (self-elevate in Entra → Access management for Azure resources → Contributor on the existing subscription). Remaining blocker = **Dataverse ≥ 1 GB** (E5 sandbox ships **0 GB** → no Dataverse-backed env → no agents, Phase 3/6 hard-stop); resolve with the now-usable Azure subscription. Per-env Copilot Studio link happens in Phase 3. |
+| 6 | **RESOLVED — the "0 GB Dataverse" blocker was false** | RESOLVED | Live run 2026-09-08: the E5 sandbox carried **5 GB prepaid Dataverse** (not 0 GB), and a Dataverse-backed env (`Claims-Test`) created normally, no PAYG needed. Copilot Studio billing also resolved — a **region-matched PPAC billing plan** (`ppccdevcanada`, Copilot Studio meter) was linked to Claims-Test after fixing **RBAC** (Entra → Access management for Azure resources → Contributor). Lesson: billing plans are **region-locked** and must match the env region. |
 | 7 | Validate/dry-run on a **developer sandbox** tenant first (do NOT build the paid conference tenant yet) | IN PROGRESS | Sequencing decision recorded below. Fix the Azure-plan linkage, dry-run `setup/RUNBOOK.md` end-to-end on a throwaway dev sandbox, prove the estate reproduces — *then* decide on a permanent paid tenant. |
 | 8 | **Agent 365** — not a provisioning prerequisite; a govern-the-fleet concern for a future module | DEFERRED | Cut from RUNBOOK Phase 0 (not on the build/publish critical path). If a future "govern the fleet" module is added, check Agent 365 licensing (bundled vs add-on) and admin/identity surfaces then. Relevant to the GUARD "what's next" governance story, not the estate build. |
 
@@ -37,13 +37,14 @@ or a permanent tenant. Sequence:
    the artifact pack diffs clean.
 4. Only after that passes, decide whether to build a permanent paid conference tenant.
 
-**Top blocker (current):** **Dataverse database capacity** — the E5 dev sandbox ships with **0 GB**, and
-without ≥ 1 GB you cannot create a Dataverse-backed environment or any agent (RUNBOOK Phase 3/6 fail with
-*"org needs at least 1 GB of database capacity"*). **Copilot Studio billing is no longer blocking** — a PAYG
-billing policy (`ppcc-dev`) was created on the sandbox after fixing **RBAC** (self-elevate in Entra → Access
-management for Azure resources → Contributor on the existing subscription); the subscription that carries it
-also covers the Dataverse capacity need. Obtaining ≥ 1 GB Dataverse capacity is itself `[verify]` — likely a
-paid per-GB capacity add-on under the billing account, or drawn against that PAYG Azure subscription.
+**Top blocker — CLEARED (2026-09-08 live run).** The feared "Dataverse capacity" blocker was **not real**:
+the E5 dev sandbox carried **5 GB prepaid Dataverse** (PPAC → Licensing → Capacity add-ons → Dataverse showed
+1 GB / 5 GB), and a Dataverse-backed environment (`Claims-Test`) created normally with no PAYG and no capacity
+error. **Copilot Studio billing** is also resolved — after fixing **RBAC** (Entra → Access management for
+Azure resources → Contributor on an existing subscription), a **region-matched PPAC billing plan**
+(`ppccdevcanada`, Copilot Studio meter) was linked to Claims-Test. Remaining `[verify]`: confirm actual
+prepaid capacity per tenant (don't assume 0 or 5), and that billing-plan **region** matches the environment
+region (plans are region-locked).
 
 ## GUARD Foundry demo (separate pursuit) — progress
 
@@ -218,9 +219,9 @@ before delivery and update `AGENTS.md` if reality differs:
    **Purview**; **Copilot Studio is separate and publish-capable via three models** (standalone prepaid
    Copilot Credit pack / pay-as-you-go / CCCU prepurchase). **RESOLVED — a trial license CANNOT publish**
    (create + test-chat only), so the estate needs one of the three publish-capable models; full detail in
-   [`reference/copilot-studio-billing.md`](reference/copilot-studio-billing.md). Still `[verify]`: how to
-   **obtain ≥ 1 GB Dataverse capacity** (0 GB in the E5 dev sandbox; likely a paid per-GB add-on or drawn
-   against the PAYG Azure subscription).
+   [`reference/copilot-studio-billing.md`](reference/copilot-studio-billing.md). **Dataverse capacity is NOT
+   a hard gate** — a live run found the E5 sandbox carried **5 GB prepaid** and a Dataverse env created
+   normally; `[verify]` actual prepaid capacity per tenant (don't assume 0).
 
 ## Delivery risks
 
