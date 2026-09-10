@@ -22,12 +22,12 @@ param appInsightsId string = ''
 param appInsightsConnectionString string = ''
 
 @description('Chat model to deploy (Foundry / Azure OpenAI model name).')
-param modelName string = 'gpt-4.1'
+param modelName string = 'gpt-5-mini'
 
 // Pin the model version explicitly rather than relying on a service default so
 // the deployment is reproducible. Update as newer versions ship.
 @description('Version of the chat model to deploy.')
-param modelVersion string = '2025-04-14' // [verify] current GA version for gpt-4.1
+param modelVersion string = '2025-08-07' // gpt-5-mini GA version (westus3)
 
 @description('GlobalStandard throughput capacity (thousands of tokens/min) for the deployment.')
 param modelCapacity int = 50
