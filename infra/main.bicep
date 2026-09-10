@@ -14,6 +14,14 @@ param location string
 @description('AppId (client id) of the Entra app registration that fronts the member API. Its App ID URI (api://<appId>) is the audience the API validates, and the app roles Claims.Read / Claims.Write are the RBAC gate. Empty leaves the API unauthenticated (local/first-provision).')
 param apiAppId string = ''
 
+@description('Static API key that gates the intentionally-weak lab Policy API (lab-only, Scenario C/E).')
+@secure()
+param policyApiKey string
+
+@description('Static bearer token the intentionally-weak lab Underwriting MCP server accepts (lab-only, Scenario E).')
+@secure()
+param mcpBearer string
+
 // Stable per-environment suffix for globally-unique names (e.g. ACR).
 var resourceToken = uniqueString(subscription().id, environmentName, location)
 var tags = {
@@ -35,6 +43,8 @@ module resources 'resources.bicep' = {
     resourceToken: resourceToken
     apiAppId: apiAppId
     tenantId: subscription().tenantId
+    policyApiKey: policyApiKey
+    mcpBearer: mcpBearer
   }
 }
 
@@ -62,3 +72,5 @@ output AZURE_AI_FOUNDRY_PROJECT_ENDPOINT string = foundry.outputs.AZURE_AI_FOUND
 output AZURE_OPENAI_MODEL string = foundry.outputs.AZURE_OPENAI_MODEL
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = resources.outputs.APPLICATIONINSIGHTS_CONNECTION_STRING
 output APPLICATIONINSIGHTS_NAME string = resources.outputs.APPLICATIONINSIGHTS_NAME
+output POLICY_API_FQDN string = resources.outputs.POLICY_API_FQDN
+output UNDERWRITING_MCP_FQDN string = resources.outputs.UNDERWRITING_MCP_FQDN

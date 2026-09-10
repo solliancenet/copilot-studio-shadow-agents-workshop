@@ -13,3 +13,19 @@ services:
       # Build server-side via ACR Tasks: no local Docker daemon needed and the
       # image is always linux/amd64 (avoids arm64 build mismatches on Apple Silicon).
       remoteBuild: true
+  policy-api:
+    project: ./setup/infra/policy-api
+    language: js
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true
+  underwriting-mcp:
+    project: ./setup/infra/mcp-underwriting
+    language: js
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true

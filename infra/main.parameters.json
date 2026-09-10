@@ -10,6 +10,12 @@
     },
     "apiAppId": {
       "value": "${API_APP_ID}"
+    },
+    "policyApiKey": {
+      "value": "${POLICY_API_KEY}"
+    },
+    "mcpBearer": {
+      "value": "${MCP_BEARER}"
     }
   }
 }

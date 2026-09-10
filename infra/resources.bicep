@@ -17,6 +17,14 @@ param apiAppId string = ''
 @description('Entra tenant id the API validates tokens against.')
 param tenantId string = ''
 
+@description('Static API key that gates the intentionally-weak lab Policy API (lab-only, Scenario C/E).')
+@secure()
+param policyApiKey string
+
+@description('Static bearer token the intentionally-weak lab Underwriting MCP server accepts (lab-only, Scenario E).')
+@secure()
+param mcpBearer string
+
 // azd matches this service to the `web` service in azure.yaml via this tag.
 var serviceName = 'web'
 
@@ -195,6 +203,133 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   ]
 }
 
+// FACILITATOR-ONLY lab Policy API — intentionally over-scoped, authed by a single static key.
+// Reuses the shared env/registry/identity; only needs its one secret env var (no Foundry/AzureAd).
+resource policyApi 'Microsoft.App/containerApps@2024-03-01' = {
+  name: 'ca-policyapi-${resourceToken}'
+  location: location
+  tags: union(tags, {
+    'azd-service-name': 'policy-api'
+  })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${appIdentity.id}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: containerAppsEnv.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: 8080
+        transport: 'auto'
+        allowInsecure: false
+      }
+      registries: [
+        {
+          server: containerRegistry.properties.loginServer
+          identity: appIdentity.id
+        }
+      ]
+      secrets: [
+        {
+          name: 'policy-api-key'
+          value: policyApiKey
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'policy-api'
+          image: placeholderImage
+          resources: {
+            cpu: json('0.5')
+            memory: '1.0Gi'
+          }
+          env: [
+            {
+              name: 'POLICY_API_KEY'
+              secretRef: 'policy-api-key'
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: 1
+        maxReplicas: 1
+      }
+    }
+  }
+  dependsOn: [
+    acrPullAssignment
+  ]
+}
+
+// FACILITATOR-ONLY lab Underwriting MCP server — intentionally over-scoped, authed by a static bearer.
+resource underwritingMcp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: 'ca-underwritingmcp-${resourceToken}'
+  location: location
+  tags: union(tags, {
+    'azd-service-name': 'underwriting-mcp'
+  })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${appIdentity.id}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: containerAppsEnv.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: 8080
+        transport: 'auto'
+        allowInsecure: false
+      }
+      registries: [
+        {
+          server: containerRegistry.properties.loginServer
+          identity: appIdentity.id
+        }
+      ]
+      secrets: [
+        {
+          name: 'mcp-bearer'
+          value: mcpBearer
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'underwriting-mcp'
+          image: placeholderImage
+          resources: {
+            cpu: json('0.5')
+            memory: '1.0Gi'
+          }
+          env: [
+            {
+              name: 'MCP_BEARER'
+              secretRef: 'mcp-bearer'
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: 1
+        maxReplicas: 1
+      }
+    }
+  }
+  dependsOn: [
+    acrPullAssignment
+  ]
+}
+
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
 output WEB_URI string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.properties.ConnectionString
@@ -203,3 +338,6 @@ output APPLICATIONINSIGHTS_ID string = appInsights.id
 
 // Consumed by the foundry module to grant the app identity the Foundry User data-plane role.
 output APP_IDENTITY_PRINCIPAL_ID string = appIdentity.properties.principalId
+
+output POLICY_API_FQDN string = 'https://${policyApi.properties.configuration.ingress.fqdn}'
+output UNDERWRITING_MCP_FQDN string = 'https://${underwritingMcp.properties.configuration.ingress.fqdn}'

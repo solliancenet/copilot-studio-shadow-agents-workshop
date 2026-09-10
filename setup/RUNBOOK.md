@@ -72,8 +72,9 @@ lab-dedicated admin credential — never corporate SSO**.
      this). Verify in **Entra admin center** (https://entra.microsoft.com) → admin user → **Authentication
      methods**.
    - **Record the tenant's data-center region:** in the admin center, **Settings → Org settings → Organization
-     profile → Data location** (or Entra → Properties). Note the region — you will use it for the Phase 1
-     `az group create -l` flag. The region is immutable; if it is wrong the only fix is a new tenant.
+     profile → Data location** (or Entra → Properties). Note the region — you'll reuse it as the Azure region
+     for the Phase 1 `azd` deployment (`azd` prompts for `AZURE_LOCATION`). The region is immutable; if it is
+     wrong the only fix is a new tenant.
    - Confirm the global admin holds **Power Platform admin, Entra admin, SharePoint admin, Purview,
      Conditional Access, and Defender** access (in a fresh tenant Global Administrator covers all of these;
      see Errata if splitting duties).
@@ -107,23 +108,30 @@ lab-dedicated admin credential — never corporate SSO**.
 
    Once these pass, proceed to Phase 1.
 
-### Phase 1 — Azure infrastructure (Bicep)
+### Phase 1 — Azure infrastructure (azd up)
 
-Deploys the internal **Policy API** and the **Underwriting MCP** server as Container Apps. Both are
-intentionally weak (static-secret auth, over-scoped surface) — see `infra/policy-api/` and
-`infra/mcp-underwriting/`.
+Provisions the whole project with `azd up`: the demo **web** app + Foundry, plus the internal
+**Policy API** and **Underwriting MCP** server as Container Apps. The latter two are intentionally weak
+(static-secret auth, over-scoped surface) — see `setup/infra/policy-api/` and `setup/infra/mcp-underwriting/`.
 
 {: important}
-These Container Apps deploy into the **same Azure Plan / subscription** set up in Phase 0 (see Errata —
+Everything deploys into the **same Azure Plan / subscription** set up in Phase 0 (see Errata —
 Azure spend). No separate billing setup.
 
 ```bash
-az group create -n rg-halcourt-lab -l eastus
-az deployment group create -g rg-halcourt-lab -f setup/infra/main.bicep \
-  -p policyApiKey='<generate-a-lab-only-key>' mcpBearer='<generate-a-lab-only-token>'
+azd auth login
+azd env new halcourt-lab          # RG will be rg-halcourt-lab (azd creates it)
+azd env set POLICY_API_KEY '<generate-a-lab-only-key>'
+azd env set MCP_BEARER '<generate-a-lab-only-token>'
+azd up                            # provisions + builds/pushes all images + deploys
+azd env get-values                # read POLICY_API_FQDN / UNDERWRITING_MCP_FQDN
 ```
 
-Record the two Container App FQDNs from the deployment outputs — of the form
+`azd up` deploys the entire project (the demo web app + Foundry + the two weak apps) into
+`rg-halcourt-lab`.
+
+Record the two Container App FQDNs from `azd env get-values` (`POLICY_API_FQDN` /
+`UNDERWRITING_MCP_FQDN`) — of the form
 `ca-policyapi-<suffix>.<region>.azurecontainerapps.io` and
 `ca-underwritingmcp-<suffix>.<region>.azurecontainerapps.io`. These default `*.azurecontainerapps.io`
 FQDNs (no custom domain, no DNS to configure) are exactly what the agents' actions point at: they become
@@ -248,9 +256,9 @@ To reseed between deliveries, re-run Phases 3–7 (Entra personas in Phase 2 can
 
 | Path | Purpose |
 |---|---|
-| `infra/main.bicep` | Policy API + Underwriting MCP Container Apps |
-| `infra/policy-api/` | Minimal, intentionally over-scoped Policy API (static key) |
-| `infra/mcp-underwriting/` | Minimal Underwriting MCP server (static bearer, `run_query`) |
+| `infra/` (root azd project) | Deploys web + Foundry + Policy API + Underwriting MCP Container Apps via `azd up` |
+| `setup/infra/policy-api/` | Minimal, intentionally over-scoped Policy API (static key) |
+| `setup/infra/mcp-underwriting/` | Minimal Underwriting MCP server (static bearer, `run_query`) |
 | `scripts/01_provision_entra.ps1` | Personas, groups, `svc-claims`, shared mailbox |
 | `scripts/02_provision_environments_dlp.ps1` | Environments, prod DLP, CA baseline |
 | `scripts/03_provision_sharepoint.ps1` | Sites + FAQ + **plant poisoned doc** |

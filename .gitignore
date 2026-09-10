@@ -31,3 +31,6 @@ Thumbs.db
 **/*.answers.local.md
 setup/**/secrets.*
 setup/**/*.local.json
+
+# compiled bicep ARM output
+infra/main.json
