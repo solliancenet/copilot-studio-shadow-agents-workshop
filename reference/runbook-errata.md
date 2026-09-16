@@ -146,6 +146,31 @@ subscription; the usual gate is **RBAC on it, not a missing Azure Plan** — res
 whether that subscription includes usable credit (the frequently-cited *~$200 / 30-day* MCA credit is
 unconfirmed for the Dev Program subscription) or whether it bills straight through.
 
+### Phase 1 · azd auth mode (`azd auth login` vs `az login`)
+
+`azd auth login` works on a default azd install, which uses azd's own built-in auth. If azd is configured to **delegate to the az CLI** (`auth.useAzCliAuth=true`), `azd auth login` errors with *"current auth mode is 'az cli': 'azd auth login' is disabled when the auth mode is delegated"* — in that mode azd rides on your **`az login`** credential, so run `az login` instead. To switch azd back to its own store: `azd config set auth.useAzCliAuth false`, then `azd auth login`. Either way, keep the azd/az identity, tenant, and subscription the same to avoid confusion.
+
+### Phase 1 · re-running azd / fresh environment
+
+- **Re-run against an existing env:** `azd env select <name>` — do **not** `azd env new <name>` (errors *"environment already exists"*).
+- **A brand-new env has no subscription/region.** Set them before `azd up`, or it fails non-interactively with *"prompt required … subscription"*:
+  `azd env set AZURE_SUBSCRIPTION_ID <sub-guid>` and `azd env set AZURE_LOCATION <region>`.
+- `SERVICE_*_IMAGE_NAME` / `SERVICE_*_RESOURCE_EXISTS` values linger in the env's `.env` after `azd down`; they are stale/cosmetic — ignore them.
+
+### Phase 1 · Foundry project soft-delete (AmlRp) — the re-provision trap
+
+Verified live (2026-09-16). Tearing down and re-provisioning the **same** azd env name can dead-end the Foundry layer:
+
+- `azd down --purge` does **not** purge the Foundry **project's** backing AmlRp workspace. It leaves a soft-deleted tombstone (`proj-<token>`) that blocks recreating the project name. Worse, **every failed `azd up` regenerates the tombstone**, so purge-and-retry never converges; the `aif-<token>` account can also stick in a `Failed` state.
+- The tombstone is invisible to every discovery surface checked: the Foundry portal, the Azure ML **Recently deleted** blade, `az cognitiveservices account list-deleted`, and all `Microsoft.MachineLearningServices` `deletedWorkspaces`/workspace list api-versions.
+- **Reliable fix — re-provision under a NEW env name** (`azd env new <name2>` → new `resourceToken` → an uncontaminated `proj-<newtoken>`). This deploys cleanly; the old poisoned name is simply abandoned.
+- **Manual purge recipe (only if you must keep the same name):**
+  1. Purge the project tombstone:
+     `az rest --method delete --url "https://management.azure.com/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.MachineLearningServices/workspaces/proj-<token>?api-version=2026-03-01&forceToPurge=true"`
+     (Use `az rest`, not `az ml workspace delete --permanently-delete` — the latter does a GET-before-DELETE that 404s on an invisible tombstone.)
+  2. If the account is `Failed`/soft-deleted: `az cognitiveservices account delete -g <rg> -n aif-<token>` then `az cognitiveservices account purge -g <rg> -n aif-<token> -l <region>`.
+  3. Retry `azd up`. Note this still loops if the underlying project create keeps failing — which is why the fresh-name path is preferred.
+
 ### Phase 3 · PAYG billing plan — region-lock & the wrong-plan trap
 
 The click-by-click for creating and linking the Copilot Studio PAYG billing plan now lives in the main

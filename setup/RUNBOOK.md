@@ -121,11 +121,13 @@ Azure spend). No separate billing setup.
 ```bash
 azd auth login
 azd env new halcourt-lab          # RG will be rg-halcourt-lab (azd creates it)
-azd env set POLICY_API_KEY '<generate-a-lab-only-key>'
-azd env set MCP_BEARER '<generate-a-lab-only-token>'
+azd env set POLICY_API_KEY "lab-$(openssl rand -hex 8)"   # any lab-only string — RECORD it
+azd env set MCP_BEARER   "lab-$(openssl rand -hex 8)"     # any lab-only string — RECORD it
 azd up                            # provisions + builds/pushes all images + deploys
 azd env get-values                # read POLICY_API_FQDN / UNDERWRITING_MCP_FQDN
 ```
+
+Record both secret values as you set them — you'll need them again later.
 
 `azd up` deploys the entire project (the demo web app + Foundry + the two weak apps) into
 `rg-halcourt-lab`.
