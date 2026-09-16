@@ -64,6 +64,13 @@ admin, SharePoint admin**, and — for the Module 5 CONTROL work — **Purview, 
 Defender** access. In a fresh tenant the Global Administrator covers all of these; if you split duties onto a
 separate technician later, grant those roles explicitly in Entra.
 
+### Phase 2 · groups created without members `[verify]`
+
+`01_provision_entra.ps1` creates the four groups (`Halcourt-Makers`, `HR-Team`, `Claims-Adjusters`,
+`All-Employees`) but assigns **no members**. `AGENTS.md` names the groups but does not currently specify
+membership. Confirm whether Phase 3 DLP / Conditional Access targeting and the downstream access paths need
+populated groups; if so, assign members (or extend the script) before relying on group-based targeting.
+
 ### Phase 0 · licensing details
 
 The licensing in step 3 is **two separate things** — do NOT treat "Copilot Studio / M365 E5 / Purview" as

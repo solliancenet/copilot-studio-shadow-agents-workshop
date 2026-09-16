@@ -143,21 +143,36 @@ point of Scenario E).
 
 ### Phase 2 — Entra identities & personas
 
+**Prerequisites:** the **Microsoft.Graph** PowerShell module — the script calls `Connect-MgGraph` with
+`User.ReadWrite.All` and `Group.ReadWrite.All` — plus **ExchangeOnlineManagement** for the shared-mailbox
+step below.
+
 ```powershell
 pwsh setup/scripts/01_provision_entra.ps1 -TenantId <tenant>
 ```
 
-If the Dev Program **content pack** was installed (~16 sample users such as Adele Vance, Alex Wilber, etc.
-visible in **Users → Active users**), map existing content-pack users to Halcourt personas instead of
-creating duplicates — the sandbox has a 25-seat cap. Only create accounts the pack does not cover (e.g.
-`svc-claims` service account, `it.helpdesk` shared mailbox, and any persona with no reasonable content-pack
-match). Pass `-ReuseContentPack` (or equivalent) to the script, and update `AGENTS.md` with the actual UPN
-mappings.
+Creates the eight personas in `AGENTS.md` (Ana, Marcus, Priya, Sam, Lena, Dev, **Tom Dean** — created
+enabled, disabled later in Phase 6.5 — and Jordan), the `svc-claims` service account, and the four groups
+(`Halcourt-Makers`, `HR-Team`, `Claims-Adjusters`, `All-Employees`).
 
-Creates every persona in `AGENTS.md` (Ana, Marcus, Priya, Sam, Lena, Dev, Jordan), the service account
-`svc-claims`, the `it.helpdesk` shared mailbox, and the groups. **Critically, it disables `tom.dean`**
-after his connections are created in later phases — the script leaves a marker; run the disable step
-(Phase 6.5) only *after* Tom's connections exist, so the orphan is real.
+**The `it.helpdesk` shared mailbox is a separate manual step.** Graph can't create shared mailboxes, so the
+script only prints a reminder — create it in Exchange Online:
+
+```powershell
+Connect-ExchangeOnline
+New-Mailbox -Shared -Name "IT Helpdesk" -PrimarySmtpAddress it.helpdesk@<domain>
+```
+
+This mailbox is the ambiguous owner of Policy Lookup Bot (see `AGENTS.md`), so it must exist.
+
+**Content pack installed?** The script has **no reuse mode** — it always creates all nine accounts. If the
+Dev Program content pack seeded ~16 sample users (Adele Vance, Alex Wilber, etc. under **Users → Active
+users**), running it as-is creates duplicates and can hit the sandbox **25-seat cap** (16 + 9 = 25, no
+headroom). To reuse pack users, **hand-edit the `$people` array** in the script — comment out any persona a
+pack user can cover — before running, then update `AGENTS.md` with the actual UPN mappings.
+
+**Tom Dean stays enabled now.** In Phase 6.5 — only *after* his shared connections exist — disable him by
+re-running `pwsh setup/scripts/01_provision_entra.ps1 -DisableDepartedOwner`, so the orphan is real.
 
 ### Phase 3 — Environments, DLP, Conditional Access
 
@@ -224,8 +239,9 @@ Author agents **only in the Phase 3 Dataverse-backed environments** (`Halcourt-P
 default environment has no Dataverse (if Copilot Studio shows no target environment, see Errata).
 
 **Phase 6.5 — orphan Tom Dean.** After Onboarding Guide and Sales Nudge exist and their **shared
-connections are owned by `tom.dean`**, disable Tom's account (the marker from Phase 2). The agents and
-connections must remain live — that is the orphan.
+connections are owned by `tom.dean`**, disable Tom's account by re-running
+`pwsh setup/scripts/01_provision_entra.ps1 -DisableDepartedOwner`. The agents and connections must remain
+live — that is the orphan.
 
 ### Phase 7 — Export the artifact pack
 
