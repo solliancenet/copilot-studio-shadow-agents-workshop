@@ -178,6 +178,15 @@ Verified live (2026-09-16). Tearing down and re-provisioning the **same** azd en
   2. If the account is `Failed`/soft-deleted: `az cognitiveservices account delete -g <rg> -n aif-<token>` then `az cognitiveservices account purge -g <rg> -n aif-<token> -l <region>`.
   3. Retry `azd up`. Note this still loops if the underlying project create keeps failing — which is why the fresh-name path is preferred.
 
+### Phase 3 · DLP cmdlet surface is unverified `[verify]`
+
+The DLP portion of `02_provision_environments_dlp.ps1` is marked `[verify]` throughout — the `New-DlpPolicy`
+/ `Set-DlpPolicy` parameter names, the `connectorGroups` classification schema, and the single-environment
+scoping enum (`OnlyEnvironments`) are all unconfirmed against the delivery-date
+Microsoft.PowerApps.Administration module. It may not apply cleanly. After running, **confirm
+`Halcourt-Prod-DLP` exists, carries the intended business/non-business split, and is scoped to Halcourt-Prod
+only** (PPAC → Data policies); re-scope or recreate by hand if the cmdlets drifted.
+
 ### Phase 3 · PAYG billing plan — region-lock & the wrong-plan trap
 
 The click-by-click for creating and linking the Copilot Studio PAYG billing plan now lives in the main

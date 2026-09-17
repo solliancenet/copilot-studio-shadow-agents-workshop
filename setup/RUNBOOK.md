@@ -176,14 +176,23 @@ re-running `pwsh setup/scripts/01_provision_entra.ps1 -DisableDepartedOwner`, so
 
 ### Phase 3 — Environments, DLP, Conditional Access
 
+**Prerequisites:** the **Microsoft.PowerApps.Administration.PowerShell** module (`Add-PowerAppsAccount`) and
+the **pac CLI**.
+
 ```powershell
 pwsh setup/scripts/02_provision_environments_dlp.ps1
 ```
 
-Creates the four environments (`Halcourt (default)`, `Halcourt-Prod`, `Claims-Test`, `Maker-Sandbox`),
-applies `Halcourt-Prod-DLP` to **Prod only**, and creates the baseline CA policies
-(`CA-Require-MFA-Admins`, `CA-Block-Legacy-Auth`). It deliberately leaves Default / Claims-Test / Sandbox
-**without DLP** and creates **no** CA policy targeting workload identities — those gaps drive Module 5.
+Creates the four environments (`Halcourt (default)`, `Halcourt-Prod`, `Claims-Test`, `Maker-Sandbox`) and
+applies `Halcourt-Prod-DLP` to **Prod only**. It deliberately leaves Default / Claims-Test / Maker-Sandbox
+**without DLP** — that gap drives Module 5. `Halcourt-Prod` is also marked a **Managed Environment**; the
+script does this best-effort, so if the cmdlet path fails it says so — enable it by hand in PPAC and confirm
+it took.
+
+**Conditional Access is a separate manual step.** CA policies aren't creatable from the Power Platform
+cmdlets, so the script only prints reminders. In **Entra ID**, create the baseline `CA-Require-MFA-Admins`
+and `CA-Block-Legacy-Auth`, and deliberately create **no** CA policy targeting workload/agent identities —
+that omission is a planted Module 5 finding.
 
 **Then wire Copilot Studio pay-as-you-go billing (manual).** Do this only after the environments exist —
 the billing plan is region-locked and must match the environment's region, so the environment has to come
