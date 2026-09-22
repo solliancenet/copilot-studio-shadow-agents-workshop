@@ -13,6 +13,13 @@ answer key, and provisioning kit are facilitator-only and excluded from the site
 The narrative arc is **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE** against a fictional
 insurer, **Halcourt Mutual**.
 
+## Environment
+
+`az` and `pac` sign-in state is **project-local**: `.azure/` and `.pac/` in the repo root (gitignored),
+not your home directory. It applies automatically in a VS Code terminal opened on this repo folder, in
+Claude Code, and in `infra/*.sh`; in any other shell run `source scripts/env.sh` first. Sign in from
+such a shell, or the scripts won't see your login.
+
 ## Commands
 
 ```bash
@@ -21,7 +28,11 @@ bundle exec jekyll serve       # local preview at http://localhost:4000/copilot-
 bundle exec jekyll build       # production build into _site/
 ```
 
-Dev container: `.devcontainer/devcontainer.json` (Jekyll image) runs `bundle install` on create.
+Dev container: `.devcontainer/` (Jekyll image + the `setup/RUNBOOK.md` provisioning tooling — az/Bicep,
+azd, pac, PowerShell 7 + modules, pandoc) runs `bundle install` on create. Every provisioning phase runs
+in it except Phase 7 and teardown, which need the Power Platform admin module — it only signs in on
+Windows (the Windows build VM). The container's `docker` CLI drives the host's daemon, so it can start/stop
+that VM (`setup/windows-vm/compose.yaml`, which always runs on the host).
 
 ## Architecture
 
@@ -103,6 +114,11 @@ relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
   (or a rendered `AGENTS/PLANNING/CLAUDE` page) reach `_site/`. Do not use these strings in `docs/`.
   Excluded files are listed in `_config.yml` `exclude:` and CI re-checks `_site/` every build, so VERIFY
   THE EXCLUDE LIST BEFORE EVERY DEPLOY — a prior workshop shipped its answer key to the live site.
+- **Canonical vs live names:** `AGENTS.md`, `docs/` and the artifact pack use canonical names
+  (`marcus.webb@halcourtmutual.onmicrosoft.com`, `Claims-Test`). A live build is an *estate* whose names
+  carry an estate id and the tenant's own domain (`marcus.webb.mgray@<domain>`, `Claims-Test-mgray`) so
+  several can share a tenant — rule in `AGENTS.md` → *Live estate naming*, code in `setup/scripts/_estate.ps1`.
+  Never hard-code live names in `docs/`.
 - **CLOSES IT / DENTS IT / MISSES IT** is the Module 5 verdict vocabulary and *is* allowed in published
   pages (attendees fill blank verdict cells). The *filled* answer matrix stays in `AGENTS.md`.
 - **Hybrid lab model:** every analysis task must be completable from the exported **artifact pack**, not

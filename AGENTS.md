@@ -24,17 +24,35 @@
 | Thing | Canonical value |
 |---|---|
 | Org | **Halcourt Mutual** (mid-size regulated insurer) |
-| Tenant | `halcourtmutual.onmicrosoft.com` |
+| Tenant | `halcourtmutual.onmicrosoft.com` — the **canonical** domain, used by this file, the artifact pack and the lab pages. A live lab tenant keeps the domain Microsoft assigned it (e.g. `0zwdt94t.onmicrosoft.com`); see **Live estate naming** below. |
 | Lab infra endpoints | Azure Container Apps default FQDNs (`*.azurecontainerapps.io`) recorded from the Phase 1 deployment outputs — facilitator-controlled, safe; no custom domain or DNS |
 | Internal Policy API | `https://<policy-api-fqdn>/policy` (`<policy-api-fqdn>` = `ca-policyapi-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
 | Underwriting MCP server | `https://<mcp-fqdn>/underwriting` (`<mcp-fqdn>` = `ca-underwritingmcp-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
+
+### Live estate naming
+
+Every identifier in this file is **canonical** — it is what the artifact pack, the answer keys and the lab
+pages use. A live build is an **estate**: several facilitators can build one in the same tenant, each under
+a short **estate id** (their alias, e.g. `mgray`), and every tenant-scoped name it creates is derived from
+the canonical one so estates never collide (`setup/scripts/_estate.ps1`; RUNBOOK → *Estates*):
+
+| Canonical | Live (estate `mgray`, tenant domain `0zwdt94t.onmicrosoft.com`) | Rule |
+|---|---|---|
+| `marcus.webb@halcourtmutual.onmicrosoft.com` | `marcus.webb.mgray@0zwdt94t.onmicrosoft.com` | `<alias>.<estate>@<tenant domain>` |
+| Marcus Webb | Marcus Webb (mgray) | `<name> (<estate>)` |
+| `Claims-Test`, `Halcourt-Prod-DLP`, `HR-Benefits`, `Halcourt-Makers` | `Claims-Test-mgray`, `Halcourt-Prod-DLP-mgray`, `HR-Benefits-mgray`, `Halcourt-Makers-mgray` | `<name>-<estate>` |
+| Agents in `Halcourt (default)` | `Expense Helper (mgray)`, `Onboarding Guide (mgray)` | `<name> (<estate>)` — the environment is shared |
+
+Shared by every estate in a tenant, so **not** renamed: the `Halcourt (default)` environment and the
+Conditional Access baseline. The aliases (`ana.reyes`, `svc-claims`, `it.helpdesk`, …) and names stay the
+fixed identifiers; `05_export_artifact_pack.ps1 -Canonicalize` maps a live estate back to this canon.
 
 ### Environments
 
 | Environment | Type | DLP | Role in the story |
 |---|---|---|---|
 | `Halcourt (default)` | Default | **None** | Everyone can build. Shadow/orphan danger zone. |
-| `Halcourt-Prod` | Production (Managed) | `Halcourt-Prod-DLP` (baseline business/non-business split) | Customer service, sales, HR agents. |
+| `Halcourt-Prod` | Production (Managed) | `Halcourt-Prod-DLP` (sensitive connectors grouped as business; business-by-default so agents publish) | Customer service, sales, HR agents. |
 | `Claims-Test` | Sandbox → *de facto* Production | **None** | The "test" env that quietly became production. |
 | `Maker-Sandbox` | Developer / personal productivity | **None** | Origin of shadow agents. |
 
@@ -51,13 +69,33 @@
 | **Tom Dean** | `tom.dean@halcourtmutual.onmicrosoft.com` | **Departed admin — account DISABLED** | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. |
 | Jordan Blake | `jordan.blake@halcourtmutual.onmicrosoft.com` | Low-privilege employee | The "requesting user" for confused-deputy demos. Can chat with agents; personally entitled to almost nothing. |
 | svc-claims | `svc-claims@halcourtmutual.onmicrosoft.com` | **Service account** | Owns the shared Dataverse connection Claims Copilot runs on. Over-permissioned. |
-| IT Helpdesk | `it.helpdesk@halcourtmutual.onmicrosoft.com` | **Shared mailbox** | Ambiguous "owner" of Policy Lookup Bot — nobody personally accountable. |
+| IT Helpdesk | `it.helpdesk@halcourtmutual.onmicrosoft.com` | **Shared mailbox** | Ambiguous "owner" of Policy Lookup Bot — nobody personally accountable. Sign-in **enabled** (a shared mailbox is created disabled) so it can own the agent — itself a finding. |
 
-**Groups:** `Halcourt-Makers`, `HR-Team`, `Claims-Adjusters`, `All-Employees`.
+**Groups** (Entra security groups):
+
+| Group | Members | Why |
+|---|---|---|
+| `All-Employees` | every persona: Ana, Marcus, Priya, Sam, Lena, Dev, Tom, Jordan (not `svc-claims`) | the audience agents and shared connections are shared with; can read the FAQ |
+| `HR-Team` | Marcus | edits HR-Benefits — the reach Benefits Buddy inherits |
+| `Claims-Adjusters` | Priya, Sam (the adjusters on the seeded claims) | edits Claims-Knowledge; shares `DV-Claims-Shared` |
+| `Halcourt-Makers` | Marcus, Priya, Sam, Lena, Dev, Tom | everyone who builds an agent |
+
+**SharePoint access** (the permission shape Scenarios A and B depend on):
+
+| Site | Owners | Members (edit) | Visitors (read) |
+|---|---|---|---|
+| `HR-Benefits` | facilitator | `HR-Team` | `All-Employees` — but **not** `Leadership/`, which stops inheriting and drops the visitors |
+| `Claims-Knowledge` | facilitator | `Claims-Adjusters` | `All-Employees` |
+
+So Marcus can read `Leadership/2026-comp-bands.xlsx` and Jordan cannot — the agent built on Marcus's
+reach can surface what the asking employee is denied (Scenario B).
 
 **Agent identities (auto-created Entra identities, "since March 2026" behavior).** Naming pattern
 `cs-agent-<slug>-<env>`. Each agent below lists its identity. These are the workload identities Module 3
-teaches attendees to enumerate.
+teaches attendees to enumerate. In a live build each is an `agentIdentity` service principal
+(`servicePrincipalType: ServiceIdentity`) created with the agent and named **`<agent name> (Microsoft
+Copilot Studio)`**; `cs-agent-<slug>-<env>` is the canonical label the artifact pack uses for it (verified
+2026-09-19).
 
 ### Supporting infrastructure
 
@@ -65,11 +103,11 @@ teaches attendees to enumerate.
 |---|---|---|
 | Policy API | Container App at `<policy-api-fqdn>/policy`. Endpoints: `GET /policy/{id}` (intended), **plus** `GET /policy/all` and `GET /customer/{id}` (excess). Auth: a **single static API key**, full scope. | Scenario E (HTTP), Scenario C (excess). |
 | Underwriting MCP | MCP server exposing `get_quote`, `get_risk_score`, **plus** `run_query` (arbitrary DB query). Auth: **static shared bearer token**. | Scenario E (MCP). |
-| SharePoint `HR-Benefits` | Whole-site indexed for grounding, **including** subfolder `Leadership/` with `2026-comp-bands.xlsx` (exec comp). Contains planted `Open-Enrollment-FAQ.docx`. | Scenario A, B. |
+| SharePoint `HR-Benefits` | `Shared Documents` whole-site indexed for grounding, **including** subfolder `Leadership/` with `2026-comp-bands.xlsx` (exec comp) and the planted `Open-Enrollment-FAQ.docx`. Also a **separate `HR FAQ` library** — one clean, all-staff FAQ, no payload, no `Leadership/` — for the decoy. | Scenario A, B; decoy. |
 | SharePoint `Claims-Knowledge` | Claims procedures. Grounds Claims Copilot. | Context. |
 | Dataverse `Claim`, `Customer` | `Customer` holds PII (SSN, DOB). **No row-level security.** | Scenario C, D. |
-| `Halcourt-Prod-DLP` | Baseline business/non-business connector split; applied to Prod **only**. | Module 5 (DLP). |
-| Conditional Access | `CA-Require-MFA-Admins`, `CA-Block-Legacy-Auth`. **No policy targeting workload/agent identities.** | Module 5 (CA). |
+| `Halcourt-Prod-DLP` | Sensitive connectors (Dataverse, SharePoint, O365 Outlook/Users, + the Copilot Studio platform connector) grouped **business**, **business-by-default**, nothing blocked; applied to Prod **only**. A strict business/non-business split blocks agent publish (see errata), so the baseline groups business and blocks nothing — it still **MISSES** the agent-identity risks, which is the Module 5 point. | Module 5 (DLP). |
+| Conditional Access | `CA-Require-MFA-Admins`, `CA-Block-Legacy-Auth`. **No policy targeting workload/agent identities.** Security defaults **off** — replaced by these two in Phase 0 (they block device-code sign-in and can't coexist with CA). | Module 5 (CA). |
 | Purview | Sensitivity label `Confidential-PII`; SSN sensitive-info-type. **Not applied** to `2026-comp-bands.xlsx` at start. | Module 5 (Purview). |
 
 ---
@@ -174,14 +212,20 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 ### 9. HR FAQ v2 (copy) — `cs-agent-hr-faq-v2-prod` — **DECOY / noise**
 - **Env / Owner:** Halcourt-Prod / Marcus Webb.
 - **Looks risky** (a duplicate "v2", HR data, sounds like sprawl) but is **benign**: read-only, grounded
-  on a single all-staff-published FAQ library, no actions, least-privilege SharePoint read.
+  on the **`HR FAQ` document library** in `HR-Benefits` only — a dedicated, all-staff-published library
+  holding one clean FAQ, **not** the whole site, **not** `Shared Documents` (which holds the poisoned
+  `Open-Enrollment-FAQ.docx` and `Leadership/`). No actions, least-privilege SharePoint read.
 - **No planted problem.** Teaches: risk is *effective access*, not vibes. Attendees who flag it must
-  justify why, and inspection shows it is fine.
+  justify why, and inspection shows it is fine — its grounding is scoped to the one clean library, so it
+  can reach neither the injection payload nor the comp bands.
 
 ### 10. Meeting Notes Summarizer — `cs-agent-meeting-notes-sandbox` — **DECOY / noise**
 - **Env / Owner:** Maker-Sandbox / Dev Kim.
-- Summarizes the maker's **own** OneDrive notes; no shared data, no actions. **Benign.** Noise to force
-  real inventory rather than "sandbox = bad" pattern-matching.
+- Summarizes the maker's **own** OneDrive notes (`Dev-Kim-Meeting-Notes.docx` in Dev's OneDrive `Documents`,
+  seeded in Phase 4b); no shared data, no actions. **Benign.** Noise to force real inventory rather than
+  "sandbox = bad" pattern-matching.
+- **Prerequisite:** Dev's OneDrive must be provisioned and seeded first (Phase 4b) — a Dev Program sandbox
+  does not auto-provision it, and provisioning is an app-only SharePoint-admin call.
 
 ---
 
