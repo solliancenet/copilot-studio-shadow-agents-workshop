@@ -1,0 +1,27 @@
+displayName: Benefits Buddy
+schemaName: cr3f5_BenefitsBuddy
+accessControlPolicy: GroupMembership
+authenticationMode: Integrated
+authenticationTrigger: Always
+authorizedSecurityGroupIds:
+  - 6ab14226-1bdb-4a62-9298-11443b1d9daa
+configuration:
+  settings:
+    GenerativeActionsEnabled: true
+
+  isAgentConnectable: true
+  gPTSettings:
+    defaultSchemaName: cr3f5_BenefitsBuddy.gpt.default
+
+  aISettings:
+    useModelKnowledge: true
+    isFileAnalysisEnabled: true
+    isSemanticSearchEnabled: true
+    optInUseLatestModels: false
+
+  recognizer:
+    kind: GenerativeAIRecognizer
+
+publishedOn: 2026-09-19T13:56:23.0000000Z
+template: default-2.1.0
+language: 1033

@@ -1,0 +1,191 @@
+{
+  "_comment": "FACILITATOR-ONLY. Estate-agnostic metadata for Phase 6 agent provisioning (06_provision_agents). The committed pac workspace under 'workspace/' holds each agent's instructions, knowledge and tools; this manifest holds what the workspace YAML does NOT: owner, environment, the connections to bind, and the chat audience. The engine resolves canonical names to this estate's live ids at run time (see _estate.ps1). 'capture' = how the workspace is obtained: 'authored' (benign, committed here) or 'clone' (build once in the portal, then `pac copilot clone` into setup/agents/ and commit - used for the planted agents whose config is not authored here).",
+  "environments": {
+    "Halcourt-Prod": "estate-suffixed",
+    "Claims-Test": "estate-suffixed",
+    "Maker-Sandbox": "estate-suffixed",
+    "Halcourt (default)": "shared"
+  },
+  "_connections_comment": "OAuth connections the engine creates and authenticates per owner (headless consent). connector = the shared_* connector id; params = extra connectionParameters (e.g. the Graph HTTP connector needs its resource URIs); shareWith = a group to share it with (note: OAuth connections often refuse sharing - ConnectionSharingNotAllowed - the engine warns and continues). HTTP actions, MCP tools and Power Automate flows are NOT here: they are configured inside the agent workspace/flow, not as consented connections.",
+  "connections": {
+    "SP-HR-Benefits": {
+      "connector": "shared_sharepointonline",
+      "environment": "Halcourt-Prod",
+      "owner": "marcus.webb"
+    },
+    "SP-HR-FAQ": {
+      "connector": "shared_sharepointonline",
+      "environment": "Halcourt-Prod",
+      "owner": "marcus.webb"
+    },
+    "DV-Claims-Shared": {
+      "connector": "shared_commondataserviceforapps",
+      "environment": "Claims-Test",
+      "owner": "svc-claims",
+      "shareWith": "Claims-Adjusters"
+    },
+    "SP-Onboarding": {
+      "connector": "shared_sharepointonline",
+      "environment": "Halcourt (default)",
+      "owner": "tom.dean"
+    },
+    "O365-Outlook-Onboarding": {
+      "connector": "shared_office365",
+      "environment": "Halcourt (default)",
+      "owner": "tom.dean"
+    },
+    "Graph-DevKim": {
+      "connector": "shared_webcontents",
+      "environment": "Maker-Sandbox",
+      "owner": "dev.kim",
+      "params": {
+        "Token:ResourceUri": "https://graph.microsoft.com",
+        "BaseResourceUrl": "https://graph.microsoft.com"
+      }
+    },
+    "DV-CRM-Shared": {
+      "connector": "shared_commondataserviceforapps",
+      "environment": "Halcourt-Prod",
+      "owner": "tom.dean",
+      "shareWith": "Halcourt-Makers"
+    },
+    "OneDrive-DevKim": {
+      "connector": "shared_onedriveforbusiness",
+      "environment": "Maker-Sandbox",
+      "owner": "dev.kim"
+    }
+  },
+  "_flows_comment": "Copilot-triggered cloud flows the engine creates (as the owner) BEFORE agents, so ${FLOW:<name>} resolves. definition = a file under setup/data/.",
+  "flows": [
+    {
+      "name": "Submit and auto-approve expense under $500",
+      "owner": "sam.olsen",
+      "environment": "Halcourt (default)",
+      "definition": "expense-approve-flow.json"
+    }
+  ],
+  "agents": [
+    {
+      "slug": "benefits-buddy",
+      "display": "Benefits Buddy",
+      "workspace": "benefits-buddy",
+      "owner": "marcus.webb",
+      "environment": "Halcourt-Prod",
+      "connections": [
+        "SP-HR-Benefits"
+      ],
+      "chatAudience": "All-Employees",
+      "planted": true,
+      "capture": "clone"
+    },
+    {
+      "slug": "claims-copilot",
+      "display": "Claims Copilot",
+      "workspace": "claims-copilot",
+      "owner": "priya.nair",
+      "environment": "Claims-Test",
+      "connections": [
+        "DV-Claims-Shared"
+      ],
+      "chatAudience": "All-Employees",
+      "planted": true,
+      "capture": "authored"
+    },
+    {
+      "slug": "policy-lookup-bot",
+      "display": "Policy Lookup Bot",
+      "workspace": "policy-lookup-bot",
+      "owner": "it.helpdesk",
+      "environment": "Halcourt-Prod",
+      "connections": [],
+      "chatAudience": "All-Employees",
+      "planted": true,
+      "capture": "authored"
+    },
+    {
+      "slug": "underwriting-assistant",
+      "display": "Underwriting Assistant",
+      "workspace": "underwriting-assistant",
+      "owner": "priya.nair",
+      "environment": "Halcourt-Prod",
+      "connections": [],
+      "chatAudience": "Halcourt-Makers",
+      "planted": true,
+      "capture": "authored"
+    },
+    {
+      "slug": "expense-helper",
+      "display": "Expense Helper",
+      "workspace": "expense-helper",
+      "owner": "sam.olsen",
+      "environment": "Halcourt (default)",
+      "connections": [],
+      "chatAudience": "All-Employees",
+      "planted": true,
+      "capture": "authored",
+      "estateSuffixName": true
+    },
+    {
+      "slug": "onboarding-guide",
+      "display": "Onboarding Guide",
+      "workspace": "onboarding-guide",
+      "owner": "tom.dean",
+      "environment": "Halcourt (default)",
+      "connections": [
+        "O365-Outlook-Onboarding"
+      ],
+      "chatAudience": "All-Employees",
+      "planted": true,
+      "capture": "authored",
+      "estateSuffixName": true
+    },
+    {
+      "slug": "team-wiki",
+      "display": "Team Wiki",
+      "workspace": "team-wiki",
+      "owner": "dev.kim",
+      "environment": "Maker-Sandbox",
+      "connections": [
+        "Graph-DevKim"
+      ],
+      "chatAudience": "Owner",
+      "planted": true,
+      "capture": "authored"
+    },
+    {
+      "slug": "sales-nudge",
+      "display": "Sales Nudge",
+      "workspace": "sales-nudge",
+      "owner": "lena.ford",
+      "environment": "Halcourt-Prod",
+      "connections": [
+        "DV-CRM-Shared"
+      ],
+      "chatAudience": "Halcourt-Makers",
+      "planted": true,
+      "capture": "authored"
+    },
+    {
+      "slug": "hr-faq-v2",
+      "display": "HR FAQ v2 (copy)",
+      "workspace": "hr-faq-v2",
+      "owner": "marcus.webb",
+      "environment": "Halcourt-Prod",
+      "connections": [],
+      "chatAudience": "All-Employees",
+      "planted": false,
+      "capture": "authored"
+    },
+    {
+      "slug": "meeting-notes",
+      "display": "Meeting Notes Summarizer",
+      "workspace": "meeting-notes",
+      "owner": "dev.kim",
+      "environment": "Maker-Sandbox",
+      "connections": [],
+      "chatAudience": "Owner",
+      "planted": false,
+      "capture": "authored"
+    }
+  ]
+}

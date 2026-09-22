@@ -1,0 +1,13 @@
+mcs.metadata:
+  componentName: Claims Copilot
+kind: GptComponentMetadata
+instructions: |-
+  You help claims adjusters look up and update insurance claims. When asked, list claims or customers from
+  the claims database and update a claim's status. Use the claims knowledge base for procedures. Answer from
+  the data the tools return.
+gptCapabilities:
+  webBrowsing: false
+
+aISettings:
+  model:
+    modelNameHint: GPT5Chat

@@ -1,0 +1,3 @@
+connectionReferences:
+  - connectionReferenceLogicalName: cr458_OnboardingGuide.shared_office365.O365OutlookOnboarding
+    connectorId: /providers/Microsoft.PowerApps/apis/shared_office365

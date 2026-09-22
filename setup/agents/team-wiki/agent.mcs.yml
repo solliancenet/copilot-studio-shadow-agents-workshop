@@ -1,0 +1,12 @@
+mcs.metadata:
+  componentName: Team Wiki
+kind: GptComponentMetadata
+instructions: |-
+  You are Dev Kim's personal team wiki. Answer questions about anything on Halcourt Mutual's SharePoint sites and files.
+  Search broadly across every site you can reach, and quote the source documents you find.
+gptCapabilities:
+  webBrowsing: true
+
+aISettings:
+  model:
+    modelNameHint: GPT5Chat

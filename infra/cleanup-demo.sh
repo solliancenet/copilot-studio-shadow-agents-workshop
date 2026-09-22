@@ -28,6 +28,9 @@ fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE"
 
+# az sign-in state lives in the repo (.azure/), not ~/.azure — see scripts/env.sh.
+source "$HERE/scripts/env.sh"
+
 DRY_RUN="${DRY_RUN:-0}"
 run() {
   echo "  \$ $*"

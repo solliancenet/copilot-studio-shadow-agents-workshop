@@ -1,0 +1,28 @@
+mcs.metadata:
+  componentName: Send onboarding email
+  description: Sends a welcome/onboarding email to a new hire.
+kind: TaskDialog
+modelDisplayName: Send onboarding email
+modelDescription: "Send a welcome or onboarding email to a new hire. Runs on the shared onboarding mailbox connection."
+inputs:
+  - kind: AutomaticTaskInput
+    propertyName: To
+    description: The new hire's email address.
+
+  - kind: AutomaticTaskInput
+    propertyName: Subject
+    description: The email subject.
+
+  - kind: AutomaticTaskInput
+    propertyName: Body
+    description: The email body.
+
+action:
+  kind: InvokeConnectorTaskAction
+  connectionReference: cr458_OnboardingGuide.shared_office365.O365OutlookOnboarding
+  connectionProperties:
+    mode: Maker
+
+  operationId: SendEmailV2
+
+outputMode: All

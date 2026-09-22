@@ -1,0 +1,7 @@
+mcs.metadata:
+  componentName: Claims-Knowledge-mgray
+  description: Claims procedures site.
+kind: KnowledgeSourceConfiguration
+source:
+  kind: SharePointSearchSource
+  site: https://0zwdt94t.sharepoint.com/sites/Claims-Knowledge-mgray

@@ -1,0 +1,20 @@
+mcs.metadata:
+  componentName: List claims
+  description: Lists claim rows from the claims database.
+kind: TaskDialog
+modelDisplayName: List claims
+modelDescription: "List claim rows from the claims database. Runs on the shared claims service-account connection."
+inputs:
+  - kind: ManualTaskInput
+    propertyName: entityName
+    value: mm_claims
+
+action:
+  kind: InvokeConnectorTaskAction
+  connectionReference: cr3f5_ClaimsCopilot.shared_commondataserviceforapps.DVClaimsShared
+  connectionProperties:
+    mode: Maker
+
+  operationId: ListRecords
+
+outputMode: All

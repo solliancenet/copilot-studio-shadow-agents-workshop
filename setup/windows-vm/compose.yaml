@@ -1,0 +1,48 @@
+# Windows build VM — a full Windows desktop running inside Docker (dockur/windows: QEMU/KVM).
+# For the provisioning steps that need Windows: Add-PowerAppsAccount (Phases 3, 7, teardown) and
+# Microsoft.Xrm.Data.PowerShell (Phase 5). See setup/RUNBOOK.md → "Windows build VM".
+#
+# It always runs on the HOST's Docker (Linux, or Windows 11 with Docker Desktop on WSL2). Start it from a
+# host terminal (bash or PowerShell) or from the dev container terminal, which drives the host's daemon:
+#
+#   docker compose -f setup/windows-vm/compose.yaml up -d
+#
+# Then open http://localhost:8006 (desktop in the browser) or RDP to localhost:3389.
+# The repo is drive Z: in Windows (also the "Shared" folder on the desktop).
+#
+# Override any ${WINVM_*} value in setup/windows-vm/.env (gitignored).
+
+name: halcourt-winvm
+
+services:
+  windows:
+    image: dockurr/windows
+    container_name: halcourt-winvm
+    environment:
+      VERSION: "${WINVM_VERSION:-11e}"          # Windows 11 Enterprise evaluation — no key needed for a lab build
+      USERNAME: "${WINVM_USERNAME:-halcourt}"
+      PASSWORD: "${WINVM_PASSWORD:-Lab-Only-Passw0rd!}"
+      RAM_SIZE: "${WINVM_RAM_SIZE:-8G}"
+      CPU_CORES: "${WINVM_CPU_CORES:-4}"
+      DISK_SIZE: "${WINVM_DISK_SIZE:-64G}"
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      # Loopback only: the web viewer has no login of its own.
+      - "127.0.0.1:8006:8006"
+      - "127.0.0.1:3389:3389/tcp"
+      - "127.0.0.1:3389:3389/udp"
+    # Bind sources must be HOST paths. From the dev container, LOCAL_WORKSPACE_FOLDER (devcontainer.json)
+    # is the repo's host path; from a host terminal it is unset and the relative paths apply.
+    volumes:
+      - winvm-storage:/storage   # the VM disk; survives `down`, removed by `down -v`
+      - ${LOCAL_WORKSPACE_FOLDER:-../..}:/shared                         # this repo
+      - ${LOCAL_WORKSPACE_FOLDER:-../..}/setup/windows-vm/oem:/oem       # copied to C:\OEM; install.bat runs at the end of Windows setup
+    restart: unless-stopped
+    stop_grace_period: 2m
+
+volumes:
+  winvm-storage:

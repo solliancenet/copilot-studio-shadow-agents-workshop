@@ -1,0 +1,46 @@
+{
+  "_comment": "FACILITATOR-ONLY. Definition for the Expense Helper planted flow 'Submit and auto-approve expense under $500'. A Copilot-triggered cloud flow (trigger type Request / kind VirtualAgent) that auto-approves any expense under 500 and runs as its owner (Sam, a real approver) - Scenario D (confused deputy). 06_provision_agents.ps1 wraps this in a workflow record (category 5), owned by the flow's manifest owner, and activates it; the agent invokes it by name via ${FLOW:...} + InvokeFlowAction.",
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "VirtualAgent",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "title": "Amount",
+              "type": "number",
+              "x-ms-dynamically-added": true,
+              "description": "Expense amount",
+              "x-ms-content-hint": "NUMBER"
+            }
+          },
+          "required": ["amount"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Respond_to_the_agent": {
+      "type": "Response",
+      "kind": "VirtualAgent",
+      "runAfter": {},
+      "inputs": {
+        "statusCode": 200,
+        "body": {
+          "status": "@{if(less(triggerBody()?['amount'], 500), 'Auto-approved', 'Needs manual approval')}"
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "status": { "title": "status", "type": "string", "x-ms-dynamically-added": true }
+          }
+        }
+      }
+    }
+  }
+}
