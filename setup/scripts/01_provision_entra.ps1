@@ -1,60 +1,140 @@
 <#
 FACILITATOR-ONLY. Phase 2 — Entra identities & personas for the Halcourt Mutual demo estate.
-Creates the personas, the service account, the shared mailbox, and the groups from AGENTS.md.
+Creates the personas, the service account, and the groups from AGENTS.md, and prints the command for the
+shared mailbox (Exchange Online creates that, not Graph).
 
 IMPORTANT ordering: create tom.dean ENABLED now. Only AFTER his shared connections exist (Phase 6),
 run this script again with -DisableDepartedOwner to orphan him. That timing makes the orphan real.
 
 Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWrite.All).
-Lines marked [verify] depend on tenant specifics.
+Signs in to Graph by reusing the az sign-in when it can (_auth.ps1); otherwise with a device code (the
+browser redirect of an interactive login can't reach a dev container).
+
+Estate (setup/scripts/_estate.ps1): every name carries this build's estate id, so several people can build
+in one tenant without adopting each other's accounts - marcus.webb.<estate>@<domain>, "Marcus Webb
+(<estate>)", Halcourt-Makers-<estate>. Pass -Estate or set HALCOURT_ESTATE.
+
+Domain: the canon writes every UPN as <alias>@halcourtmutual.onmicrosoft.com, but a lab tenant gets
+whatever domain Microsoft assigns (a Dev Program sandbox: something like 0zwdt94t.onmicrosoft.com), and
+an *.onmicrosoft.com domain can't be added to another tenant. So the personas use the TENANT's default
+verified domain; -DomainSuffix overrides it and must be a verified domain of the tenant.
+
+Safe to re-run: users and groups that already exist are left as they are.
 #>
 param(
+  [string]$Estate = $env:HALCOURT_ESTATE,            # this build's estate id, e.g. mgray (see _estate.ps1)
   [string]$TenantId,                                 # optional; target lab tenant (id or *.onmicrosoft.com)
-  [string]$DomainSuffix = 'halcourtmutual.onmicrosoft.com',
+  [string]$DomainSuffix,                             # default: the tenant's default verified domain
   [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only
   [switch]$DisableDepartedOwner
 )
 
 $ErrorActionPreference = 'Stop'
-$connectArgs = @{ Scopes = @('User.ReadWrite.All','Group.ReadWrite.All') }
-if ($TenantId) { $connectArgs['TenantId'] = $TenantId }
-Connect-MgGraph @connectArgs | Out-Null
+. (Join-Path $PSScriptRoot '_estate.ps1')
+$Estate = Resolve-Estate $Estate
+
+. (Join-Path $PSScriptRoot '_auth.ps1')
+Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All' -TenantId $TenantId
+# Connect-MgGraph can return without a session instead of throwing (e.g. sign-in timed out).
+if (-not (Get-MgContext)) { throw 'Connect-MgGraph did not establish a session.' }
+
+# Resolve the persona domain before touching anything, so a wrong domain can't leave a half-built estate.
+$org = (Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains,countryLetterCode').value[0]
+$verified = @($org.verifiedDomains | ForEach-Object { $_.name })
+if (-not $DomainSuffix) { $DomainSuffix = ($org.verifiedDomains | Where-Object { $_.isDefault } | Select-Object -First 1).name }
+if ($DomainSuffix -notin $verified) {
+  throw "'$DomainSuffix' is not a verified domain of this tenant. Verified domains: $($verified -join ', ')"
+}
+Write-Host "Estate: $Estate   Persona domain: $DomainSuffix"
+Write-Host "  canon <alias>@halcourtmutual.onmicrosoft.com  ->  live <alias>.$Estate@$DomainSuffix"
+# Usage location is required before a license can be assigned; use the tenant's country.
+$usageLocation = if ($org.countryLetterCode) { $org.countryLetterCode } else { 'US' }
+
+function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 
 if ($DisableDepartedOwner) {
-  Write-Host 'Disabling departed owner tom.dean (run this ONLY after his connections exist)...'
-  Update-MgUser -UserId "tom.dean@$DomainSuffix" -AccountEnabled:$false
-  Write-Host 'tom.dean disabled. Onboarding Guide + Sales Nudge connections must remain live.'
+  $tom = Get-Upn 'tom.dean'
+  Write-Host "Disabling departed owner $tom (run this ONLY after his connections exist)..."
+  Update-MgUser -UserId $tom -AccountEnabled:$false
+  Write-Host "$tom disabled. Onboarding Guide + Sales Nudge connections must remain live."
   return
 }
 
+# Canonical aliases and names (AGENTS.md); the estate id is added below.
 $people = @(
-  @{ First='Ana';    Last='Reyes'; Upn="ana.reyes@$DomainSuffix";    Note='Platform admin / CoE lead (attendee vantage)' }
-  @{ First='Marcus'; Last='Webb';  Upn="marcus.webb@$DomainSuffix";  Note='HR maker' }
-  @{ First='Priya';  Last='Nair';  Upn="priya.nair@$DomainSuffix";   Note='Claims/underwriting maker' }
-  @{ First='Sam';    Last='Olsen'; Upn="sam.olsen@$DomainSuffix";    Note='Finance approver + maker' }
-  @{ First='Lena';   Last='Ford';  Upn="lena.ford@$DomainSuffix";    Note='Sales manager' }
-  @{ First='Dev';    Last='Kim';   Upn="dev.kim@$DomainSuffix";      Note='Developer (broad SharePoint)' }
-  @{ First='Tom';    Last='Dean';  Upn="tom.dean@$DomainSuffix";     Note='Departed admin (disable in Phase 6.5)' }
-  @{ First='Jordan'; Last='Blake'; Upn="jordan.blake@$DomainSuffix"; Note='Low-privilege employee (confused-deputy path)' }
-  @{ First='Claims'; Last='Service'; Upn="svc-claims@$DomainSuffix"; DisplayName='Claims Service Account'; Note='Service account for the shared Dataverse connection' }
+  @{ Alias='ana.reyes';    Name='Ana Reyes';              Note='Platform admin / CoE lead (attendee vantage)' }
+  @{ Alias='marcus.webb';  Name='Marcus Webb';            Note='HR maker' }
+  @{ Alias='priya.nair';   Name='Priya Nair';             Note='Claims/underwriting maker' }
+  @{ Alias='sam.olsen';    Name='Sam Olsen';              Note='Finance approver + maker' }
+  @{ Alias='lena.ford';    Name='Lena Ford';              Note='Sales manager' }
+  @{ Alias='dev.kim';      Name='Dev Kim';                Note='Developer (broad SharePoint)' }
+  @{ Alias='tom.dean';     Name='Tom Dean';               Note='Departed admin (disable in Phase 6.5)' }
+  @{ Alias='jordan.blake'; Name='Jordan Blake';           Note='Low-privilege employee (confused-deputy path)' }
+  @{ Alias='svc-claims';   Name='Claims Service Account'; Note='Service account for the shared Dataverse connection' }
 )
 
 foreach ($p in $people) {
+  $upn = Get-Upn $p.Alias
+  if (Get-MgUser -Filter "userPrincipalName eq '$upn'" -ErrorAction SilentlyContinue) {
+    Write-Host "Exists:   $upn - leaving it as is."
+    continue
+  }
   $pwProfile = @{ Password = $InitialPassword; ForceChangePasswordNextSignIn = $false }
-  $displayName = if ($p.DisplayName) { $p.DisplayName } else { "$($p.First) $($p.Last)" }
-  Write-Host "Creating $($p.Upn) - $($p.Note)"
-  New-MgUser -AccountEnabled -DisplayName $displayName `
-    -UserPrincipalName $p.Upn -MailNickname ($p.Upn.Split('@')[0]) `
-    -PasswordProfile $pwProfile | Out-Null
+  Write-Host "Creating $upn - $($p.Note)"
+  New-MgUser -AccountEnabled -DisplayName (Get-EstateDisplayName $p.Name $Estate) `
+    -UserPrincipalName $upn -MailNickname (Get-EstateAlias $p.Alias $Estate) `
+    -UsageLocation $usageLocation -PasswordProfile $pwProfile | Out-Null
 }
 
-# it.helpdesk shared mailbox — [verify] created via Exchange Online (New-Mailbox -Shared) not Graph.
-Write-Host '[verify] Create the it.helpdesk shared mailbox in Exchange Online: New-Mailbox -Shared -Name "IT Helpdesk" -PrimarySmtpAddress it.helpdesk@'$DomainSuffix
+# it.helpdesk shared mailbox: Graph can't create one, Exchange Online can - and Connect-LabExchange reuses the
+# az sign-in (no device code). Owns Policy Lookup Bot; Phase 6 enables its sign-in + sets a password so it can
+# ROPC. Exchange provisions the mailbox asynchronously (it can take a minute to appear).
+$helpdesk = Get-EstateAlias 'it.helpdesk' $Estate
+$helpdeskUpn = "$helpdesk@$DomainSuffix"
+try {
+  Connect-LabExchange -Organization $DomainSuffix
+  if (Get-Mailbox -Identity $helpdeskUpn -ErrorAction SilentlyContinue) {
+    Write-Host "Exists:   shared mailbox $helpdeskUpn - leaving it as is."
+  } else {
+    Write-Host "Creating shared mailbox $helpdeskUpn"
+    New-Mailbox -Shared -Name (Get-EstateDisplayName 'IT Helpdesk' $Estate) -Alias $helpdesk -PrimarySmtpAddress $helpdeskUpn | Out-Null
+  }
+  Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+} catch {
+  # Not fatal: the mailbox is only needed by Phase 6, so report it and carry on building the rest.
+  Write-Warning "Could not create the it.helpdesk shared mailbox: $($_.Exception.Message.Split([Environment]::NewLine)[0])"
+  Write-Host 'MANUAL: create it in Exchange Online (Connect-ExchangeOnline -Device), then:'
+  Write-Host "  New-Mailbox -Shared -Name '$(Get-EstateDisplayName 'IT Helpdesk' $Estate)' -Alias $helpdesk -PrimarySmtpAddress $helpdeskUpn"
+}
 
-$groups = 'Halcourt-Makers','HR-Team','Claims-Adjusters','All-Employees'
-foreach ($g in $groups) {
+foreach ($canon in 'Halcourt-Makers','HR-Team','Claims-Adjusters','All-Employees') {
+  $g = Get-EstateName $canon $Estate
+  if (Get-MgGroup -Filter "displayName eq '$g'" -ErrorAction SilentlyContinue) {
+    Write-Host "Exists:   group $g - leaving it as is."
+    continue
+  }
   Write-Host "Creating group $g"
   New-MgGroup -DisplayName $g -MailEnabled:$false -SecurityEnabled:$true -MailNickname $g | Out-Null
 }
 
-Write-Host 'Phase 2 complete. Remember Phase 6.5: re-run with -DisableDepartedOwner after Tom''s connections exist.'
+# Group membership (AGENTS.md -> Groups). Adds missing members, never removes any.
+$membership = [ordered]@{
+  'All-Employees'    = 'ana.reyes','marcus.webb','priya.nair','sam.olsen','lena.ford','dev.kim','tom.dean','jordan.blake'
+  'HR-Team'          = @('marcus.webb')
+  'Claims-Adjusters' = 'priya.nair','sam.olsen'
+  'Halcourt-Makers'  = 'marcus.webb','priya.nair','sam.olsen','lena.ford','dev.kim','tom.dean'
+}
+foreach ($canon in $membership.Keys) {
+  $g = Get-MgGroup -Filter "displayName eq '$(Get-EstateName $canon $Estate)'"
+  $current = @(Get-MgGroupMember -GroupId $g.Id -All | ForEach-Object Id)
+  $added = 0
+  foreach ($alias in $membership[$canon]) {
+    $u = Get-MgUser -UserId (Get-Upn $alias)
+    if ($u.Id -in $current) { continue }
+    New-MgGroupMember -GroupId $g.Id -DirectoryObjectId $u.Id
+    $added++
+  }
+  Write-Host "Group $($g.DisplayName): $($membership[$canon].Count) members ($added added)"
+}
+
+Write-Host "Phase 2 complete for estate '$Estate'. Remember Phase 6.5: re-run with -Estate $Estate -DisableDepartedOwner after Tom's connections exist."

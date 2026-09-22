@@ -1,203 +1,233 @@
 <#
-FACILITATOR-ONLY. Phase 3 — Environments, DLP, Conditional Access baseline.
+FACILITATOR-ONLY. Phase 3 - Environments and DLP.
 
-Creates the four environments, applies DLP to PROD ONLY, and notes the baseline CA policies
-(CA is manual — see below). Deliberately leaves Default / Claims-Test / Maker-Sandbox WITHOUT DLP,
-and creates NO Conditional Access policy targeting workload/agent identities — those omissions drive
-Module 5.
+Creates this estate's three environments and applies DLP to PROD ONLY. Deliberately leaves Default /
+Claims-Test / Maker-Sandbox WITHOUT DLP, and creates NO Conditional Access policy targeting workload/agent
+identities - those omissions drive Module 5. The CA baseline already exists: Phase 0 created it
+(00_conditional_access_baseline.ps1), because security defaults block the device-code sign-ins used here.
 
-Claims-Test is created WITH a Dataverse (Common Data Service) database so Phase 5
-(04_provision_dataverse.ps1) has a real *.crm.dynamics.com org URL to target. Prod also gets a DB
-because it hosts Dataverse-backed agents. Default and Maker-Sandbox stay as canon specifies.
+  Halcourt-Prod-<estate>  Production + Dataverse, Managed Environment, Halcourt-Prod-DLP-<estate>
+  Claims-Test-<estate>    Sandbox + Dataverse (Phase 5 seeds it)
+  Maker-Sandbox-<estate>  Developer + Dataverse, assigned to dev.kim.<estate> (his personal environment;
+                          Developer environments always come with Dataverse, and its agents need it)
+  Halcourt (default)      the tenant's default environment - shared by every estate; named once
 
-The org URLs / environment IDs of the created environments are echoed at the end — hand Claims-Test's
-*.crm.dynamics.com URL to Phase 5.
+Runs anywhere az is signed in to the lab tenant - the dev container, the host, or Windows - with no new
+sign-in: everything goes through the Power Platform admin API with az's saved token. It uses no PowerApps
+admin module (it can no longer create environments and only signs in on Windows) and no `pac admin create`
+(pac caches a token only for the resource it signed in for, so creating fails with "No token cache item
+found ... service.powerapps.com").
 
-Requires: Microsoft.PowerApps.Administration.PowerShell (Add-PowerAppsAccount) and pac CLI.
-Lines marked [verify] depend on tenant specifics / evolving 2026 surfaces.
+REGION (verified 2026-09-18): the API no longer takes a country. It requires a MACRO REGION
+(-MacroRegion north-america) and picks the country itself - `location` alone is rejected
+(MacroRegionRequired), both together are rejected, and properties.azureRegion is ignored. That tenant got
+Canada for every environment. So create the PAYG billing plan in whatever region the summary below reports -
+billing plans are region-locked and won't list environments from another region.
 
-NOTE (2026-09-08 live run): the "0 GB Dataverse capacity blocks env creation" fear was disproven — the E5
-dev sandbox carried 5 GB prepaid and a Dataverse env created normally. Do NOT treat capacity as a hard gate;
-verify actual prepaid capacity per tenant. Environments here are pinned to -Location 'unitedstates': if you
-later link a PAYG billing plan for Copilot Studio metering, create that plan in the SAME region (United
-States) — billing plans are region-locked and won't list environments from a different region.
+Estate (setup/scripts/_estate.ps1): pass -Estate or set HALCOURT_ESTATE. Safe to re-run: environments and
+the DLP policy that already exist are reported, not recreated.
 #>
 param(
-  [string]$Location = 'unitedstates',
+  [string]$Estate = $env:HALCOURT_ESTATE,      # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$MacroRegion = 'north-america',      # asia-pacific, emea, eu-efta, europe-uk, north-america, the-americas
   [string]$CurrencyName = 'USD',
-  [string]$LanguageName = '1033',              # 1033 = en-US
+  [int]$LanguageCode = 1033,                   # 1033 = English
   [int]$ProvisionTimeoutMinutes = 30
 )
 $ErrorActionPreference = 'Stop'
-Add-PowerAppsAccount | Out-Null
+. (Join-Path $PSScriptRoot '_estate.ps1')
+$Estate = Resolve-Estate $Estate
+Write-Host "Estate: $Estate"
 
-# Helper: return the CDS/Dataverse org URL for an environment object, or $null if none is provisioned.
-function Get-EnvInstanceUrl($env) {
-  # [verify] property path on the delivery-date module; instanceUrl lives under the linked CDS metadata.
-  return $env.Internal.properties.linkedEnvironmentMetadata.instanceUrl
+# --- Power Platform admin API through az (its saved sign-in; no extra prompt) -------------------------
+$bap = 'https://api.bap.microsoft.com'
+$envApi = "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments"
+function Invoke-Bap([string]$Method, [string]$Url, $Body) {
+  $azArgs = @('rest', '--method', $Method, '--url', $Url, '--resource', 'https://service.powerapps.com/')
+  if ($Body) {
+    $file = New-TemporaryFile
+    $Body | ConvertTo-Json -Depth 10 | Set-Content -Path $file -Encoding utf8
+    $azArgs += @('--body', "@$file", '--headers', 'Content-Type=application/json')
+  }
+  $out = az @azArgs
+  if ($Body) { Remove-Item $file }
+  if ($LASTEXITCODE) { throw "Power Platform admin API $Method $Url failed (az exit $LASTEXITCODE) - is az signed in to the lab tenant?" }
+  if ($out) { $out | ConvertFrom-Json }
+}
+function Get-Environments { @((Invoke-Bap GET "$envApi`?api-version=2021-04-01&`$expand=properties.createdBy").value) }
+function Find-Env([string]$DisplayName) { Get-Environments | Where-Object { $_.properties.displayName -eq $DisplayName } | Select-Object -First 1 }
+# The API often returns only the creator's object id; resolve it so a clash names a person.
+function Get-Creator($Environment) {
+  $by = $Environment.properties.createdBy
+  if ($by.displayName) { return $by.displayName }
+  if ($by.id) { $upn = az ad user show --id $by.id --query userPrincipalName -o tsv 2>$null; if ($upn) { return $upn } }
+  return 'unknown'
 }
 
-# Helper: find an existing environment by display name (idempotency guard).
-function Find-EnvByDisplayName([string]$displayName) {
-  Get-AdminPowerAppEnvironment | Where-Object { $_.DisplayName -eq $displayName } | Select-Object -First 1
-}
+$tenant = az account show --query tenantId -o tsv
+if ($LASTEXITCODE -or -not $tenant) { throw 'az is not signed in (Phase 0, step 5).' }
+$domain = (az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
+  --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv)
+Write-Host "Tenant: $tenant ($domain)"
 
-# --- Environments ------------------------------------------------------------
-# The default environment already exists; adopt it as "Halcourt (default)" — do NOT recreate it.
-$defaultEnv = Get-AdminPowerAppEnvironment -Default   # [verify] -Default switch returns the tenant default env
-if ($defaultEnv) {
-  Write-Host "Adopting existing default environment as 'Halcourt (default)': $($defaultEnv.EnvironmentName)"
-  # [verify] Optional cosmetic rename; canon only requires we reference it, so keep this best-effort.
-  try {
-    Set-AdminPowerAppEnvironmentDisplayName -EnvironmentName $defaultEnv.EnvironmentName `
-      -NewDisplayName 'Halcourt (default)' -ErrorAction SilentlyContinue | Out-Null
-  } catch { Write-Host "  (skipped rename of default env: $($_.Exception.Message))" }
+# --- The shared default environment -----------------------------------------------------------------
+$default = Get-Environments | Where-Object { $_.properties.environmentSku -eq 'Default' } | Select-Object -First 1
+if (-not $default) { throw 'Could not find the tenant default environment.' }
+if ($default.properties.displayName -eq 'Halcourt (default)') {
+  Write-Host "Default environment already named 'Halcourt (default)' ($($default.name))."
 } else {
-  Write-Host '[verify] Could not resolve the tenant default environment — confirm one exists (Phase 0/2).'
+  Write-Host "Naming the shared default environment 'Halcourt (default)' (was '$($default.properties.displayName)')."
+  Invoke-Bap PATCH "$envApi/$($default.name)?api-version=2021-04-01" @{ properties = @{ displayName = 'Halcourt (default)' } } | Out-Null
 }
 
-# Environments to create. WithDatabase => provision a Dataverse (CDS) database at create time.
-#   Halcourt-Prod : Production, Managed, DB (hosts Dataverse-backed prod agents)
-#   Claims-Test   : Sandbox, DB (Phase 5 needs its *.crm.dynamics.com org URL)
-#   Maker-Sandbox : Developer, NO DB (canon: shadow-agent origin, personal productivity)
+# --- This estate's environments ---------------------------------------------------------------------
+# Name = canonical (AGENTS.md); Live = what this estate creates in the tenant.
 $envs = @(
-  @{ Name='Halcourt-Prod'; Sku='Production'; Managed=$true;  WithDatabase=$true  }
-  @{ Name='Claims-Test';   Sku='Sandbox';    Managed=$false; WithDatabase=$true  }
-  @{ Name='Maker-Sandbox'; Sku='Developer';  Managed=$false; WithDatabase=$false }
+  @{ Name = 'Halcourt-Prod'; Sku = 'Production' }
+  @{ Name = 'Claims-Test';   Sku = 'Sandbox' }
+  @{ Name = 'Maker-Sandbox'; Sku = 'Developer'; Owner = 'dev.kim' }
 )
-
-$created = @{}   # DisplayName -> environment object
+$createUri = "$bap/providers/Microsoft.BusinessAppPlatform/environments?api-version=2021-04-01&id=/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments"
 foreach ($e in $envs) {
-  $existing = Find-EnvByDisplayName $e.Name
+  $e.Live = Get-EstateName $e.Name $Estate
+  $existing = Find-Env $e.Live
   if ($existing) {
-    Write-Host "Environment '$($e.Name)' already exists ($($existing.EnvironmentName)) — skipping create."
-    $created[$e.Name] = $existing
+    # Same estate id = same names: say whose it is, so a clash with someone else's estate is visible.
+    Write-Host "Environment '$($e.Live)' already exists ($($existing.name), created by $(Get-Creator $existing)) - leaving it."
     continue
   }
-
-  Write-Host "Creating environment '$($e.Name)' (Sku=$($e.Sku), Database=$($e.WithDatabase))"
-  # [verify] exact params for New-AdminPowerAppEnvironment in the delivery-date module version.
-  $params = @{
-    DisplayName    = $e.Name
-    LocationName   = $Location
-    EnvironmentSku = $e.Sku
+  $props = @{
+    displayName               = $e.Live
+    environmentSku            = $e.Sku
+    databaseType              = 'CommonDataService'
+    linkedEnvironmentMetadata = @{ baseLanguage = $LanguageCode; currency = @{ code = $CurrencyName }; templates = @() }
   }
-  if ($e.WithDatabase) {
-    # -ProvisionDatabase spins up Common Data Service / Dataverse; required for a *.crm.dynamics.com org URL.
-    $params['ProvisionDatabase'] = $true
-    $params['CurrencyName']      = $CurrencyName
-    $params['LanguageName']      = $LanguageName
+  if ($e.Owner) {
+    # A Developer environment belongs to one user: this estate's persona, not the admin running the script.
+    $ownerUpn = "$(Get-EstateAlias $e.Owner $Estate)@$domain"
+    $ownerId = az ad user show --id $ownerUpn --query id -o tsv
+    if ($LASTEXITCODE -or -not $ownerId) { throw "$ownerUpn not found - run Phase 2 first." }
+    $props.usedBy = @{ id = $ownerId; type = 'User'; tenantId = $tenant }
   }
-  $new = New-AdminPowerAppEnvironment @params
-  $created[$e.Name] = $new
+  Write-Host "Creating '$($e.Live)' ($($e.Sku) + Dataverse$(if ($e.Owner) { ", for $ownerUpn" }), macro region $MacroRegion)..."
+  Invoke-Bap POST $createUri @{ macroRegion = $MacroRegion; properties = $props } | Out-Null
 }
 
-# --- Wait for Dataverse provisioning, then resolve org URLs ------------------
-# DB provisioning is async; poll until each DB-bearing env reports an instanceUrl (or we time out).
+# Provisioning is asynchronous: wait until every estate environment has its Dataverse org.
+$created = @{}   # canonical name -> environment
 $deadline = (Get-Date).AddMinutes($ProvisionTimeoutMinutes)
-foreach ($e in $envs | Where-Object { $_.WithDatabase }) {
-  $envObj = $created[$e.Name]
-  if (-not $envObj) { continue }
-  $url = Get-EnvInstanceUrl $envObj
-  while (-not $url -and (Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds 30
-    # [verify] refresh the env object to pick up the freshly-linked CDS metadata.
-    $envObj = Get-AdminPowerAppEnvironment -EnvironmentName $envObj.EnvironmentName
-    $created[$e.Name] = $envObj
-    $url = Get-EnvInstanceUrl $envObj
-    Write-Host "  waiting on Dataverse for '$($e.Name)'..."
+do {
+  $all = Get-Environments
+  foreach ($e in $envs) {
+    $en = $all | Where-Object { $_.properties.displayName -eq $e.Live } | Select-Object -First 1
+    if ($en.properties.linkedEnvironmentMetadata.instanceUrl) { $created[$e.Name] = $en }
   }
-  if ($url) { Write-Host "  '$($e.Name)' org URL: $url" }
-  else { Write-Host "  [verify] '$($e.Name)' has no org URL yet — check PPAC; provisioning may still be running." }
+  if ($created.Count -lt $envs.Count) { Write-Host "  waiting on Dataverse ($($created.Count)/$($envs.Count) ready)..."; Start-Sleep -Seconds 20 }
+} while ($created.Count -lt $envs.Count -and (Get-Date) -lt $deadline)
+if ($created.Count -lt $envs.Count) { throw "Not all environments were ready after $ProvisionTimeoutMinutes minutes - check PPAC, then re-run." }
+
+# One region for the whole estate: the PAYG billing plan can only link environments in its own region.
+$regions = @($created.Values | ForEach-Object { $_.location } | Sort-Object -Unique)
+if ($regions.Count -gt 1) {
+  Write-Warning "This estate's environments landed in different regions ($($regions -join ', ')). A billing plan links only one region - recreate the odd one out."
 }
 
-# Mark Halcourt-Prod as a Managed Environment.
-$prodEnv = $created['Halcourt-Prod']
-if ($prodEnv) {
-  Write-Host "Marking Halcourt-Prod as a Managed Environment: $($prodEnv.EnvironmentName)"
-  try {
-    # [verify] cmdlet/param name for enabling managed environment governance in the delivery-date module.
-    Set-AdminPowerAppEnvironmentGovernanceConfiguration `
-      -EnvironmentName $prodEnv.EnvironmentName `
-      -ProtectionLevel Standard -ErrorAction Stop | Out-Null
-  } catch {
-    Write-Host "  [verify] Enable Managed Environments on Halcourt-Prod via PPAC (or pac admin) — cmdlet path unconfirmed: $($_.Exception.Message)"
-  }
-}
-
-# --- DLP: PROD ONLY ----------------------------------------------------------
-# Baseline business/non-business connector split applied to Halcourt-Prod ONLY.
-# Default / Claims-Test / Maker-Sandbox INTENTIONALLY stay open (planted gap for Module 5) — do NOT add DLP.
-$dlpName = 'Halcourt-Prod-DLP'
-if (-not $prodEnv) {
-  Write-Host "[verify] Halcourt-Prod not resolved — cannot scope DLP. Create the env first, then re-run."
+# --- Managed Environment: Prod ----------------------------------------------------------------------
+$prod = $created['Halcourt-Prod']
+if ($prod.properties.governanceConfiguration.protectionLevel -eq 'Standard') {
+  Write-Host "$($prod.properties.displayName) is already a Managed Environment."
 } else {
-  $existingDlp = Get-DlpPolicy -ErrorAction SilentlyContinue | Where-Object { $_.displayName -eq $dlpName }
-  if ($existingDlp) {
-    Write-Host "DLP policy '$dlpName' already exists — leaving it in place."
+  Write-Host "Making $($prod.properties.displayName) a Managed Environment..."
+  Invoke-Bap POST "$bap/providers/Microsoft.BusinessAppPlatform/environments/$($prod.name)/governanceConfiguration?api-version=2021-04-01" @{ protectionLevel = 'Standard' } | Out-Null
+}
+
+# --- DLP: PROD ONLY ---------------------------------------------------------------------------------
+# Baseline business/non-business connector split on this estate's Prod ONLY. Default / Claims-Test /
+# Maker-Sandbox INTENTIONALLY stay open (planted gap for Module 5) - do NOT add DLP.
+$dlpName = Get-EstateName 'Halcourt-Prod-DLP' $Estate
+$policyApi = "$bap/providers/PowerPlatform.Governance/v1/policies"
+$existingDlp = @((Invoke-Bap GET "$policyApi`?api-version=2016-11-01").value) | Where-Object { $_.displayName -eq $dlpName } | Select-Object -First 1
+if ($existingDlp) {
+  # A policy with this name can outlive the environment it was scoped to (a torn-down estate leaves the
+  # policy behind, and the rebuilt Prod has a NEW id). Matching on the name alone then "leaves it" pointing
+  # at an environment that no longer exists - and the new Prod silently ends up with no DLP at all. So check
+  # what it actually targets, and re-scope it if it is stale.
+  $full = Invoke-Bap GET "$policyApi/$($existingDlp.name)?api-version=2016-11-01"
+  $targets = @($full.environments | ForEach-Object { $_.name })
+  if ($targets -contains $prod.name) {
+    Write-Host "DLP policy '$dlpName' already exists and targets $($prod.properties.displayName) - leaving it."
   } else {
-    Write-Host "Creating '$dlpName' (business/non-business split), scoped to Halcourt-Prod only."
-    # New-DlpPolicy seeds a policy; we then classify connectors and scope it to the single Prod env.
-    $policy = New-DlpPolicy -DisplayName $dlpName    # [verify] New-DlpPolicy DisplayName param in delivery-date module
-
-    # Business group: Dataverse, SharePoint, Office 365 Outlook, Office 365 Users.
-    # Everything else falls to the default (non-business) group -> can't share data with Business connectors.
-    # [verify] connectorGroups schema (classification names 'Confidential'/'General'/'Blocked') and connector IDs.
-    $businessConnectors = @(
-      @{ id = '/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps'; name = 'Dataverse' }
-      @{ id = '/providers/Microsoft.PowerApps/apis/shared_sharepointonline';         name = 'SharePoint' }
-      @{ id = '/providers/Microsoft.PowerApps/apis/shared_office365';                 name = 'Office 365 Outlook' }
-      @{ id = '/providers/Microsoft.PowerApps/apis/shared_office365users';            name = 'Office 365 Users' }
-    )
-    foreach ($grp in $policy.connectorGroups) {
-      if ($grp.classification -eq 'Confidential') { $grp.connectors = $businessConnectors }  # Business
-    }
-
-    # Scope: this environment ONLY.
-    $policy.environmentType = 'OnlyEnvironments'    # [verify] enum value for single-environment scoping
-    $policy.environments = @(@{
-      name = $prodEnv.EnvironmentName
-      id   = $prodEnv.EnvironmentName
+    Write-Host "DLP policy '$dlpName' exists but targets [$($targets -join ', ')] - re-scoping it to $($prod.properties.displayName)."
+    $full.environments = @(@{
+      id   = "/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($prod.name)"
+      name = $prod.name
       type = 'Microsoft.BusinessAppPlatform/scopes/environments'
     })
-
-    Set-DlpPolicy -PolicyName $policy.name -UpdatedPolicy $policy | Out-Null   # [verify] -PolicyName/-UpdatedPolicy param names
-    Write-Host "  '$dlpName' applied to Halcourt-Prod ($($prodEnv.EnvironmentName))."
+    Invoke-Bap PATCH "$policyApi/$($existingDlp.name)?api-version=2016-11-01" $full | Out-Null
+    Write-Host "  '$dlpName' now applies to $($prod.properties.displayName)."
   }
+} else {
+  Write-Host "Creating '$dlpName' (business-grouped connectors), scoped to $($prod.properties.displayName) only."
+  # Business (Confidential): the sensitive data connectors, PLUS the Copilot Studio platform connector.
+  # defaultConnectorsClassification is 'Confidential' (business-by-default) DELIBERATELY: a business/
+  # non-business SPLIT cannot coexist with publishing connector-based Copilot Studio agents - every agent
+  # implicitly pulls in platform connectors, and if any land in the non-business bucket the publish fails
+  # with "conflict between business and non-business connectors" (verified 2026-09-21; see errata). So the
+  # baseline groups the sensitive connectors as business and treats everything as business by default,
+  # blocking nothing. It still demonstrates a DLP control on Prod that MISSES the agent-identity risks
+  # (Module 5), which is the point. Default / Claims-Test / Maker-Sandbox still get NO DLP.
+  $business = foreach ($c in @(
+      @('shared_commondataserviceforapps', 'Microsoft Dataverse'),
+      @('shared_sharepointonline',         'SharePoint'),
+      @('shared_office365',                'Office 365 Outlook'),
+      @('shared_office365users',           'Office 365 Users'),
+      @('shared_conversionservice',        'Content Conversion (Copilot Studio)'))) {
+    @{ id = "/providers/Microsoft.PowerApps/apis/$($c[0])"; name = $c[1]; type = 'Microsoft.PowerApps/apis' }
+  }
+  $policy = @{
+    displayName                     = $dlpName
+    defaultConnectorsClassification = 'Confidential'
+    environmentType                 = 'OnlyEnvironments'
+    environments                    = @(@{
+      id   = "/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($prod.name)"
+      name = $prod.name
+      type = 'Microsoft.BusinessAppPlatform/scopes/environments'
+    })
+    connectorGroups                 = @(
+      @{ classification = 'Confidential'; connectors = @($business) }
+      @{ classification = 'General';      connectors = @() }
+      @{ classification = 'Blocked';      connectors = @() }
+    )
+  }
+  Invoke-Bap POST "$policyApi`?api-version=2016-11-01" $policy | Out-Null
+  Write-Host "  '$dlpName' applied to $($prod.properties.displayName)."
 }
-Write-Host 'DEALER''S CHOICE for Module 5: leave any HTTP/custom-connector *block* OFF at start so Scenario E fires,'
+Write-Host "DEALER'S CHOICE for Module 5: leave any HTTP/custom-connector *block* OFF at start so Scenario E fires,"
 Write-Host 'then have attendees tighten it (block HTTP / custom connectors in Prod) during Module 5 and retest.'
-Write-Host 'DO NOT create DLP for Halcourt (default), Claims-Test, or Maker-Sandbox — that gap is a planted Module 5 finding.'
+Write-Host "DO NOT create DLP for Halcourt (default), $(Get-EstateName 'Claims-Test' $Estate), or $(Get-EstateName 'Maker-Sandbox' $Estate) - that gap is a planted Module 5 finding."
 
-# --- Conditional Access baseline (MANUAL — not this PowerShell surface) -------
-# CA policies are NOT created via the Power Platform admin cmdlets; author them in Entra (Graph/portal).
-Write-Host '[verify] MANUAL: In Entra ID, create CA baseline: CA-Require-MFA-Admins, CA-Block-Legacy-Auth.'
-Write-Host '[verify] MANUAL: Deliberately DO NOT create any CA policy targeting workload/agent identities — that gap is a Module 5 finding.'
+# --- Conditional Access -----------------------------------------------------------------------------
+Write-Host 'Conditional Access: baseline created in Phase 0 (00_conditional_access_baseline.ps1).'
+Write-Host 'Deliberately DO NOT create any CA policy targeting workload/agent identities - that gap is a Module 5 finding.'
 
-# --- Summary block: hand these to Phase 5 ------------------------------------
+# --- Summary: hand these to Phase 5 -----------------------------------------------------------------
 Write-Host ''
 Write-Host '================ Phase 3 environment summary ================'
-$summary = foreach ($name in @('Halcourt (default)') + ($envs | ForEach-Object { $_.Name })) {
-  $obj = if ($name -eq 'Halcourt (default)') { $defaultEnv } else { $created[$name] }
+$all = Get-Environments
+@($default.name) + @($created.Values | ForEach-Object { $_.name }) | ForEach-Object {
+  $id = $_
+  $en = $all | Where-Object { $_.name -eq $id }
   [pscustomobject]@{
-    Environment   = $name
-    EnvironmentId = if ($obj) { $obj.EnvironmentName } else { '(unresolved)' }
-    OrgUrl        = if ($obj) { (Get-EnvInstanceUrl $obj) } else { $null }
-    DLP           = if ($name -eq 'Halcourt-Prod') { $dlpName } else { '(none — intentional)' }
+    Environment = $en.properties.displayName
+    Type        = $en.properties.environmentSku
+    Region      = $en.location
+    Managed     = if ($en.properties.governanceConfiguration.protectionLevel -eq 'Standard') { 'Yes' } else { 'No' }
+    OrgUrl      = $en.properties.linkedEnvironmentMetadata.instanceUrl
+    Id          = $en.name
   }
-}
-$summary | Format-Table -AutoSize
+} | Format-Table -AutoSize | Out-String | Write-Host
 
-$claimsTest = $created['Claims-Test']
-$claimsUrl  = if ($claimsTest) { Get-EnvInstanceUrl $claimsTest } else { $null }
-if ($claimsUrl) {
-  Write-Host ''
-  Write-Host 'Phase 5 (04_provision_dataverse.ps1) — pass this Claims-Test org URL:'
-  Write-Host "  pwsh setup/scripts/04_provision_dataverse.ps1 -ClaimsTestEnvUrl $claimsUrl"
-} else {
-  Write-Host ''
-  Write-Host '[verify] Claims-Test org URL not available yet. Once Dataverse finishes provisioning, read the'
-  Write-Host '         instanceUrl from PPAC (or Get-AdminPowerAppEnvironment) and pass it to Phase 5.'
-}
-
-Write-Host 'Phase 3 complete.'
+$claimsUrl = ($all | Where-Object { $_.name -eq $created['Claims-Test'].name }).properties.linkedEnvironmentMetadata.instanceUrl
+Write-Host "Phase 5 seeds $($created['Claims-Test'].properties.displayName) ($claimsUrl):"
+Write-Host "  pwsh setup/scripts/04_provision_dataverse.ps1 -Estate $Estate"
+Write-Host "Phase 3 complete. Next: the PAYG billing plan (RUNBOOK Phase 3) in region '$($regions -join ', ')', linking $($created['Halcourt-Prod'].properties.displayName) and $($created['Claims-Test'].properties.displayName)."
