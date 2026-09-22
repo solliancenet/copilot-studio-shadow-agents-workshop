@@ -12,8 +12,10 @@ vendor/
 # Node (if any tooling is added)
 node_modules/
 
-# Azure Developer CLI (azd) local environment state
+# Azure Developer CLI (azd) environments + Azure CLI sign-in state (scripts/env.sh)
 .azure/
+# Power Platform CLI auth profiles + token cache (scripts/shims/pac)
+.pac/
 
 # .NET demo app (src/) — build output and the local SQLite estate
 bin/
@@ -34,3 +36,6 @@ setup/**/*.local.json
 
 # compiled bicep ARM output
 infra/main.json
+
+# Windows build VM overrides (setup/windows-vm/compose.yaml)
+setup/windows-vm/.env
