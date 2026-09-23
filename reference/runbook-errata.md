@@ -555,6 +555,35 @@ that matters (`Remove-PnPTenantSite` against the `-my.sharepoint.com/personal/..
 re-provision while the old one sits in the recycle bin lands on a **suffixed** URL
 (`..._onmicrosoft_com1`) — the same collision as the team sites above.
 
+### Phase 6 · the two default-environment agents are NOT estate-scoped `[verify]`
+
+Every other agent lives in a per-estate environment, so estates never meet. **Expense Helper** and
+**Onboarding Guide** live in `Halcourt (default)` — the one environment that cannot be per-estate — and only
+their *display* name carries the estate id (`estateSuffixName: true` → "Expense Helper (mgray)"). Their
+**schema names are fixed** in the committed workspaces:
+
+```text
+cr458_ExpenseHelper        cr458_OnboardingGuide
+```
+
+Dataverse keys on the **schema** name, not the display name. So a second estate built in the same tenant
+tries to create an agent that already exists, owned by the first estate's maker, and Phase 6 fails with:
+
+```text
+user with id <owner> does not have WriteAccess right(s) for record with id <botid> of entity Agent
+```
+
+which surfaces only as `CREATE FAILED ... The async operation completed with a statuscode of Failed`. The
+owner is another person's persona, so you cannot see or delete it — it looks identical to an orphan left by
+a failed teardown (below), and the two are easy to confuse.
+
+**Until the schema names are estate-scoped, treat the default environment as single-estate:** only one
+estate per tenant can own Expense Helper and Onboarding Guide, and whoever owns them must delete them before
+another estate builds. The real fix is to suffix the schema for agents flagged `estateSuffixName` — which
+means rewriting the schema consistently across `settings.mcs.yml`, `agent.mcs.yml`, the knowledge file names
+and every `<schema>.topic.*` cross-reference (get one wrong and publish fails with `InvalidReferenceError`,
+exactly as the HR FAQ v2 decoy did).
+
 ### Teardown · delete the default-environment agents, or the NEXT build cannot recreate them
 
 The worst failure found in the 2026-09-22 rebuild, because it is silent until much later and then
