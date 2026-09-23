@@ -99,6 +99,21 @@ if ($defaultEnv) {
     Write-Host "  flow '$($w.name)'"; Invoke-Json PATCH "$org/api/data/v9.2/workflows($($w.workflowid))" $stok @{ statecode = 0; statuscode = 1 } | Out-Null
     Invoke-Json DELETE "$org/api/data/v9.2/workflows($($w.workflowid))" $stok | Out-Null
   }
+
+  # Connections in the estate environments disappear with the environment; these do not. Nothing removed
+  # them, so every rebuild left another set behind - four had piled up across three builds, and the
+  # artifact-pack export duly reported one agent's connection three times. Match on the estate's own
+  # accounts so another estate's connections in this shared environment are never touched.
+  $ppAdmin = "https://api.powerapps.com/providers/Microsoft.PowerApps/scopes/admin/environments/$($defaultEnv.name)"
+  $adminTok = Get-AdminToken 'https://service.powerapps.com/'
+  foreach ($c in @((Invoke-Json GET "$ppAdmin/connections?api-version=2016-11-01" $adminTok).value)) {
+    $upn = $c.properties.createdBy.userPrincipalName
+    if ($upn -notlike "*.$Estate@*") { continue }
+    $connector = ($c.properties.apiId -split '/')[-1]
+    Write-Host "  connection '$($c.properties.displayName)' ($connector, $upn)"
+    try { Invoke-Json DELETE "$ppAdmin/apis/$connector/connections/$($c.name)?api-version=2016-11-01" $adminTok | Out-Null }
+    catch { Write-Warning "    could not delete it: $($_.Exception.Message.Split([Environment]::NewLine)[0])" }
+  }
 }
 
 # --- 2) SharePoint sites (+ recycle-bin purge) via the PnP app-only cert --------------------------------

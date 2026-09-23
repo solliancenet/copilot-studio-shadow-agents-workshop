@@ -616,6 +616,64 @@ telling you to remove them **before** re-running Phase 2.
 → Settings → Users + permissions → Users**, give yourself **System Administrator**, then delete the two
 agents in Copilot Studio (or Dataverse). Do it *before* Phase 6, which will then recreate them normally.
 
+### Phase 7 · the export no longer needs Windows, and four things it got wrong (verified 2026-09-23)
+
+- **It ran anywhere all along.** The only reason Phase 7 was a Windows-build-VM step is that it drove
+  `Microsoft.PowerApps.Administration.PowerShell`: `Add-PowerAppsAccount` needs `System.Windows.Forms` and
+  fails on Linux with *"Could not load file or assembly 'System.Windows.Forms'"*. The environment,
+  connection, role-assignment and DLP reads all exist over REST, so the script now uses `az` like Phases 3,
+  5 and teardown, and runs in the dev container.
+- **`description` is not a column on the `bot` entity.** Selecting it fails the whole read with
+  `0x80060888` *"Could not find a property named 'description'"*. That text is **canon**, written by hand —
+  it exists in the pack and `AGENTS.md`, nowhere in the tenant. The export now omits it from the query and
+  **carries the committed text over by display name**, so regenerating the pack reports live drift without
+  wiping prose. A new agent arrives with an empty description for a human to fill in.
+- **The agent-identity export always produced an empty file.** It filtered on
+  `startswith(displayName,'cs-agent-')`, the canon's invented convention. Copilot Studio actually names the
+  principal **`<agent display name> (Microsoft Copilot Studio)`**. Fixed, and it now matches on that.
+  Two things fell out of fixing it:
+  - **Publishing mints a NEW identity every time and teardown removes none**, so a rebuilt estate
+    accumulates one stale service principal per agent per build (three per agent after three builds here).
+    The export keeps only the newest per agent; the strays stay in the tenant. Worth a look in their own
+    right — an orphaned agent identity is exactly the kind of thing the workshop teaches people to find.
+  - **`createdDateTime` has to be read defensively.** The Graph SDK does not reliably project it onto the
+    typed property even when requested; it turns up in `AdditionalProperties`. Reading only the typed one
+    left every date blank. (The old code asked the backing *application* for it — these agent identities
+    have no application object, so that was always empty too.)
+- **`Export-Csv` quotes every field; the committed pack is unquoted**, so even identical data diffed. Now
+  `-UseQuotes AsNeeded`. Environments are also sorted by type (Default, Production, Sandbox, Developer —
+  the canon's order) instead of however the admin API returned them, so re-running does not reshuffle rows.
+
+**What the export still cannot reproduce**, and why `git diff` will never be empty: the friendly connector
+names (`SharePoint`, not `shared_sharepointonline`), the rows for things that are not Power Platform
+connections at all (`HTTP-PolicyAPI`, `MCP-Underwriting`, `PA-Expense-AutoApprove` — an HTTP action, an MCP
+server and a cloud flow), and the fabricated canonical dates. Treat the diff as drift to review.
+
+`used_by_agent` is also **approximate** — it attributes a connection to the *first* agent found in the same
+environment, so with several agents per environment it will name the wrong one. It is marked `[verify]` in
+the script; a precise answer means joining through each agent's connection references.
+
+### Teardown · connections in the shared default environment were never removed
+
+Connections in the three estate environments disappear when the environment does. The ones in
+`Halcourt (default)` do not, and nothing was deleting them — so every rebuild left another set behind. By
+the third build the environment held **four** stale connections (`SP-Onboarding` from 09-19, three
+`O365-Outlook-Onboarding` from 09-19 and 09-22), all owned by personas that had since been deleted and
+recreated. The artifact-pack export duly reported one agent's connection three times, which is how it was
+noticed.
+
+`99_teardown.ps1` now deletes them alongside the default environment's agents and flow, matching on the
+estate's own accounts (`*.<estate>@*`) so another estate's connections in that shared environment are never
+touched:
+
+```text
+DELETE .../scopes/admin/environments/<default-env>/apis/<connector>/connections/<id>?api-version=2016-11-01
+```
+
+Same family as the maker OneDrives, the soft-deleted users and the per-build agent identities: anything
+living **outside** the estate environments survives an environment-level teardown and has to be removed by
+name.
+
 ### Phase 5 · a brand-new Dataverse environment is flaky
 
 A freshly provisioned Dataverse environment fails metadata writes transiently while it warms up:

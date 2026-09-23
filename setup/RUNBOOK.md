@@ -946,15 +946,25 @@ drift; the committed files ARE the expected output for the canonical estate. Wit
 script refuses to write into the committed pack, which is published with the site — pass `-OutDir` for a
 live-named export.
 
-Run it on Windows (the Windows build VM), and first:
+**Runs anywhere now** — the dev container included. It used to require the Windows build VM because it drove
+`Microsoft.PowerApps.Administration.PowerShell`, whose `Add-PowerAppsAccount` needs `System.Windows.Forms`
+and dies on Linux. It now reads the same data over REST with `az`'s sign-in, like Phases 3, 5 and teardown.
+One prerequisite remains:
 
-- **`az login` in the same shell.** The agent inventory reads each environment's Dataverse `bot` table with
-  a token from the Azure CLI — the PowerApps admin module's sign-in app can't get Dataverse tokens
-  (*AADSTS65002*).
-- **Give the admin a security role in every Dataverse environment.** Without one the read fails with
-  *"has not been assigned any roles"* (403). Environments the admin created in Phase 3 already have it;
-  for any other:
+- **Give the admin a security role in every Dataverse environment.** The agent inventory reads each
+  environment's `bot` table; without a role the read fails with *"has not been assigned any roles"* (403).
+  Environments the admin created in Phase 3 already have it. A **Developer** environment does not — its
+  owner is its only System Administrator:
   `pac admin assign-user --environment <environment-id> --user <admin UPN> --role "System Administrator"`.
+
+> {: .important }
+> **The committed pack is not a pure export, so do not expect an empty `git diff`.** Three of its columns
+> are hand-written canon that no API returns: agent `description`, the friendly connector names
+> (`SharePoint`, not `shared_sharepointonline`), and the rows for things that are not Power Platform
+> connections at all (`HTTP-PolicyAPI`, `MCP-Underwriting`, `PA-Expense-AutoApprove`). The export therefore
+> **preserves** the existing `description` text by display name rather than blanking it — regenerating the
+> pack will not destroy that prose — but the connector and conceptual-connection rows still need a human.
+> Read the diff as *drift to review*, not as a test that should come out empty.
 
 
 ### Phase 8 — Validate
@@ -963,7 +973,16 @@ Walk `AGENTS.md` and confirm, in the live tenant:
 - Every **PLANTED PROBLEM** reproduces (A–F fire; discovery targets are findable).
 - Every **CONTROL EFFICACY** verdict holds; resolve any `[verify]` items and update `AGENTS.md`.
 - Guest (Ana) read access works; the Jordan Blake confused-deputy path works.
-- `pwsh setup/scripts/05_export_artifact_pack.ps1 -Canonicalize` leaves `git diff worksheets/artifact-pack` empty.
+- **Phase 6.5 has run** (`01_provision_entra.ps1 -DisableDepartedOwner`) — Tom must be disabled *after* his
+  connections exist, or the departed-owner thread reads wrong and `users-export` disagrees with the canon.
+- Re-run Phase 7 and **review** `git diff worksheets/artifact-pack`. It will not be empty, and should not
+  be: see the Phase 7 note above for the three columns that are canon rather than exported. What to look
+  for is *unexpected* drift — an agent missing, an owner that changed, a connection that lost its sharing,
+  an environment that lost its DLP.
+
+What the export can confirm on its own, without driving an agent: every published agent is present with the
+right owner and environment; each has exactly one Entra identity; DLP is attached to Prod and nowhere else;
+and the accounts are as Phase 2 left them. Reproducing Scenarios A–F still means talking to the agents.
 
 ### Phase 9 — Teardown / reseed
 

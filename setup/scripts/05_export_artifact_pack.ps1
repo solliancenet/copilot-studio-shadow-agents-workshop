@@ -15,7 +15,8 @@ estate id, restores @halcourtmutual.onmicrosoft.com), so the output diffs cleanl
 
 Without -Canonicalize it refuses to write into the committed (published) pack - pass -OutDir.
 
-Requires: Microsoft.PowerApps.Administration.PowerShell, Microsoft.Graph.
+Requires: Microsoft.Graph, and az signed in to the lab tenant (the Power Platform admin APIs and the
+Dataverse bot reads both go through az, so this no longer needs the Windows-only PowerApps admin module).
 Lines marked [verify] depend on evolving 2026 admin/Graph surfaces (agent + workload identity listings).
 #>
 param(
@@ -53,7 +54,58 @@ function ConvertTo-Canon($Rows) {
   }
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
-Add-PowerAppsAccount | Out-Null
+
+# --- Power Platform admin API through az ----------------------------------------------------------------
+# This used to drive Microsoft.PowerApps.Administration.PowerShell, which is why Phase 7 was documented as
+# "run it on the Windows build VM": Add-PowerAppsAccount needs System.Windows.Forms for its sign-in and dies
+# on Linux with "Could not load file or assembly 'System.Windows.Forms'". The same data is available over
+# REST with az's sign-in - the approach 02/04/99 already use - so Phase 7 now runs anywhere. These shims
+# keep the shapes the exports below were written against.
+$bapRoot = 'https://api.bap.microsoft.com'
+$ppRoot  = 'https://api.powerapps.com/providers/Microsoft.PowerApps'
+function Invoke-Pp([string]$Url) {
+  $out = az rest --method GET --url $Url --resource 'https://service.powerapps.com/' 2>$null
+  if ($LASTEXITCODE -or -not $out) { return $null }
+  ($out | Out-String) | ConvertFrom-Json
+}
+function Get-AdminPowerAppEnvironment {
+  foreach ($e in (Invoke-Pp "$bapRoot/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01").value) {
+    [pscustomobject]@{
+      EnvironmentName = $e.name
+      DisplayName     = $e.properties.displayName
+      EnvironmentType = $e.properties.environmentSku      # Default / Production / Sandbox / Developer
+      Internal        = $e                                 # .properties.governanceConfiguration / .linkedEnvironmentMetadata
+    }
+  }
+}
+function Get-AdminPowerAppConnection([string]$EnvironmentName) {
+  foreach ($c in (Invoke-Pp "$ppRoot/scopes/admin/environments/$EnvironmentName/connections?api-version=2016-11-01").value) {
+    # [verify] The module surfaced an auth type; REST does not. Derive the two values the canon uses for
+    # real Power Platform connections - a service account's, or a maker's delegated sign-in.
+    $upn = $c.properties.createdBy.userPrincipalName
+    [pscustomobject]@{
+      ConnectionName           = $c.name
+      DisplayName              = $c.properties.displayName
+      ConnectorName            = ($c.properties.apiId -split '/')[-1]
+      CreatedBy                = $c.properties.createdBy
+      ConnectionParametersType = if ($upn -like 'svc-*') { 'Service account' } else { 'User (delegated)' }
+      Internal                 = $c
+    }
+  }
+}
+function Get-AdminPowerAppConnectionRoleAssignment {
+  param([string]$EnvironmentName, [string]$ConnectorName, [string]$ConnectionName)
+  $url = "$ppRoot/scopes/admin/environments/$EnvironmentName/apis/$ConnectorName/connections/$ConnectionName/roleAssignments?api-version=2016-11-01"
+  foreach ($r in (Invoke-Pp $url).value) {
+    [pscustomobject]@{
+      PrincipalType        = $r.properties.principal.type
+      PrincipalDisplayName = if ($r.properties.principal.displayName) { $r.properties.principal.displayName } else { $r.properties.principal.email }
+    }
+  }
+}
+function Get-DlpPolicy {
+  Invoke-Pp "$bapRoot/providers/PowerPlatform.Governance/v1/policies?api-version=2016-11-01"
+}
 # AuditLog.Read.All: users-export reads signInActivity, which Graph refuses without it.
 . (Join-Path $PSScriptRoot '_auth.ps1')
 Connect-LabGraph -Scopes 'User.Read.All','Application.Read.All','AuditLog.Read.All'
@@ -90,7 +142,10 @@ $agents = foreach ($env in $environments) {
   if (-not $orgUrl) { continue }  # environment has no Dataverse (bots require Dataverse)
   # [verify] Dataverse `bot` table over the Web API — agent inventory surface still evolving (Agent 365).
   $token = Get-DataverseToken -ResourceUrl $orgUrl
-  $select = 'name,statecode,createdon,modifiedon,publishedon,description,_ownerid_value'
+  # NO 'description': the bot entity has no such column (selecting it fails with 0x80060888, "Could not
+  # find a property named 'description'"). The pack's description text is CANON, written by hand - see the
+  # preserve step after this loop, which keeps it rather than blanking it.
+  $select = 'name,statecode,createdon,modifiedon,publishedon,_ownerid_value'
   # owninguser, not ownerid: ownerid is the polymorphic `principal` type, which has no domainname (400).
   $uri = "$orgUrl/api/data/v9.2/bots?`$select=$select&`$expand=owninguser(`$select=domainname)"
   try {
@@ -116,13 +171,25 @@ $agents = foreach ($env in $environments) {
       published         = if ($bot.publishedon) { 'Yes' } else { 'No' }
       created_utc       = if ($bot.createdon)  { ([datetime]$bot.createdon).ToString('yyyy-MM-dd') } else { '' }
       last_modified_utc = if ($bot.modifiedon) { ([datetime]$bot.modifiedon).ToString('yyyy-MM-dd') } else { '' }
-      description       = $bot.description
+      description       = ''   # canon, not tenant data - filled in from the existing pack just below
     }
+  }
+}
+# 'description' exists only in the pack (and AGENTS.md); no API returns it. Carry the committed text over by
+# display name so regenerating the pack reports live drift WITHOUT wiping hand-written canon. A new agent
+# lands with an empty description for someone to write.
+$agentsCsv = Join-Path $OutDir 'agents-export.csv'
+if (Test-Path $agentsCsv) {
+  $priorDesc = @{}
+  foreach ($row in (Import-Csv $agentsCsv)) { if ($row.description) { $priorDesc[$row.display_name] = $row.description } }
+  foreach ($a in $agents) {
+    $canonName = if ($Canonicalize) { ($a.display_name -replace " \($estateRx\)", '') } else { $a.display_name }
+    if ($priorDesc.ContainsKey($canonName)) { $a.description = $priorDesc[$canonName] }
   }
 }
 ConvertTo-Canon $agents |
   Select-Object display_name,environment,owner_upn,status,published,created_utc,last_modified_utc,description |
-  Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutDir 'agents-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded $agentsCsv
 
 # --------------------------------------------------------------------------------------------------
 # 2) connections-export.csv
@@ -158,30 +225,45 @@ $connections = foreach ($env in $environments) {
 }
 ConvertTo-Canon $connections |
   Select-Object connection_name,connector,environment,connection_owner_upn,shared_with,used_by_agent,auth_type |
-  Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutDir 'connections-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'connections-export.csv')
 
 # --------------------------------------------------------------------------------------------------
 # 3) agent-identities-export.csv
 #    Each agent's auto-created Entra identity (the "since March 2026" cs-agent-* principals).
 # --------------------------------------------------------------------------------------------------
 Write-Host 'Exporting agent identities -> agent-identities-export.csv'
-# [verify] Copilot Studio auto-provisions a service principal per published agent named cs-agent-*;
-# the SP-to-agent link is by naming convention (no first-party join API confirmed for 2026).
-$agentSps = Get-MgServicePrincipal -All -Filter "startswith(displayName,'cs-agent-')" `
-              -Property 'displayName,appId,additionalProperties' |
+# Copilot Studio auto-provisions a service principal per published agent. It is named
+# "<agent display name> (Microsoft Copilot Studio)" - NOT the canon's cs-agent-<slug>-<env>, which was a
+# guess and matched nothing, so this export silently produced an empty file (verified 2026-09-23).
+# Filter client-side: Graph cannot do endswith/contains on displayName without advanced query, and a lab
+# tenant's service-principal list is small.
+$agentSuffix = ' (Microsoft Copilot Studio)'
+$agentSps = Get-MgServicePrincipal -All -Property 'displayName,appId,createdDateTime' |
+            Where-Object { $_.DisplayName -and $_.DisplayName.EndsWith($agentSuffix) } |
             Sort-Object displayName
+# Publishing an agent mints a NEW identity and teardown removes none, so a rebuilt estate accumulates one
+# stale principal per agent per build. Keep only the newest for each agent name - the one the live agent
+# actually runs as - or the pack shows an agent three times. (The strays are real, and worth a look in their
+# own right; see the teardown note in the errata.)
+# The SDK does not always project createdDateTime onto the typed property even when asked for it; it then
+# turns up in AdditionalProperties. Read both, or every row's date comes out blank.
+function Get-SpCreated($Sp) {
+  if ($Sp.CreatedDateTime) { return $Sp.CreatedDateTime }
+  if ($Sp.AdditionalProperties -and $Sp.AdditionalProperties['createdDateTime']) { return $Sp.AdditionalProperties['createdDateTime'] }
+  $null
+}
+$agentSps = $agentSps | Group-Object DisplayName | ForEach-Object {
+  $_.Group | Sort-Object @{ Expression = { Get-SpCreated $_ } } -Descending | Select-Object -First 1
+}
 $identities = foreach ($sp in $agentSps) {
-  # createdDateTime is not returned on servicePrincipal by default — read the backing application.
-  $created = $null
-  try {
-    $app = Get-MgApplication -Filter "appId eq '$($sp.AppId)'" -Property 'createdDateTime' -Top 1
-    $created = $app.CreatedDateTime
-  } catch { }  # [verify] SP->application creation-date join
-  # Map identity back to an agent display name via the cs-agent-<slug> naming convention.
-  $matchAgent = $agents | Where-Object {
-    $sp.DisplayName -like ('cs-agent-*' + (($_.display_name -replace '[^a-zA-Z0-9]+','-').ToLower()) + '*')
-  } | Select-Object -First 1
-  # cs-agent-* identities are tenant-wide; one that matches none of this estate's agents is another estate's.
+  # Read createdDateTime from the service principal itself: these agent identities have no application
+  # object in the tenant, so the old SP->application join always came back empty.
+  $created = Get-SpCreated $sp
+  # The identity carries the agent's display name verbatim, so match on that. Identities are tenant-wide and
+  # survive their agent, so one matching none of this estate's agents belongs to another estate (or to an
+  # agent already deleted) - skip it.
+  $spAgentName = $sp.DisplayName.Substring(0, $sp.DisplayName.Length - $agentSuffix.Length)
+  $matchAgent = $agents | Where-Object { $_.display_name -eq $spAgentName } | Select-Object -First 1
   if (-not $matchAgent) { continue }
   [pscustomobject]@{
     agent               = $matchAgent.display_name
@@ -192,7 +274,7 @@ $identities = foreach ($sp in $agentSps) {
 }
 ConvertTo-Canon $identities |
   Select-Object agent,entra_identity,app_id,identity_created_utc |
-  Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutDir 'agent-identities-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'agent-identities-export.csv')
 
 # --------------------------------------------------------------------------------------------------
 # 4) users-export.csv  (reveals the disabled owner + service/shared accounts)
@@ -220,7 +302,7 @@ $users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled
   }
 ConvertTo-Canon $users |
   Select-Object upn,display_name,account_enabled,last_sign_in_utc,is_service_account,is_shared_mailbox |
-  Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutDir 'users-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'users-export.csv')
 
 # --------------------------------------------------------------------------------------------------
 # 5) environments-export.csv
@@ -249,9 +331,13 @@ $envRows = foreach ($env in $environments) {
     maker_access = $maker
   }
 }
-ConvertTo-Canon $envRows |
+# Order by environment type rather than however the admin API happened to return them, so re-running the
+# export produces a stable file and `git diff` shows real change instead of reshuffled rows. This order
+# (Default, Production, Sandbox, Developer) is also the canon's.
+$typeOrder = @{ Default = 0; Production = 1; Sandbox = 2; Developer = 3 }
+ConvertTo-Canon ($envRows | Sort-Object @{ Expression = { $typeOrder[[string]$_.type] } }, environment) |
   Select-Object environment,type,dlp_policy,managed,maker_access |
-  Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path $OutDir 'environments-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'environments-export.csv')
 
 if ($Canonicalize -and $OutDir -eq $committedPack) {
   Write-Host 'Phase 7 complete. Review the drift with: git diff worksheets/artifact-pack'
