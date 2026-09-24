@@ -1,15 +1,40 @@
 {
-  "name": "Shadow Agents Workshop — Jekyll authoring",
-  "image": "mcr.microsoft.com/devcontainers/jekyll:2-bullseye",
+  "name": "Shadow Agents Workshop — authoring + provisioning",
+  "build": { "dockerfile": "Dockerfile" },
+  // Provisioning tooling from setup/RUNBOOK.md → Prerequisites. pac is a .NET tool (on-create.sh).
+  // Not installed: Microsoft.Xrm.Data.PowerShell refuses to load outside Windows PowerShell 5.1, and no
+  // script uses Microsoft.PowerApps.PowerShell (it also clashes with the admin module's MSAL in one session).
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/azure-cli:1": { "installBicep": true },
+    "ghcr.io/azure/azure-dev/azd:0": {},
+    // pac targets net10.0; src/ targets net8.0.
+    "ghcr.io/devcontainers/features/dotnet:2": { "version": "10.0", "additionalVersions": "8.0" },
+    "ghcr.io/devcontainers/features/powershell:2": {
+      "modules": "Microsoft.Graph,Microsoft.PowerApps.Administration.PowerShell,PnP.PowerShell,ExchangeOnlineManagement"
+    },
+    // docker CLI + compose against the HOST's daemon — starts/stops the Windows build VM
+    // (setup/windows-vm/compose.yaml), which itself always runs on the host.
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
   "forwardPorts": [4000, 35729],
   "portsAttributes": {
     "4000": { "label": "Jekyll site", "onAutoForward": "openBrowser" },
     "35729": { "label": "LiveReload", "onAutoForward": "silent" }
   },
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
   "postCreateCommand": "bundle install",
+  "containerEnv": {
+    // Use the feature's Bicep on PATH. Otherwise az downloads its own into $AZURE_CONFIG_DIR/bin — the
+    // repo's .azure/ (scripts/env.sh) — and azd then lists "bin" as an environment.
+    "AZURE_BICEP_USE_BINARY_FROM_PATH": "true"
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.dotnet/tools",
+    // Host path of this repo. The host's daemon resolves bind mounts, so setup/windows-vm/compose.yaml
+    // uses this instead of container paths when run from here.
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
+  },
   "customizations": {
     "vscode": {
       "extensions": [

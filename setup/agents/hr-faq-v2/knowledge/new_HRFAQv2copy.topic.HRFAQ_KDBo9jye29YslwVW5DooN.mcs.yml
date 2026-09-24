@@ -1,0 +1,7 @@
+mcs.metadata:
+  componentName: HR FAQ
+  description: This knowledge source provides information found in HR FAQ SharePoint.
+kind: KnowledgeSourceConfiguration
+source:
+  kind: SharePointSearchSource
+  site: https://0zwdt94t.sharepoint.com/sites/HR-Benefits-mgray/HR%20FAQ

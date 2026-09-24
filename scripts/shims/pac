@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# pac shim — runs the real Power Platform CLI with its auth profiles and token cache in
+# <repo>/.pac instead of ~/.local/share/Microsoft/PowerAppsCli.
+#
+# pac has no setting for its data folder. On Linux it uses .NET's LocalApplicationData,
+# which follows XDG_DATA_HOME, so that is set here for pac only — exporting it shell-wide
+# would also move PowerShell's CurrentUser module path. Linux only: .NET on macOS and
+# Windows ignores XDG_DATA_HOME.
+set -uo pipefail
+
+shims="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+repo="$(cd "$shims/../.." && pwd -P)"
+
+# The real pac is the first one on PATH that isn't this shim.
+real=""
+IFS=: read -r -a dirs <<< "$PATH"
+for d in "${dirs[@]}"; do
+  [ -n "$d" ] && [ -x "$d/pac" ] || continue
+  [ "$(cd "$d" && pwd -P)" = "$shims" ] && continue
+  real="$d/pac"
+  break
+done
+if [ -z "$real" ] && [ -x "$HOME/.dotnet/tools/pac" ]; then
+  real="$HOME/.dotnet/tools/pac"
+fi
+if [ -z "$real" ]; then
+  echo "pac: Power Platform CLI not found. Install: dotnet tool install --global Microsoft.PowerApps.CLI.Tool" >&2
+  exit 127
+fi
+
+export XDG_DATA_HOME="$repo/.pac"
+exec "$real" "$@"

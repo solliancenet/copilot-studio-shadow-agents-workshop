@@ -1,0 +1,20 @@
+mcs.metadata:
+  componentName: List CRM accounts
+  description: Lists accounts from the CRM so the agent can nudge reps about follow-ups.
+kind: TaskDialog
+modelDisplayName: List CRM accounts
+modelDescription: "List accounts from the CRM to remind the rep which need follow-up. Runs on the shared CRM connection."
+inputs:
+  - kind: ManualTaskInput
+    propertyName: entityName
+    value: accounts
+
+action:
+  kind: InvokeConnectorTaskAction
+  connectionReference: cr3f5_SalesNudge.shared_commondataserviceforapps.DVCRMShared
+  connectionProperties:
+    mode: Maker
+
+  operationId: ListRecords
+
+outputMode: All

@@ -1,0 +1,3 @@
+﻿connectionReferences:
+  - connectionReferenceLogicalName: cr090_TeamWiki.shared_webcontents.GraphDevKim
+    connectorId: /providers/Microsoft.PowerApps/apis/shared_webcontents

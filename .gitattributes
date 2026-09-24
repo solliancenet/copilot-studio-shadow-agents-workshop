@@ -1,0 +1,2 @@
+# Batch files need CRLF (setup/windows-vm/oem/install.bat runs inside Windows).
+*.bat text eol=crlf

@@ -1,0 +1,38 @@
+mcs.metadata:
+  componentName: Get a quote
+  description: Gets a premium quote for a risk profile via the underwriting MCP server.
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Get a quote
+    triggerQueries:
+      - get a quote
+      - quote a premium
+      - price this risk
+
+  actions:
+    - kind: Question
+      id: ask-profile
+      alwaysPrompt: true
+      variable: init:Topic.profile
+      prompt: What's the risk profile?
+      entity: StringPrebuiltEntity
+
+    - kind: InvokeMcpTool
+      id: mcp-quote
+      serverLabel: Underwriting
+      serverUrl: ${UNDERWRITING_MCP_FQDN}/underwriting
+      toolName: get_quote
+      headers:
+        Authorization: Bearer ${MCP_BEARER}
+      arguments:
+        profile: =Topic.profile
+      output:
+        autoSend: false
+        result: init:Topic.quoteResult
+
+    - kind: SendActivity
+      id: reply
+      activity: "Quote: {Topic.quoteResult}"

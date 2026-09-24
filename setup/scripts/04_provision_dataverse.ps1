@@ -1,328 +1,273 @@
 <#
-FACILITATOR-ONLY. Phase 5 — Dataverse seed.
+FACILITATOR-ONLY. Phase 5 - Dataverse seed.
 
-Creates Claim and Customer tables in Claims-Test, seeds rows (Customer holds SSN/DOB), and grants
-svc-claims the OVER-BROAD role (read/write all rows, no row-level security). The over-grant + missing RLS
-are what Scenarios C and D exploit, and what Module 5 (least privilege) will actually CLOSE.
+Creates the Claim and Customer tables in Claims-Test-<estate>, seeds rows (Customer holds SSN/DOB), and
+grants svc-claims.<estate> the OVER-BROAD role (read/write all rows, no row-level security). The over-grant
++ missing RLS are what Scenarios C and D exploit, and what Module 5 (least privilege) will actually CLOSE.
 
-Requires: Microsoft.Xrm.Data.PowerShell (Connect-CrmOnline, New-CrmRecord, Get-CrmRecords). Table and
-security-role metadata are created through the underlying IOrganizationService on the returned
-CrmServiceClient ($conn.ExecuteCrmOrganizationRequest(...)) using the Microsoft.Xrm.Sdk message types
-the module loads. pac CLI is a supported alternative for the seed but is not used here.
+Runs anywhere az is signed in to the lab tenant - the dev container, the host, or Windows - with no new
+sign-in: everything goes through the Dataverse Web API and the Power Platform admin API with az's saved
+token. It replaces a Windows PowerShell 5.1 script on Microsoft.Xrm.Data.PowerShell (ADAL-based, with an
+interactive WPF sign-in).
 
-Lines marked [verify] depend on tenant specifics or on 2026 metadata-cmdlet surface.
+Columns: a table's primary key is always <table>id, so the business keys are mm_customernumber and
+mm_claimnumber (the seed CSVs' mm_customerid / mm_claimid columns map onto them).
+
+svc-claims.<estate> must hold a license: Dataverse refuses to add an unlicensed user (userNotLicensed). If it
+has none, everything else is still built and the role assignment is left for a re-run.
+
+Estate (setup/scripts/_estate.ps1): pass -Estate or set HALCOURT_ESTATE. Safe to re-run.
 #>
 param(
-  [Parameter(Mandatory=$true)][string]$ClaimsTestEnvUrl,                     # https://<org>.crm.dynamics.com
-  [string]$SvcClaimsUpn = 'svc-claims@halcourtmutual.onmicrosoft.com',       # over-permissioned service account
-  [pscredential]$Credential,                                                 # optional; falls back to interactive
-  [string]$PublisherPrefix = 'mm',                                           # customization prefix -> mm_* schema names
-  [string]$OverBroadRoleName = 'svc-claims Dataverse Full Access'            # the intentional god-mode role
+  [string]$Estate = $env:HALCOURT_ESTATE,                          # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$ClaimsTestEnvUrl,                                       # default: Claims-Test-<estate>'s org URL
+  [string]$PublisherPrefix = 'mm',                                 # customization prefix -> mm_* schema names
+  [string]$OverBroadRoleName = 'svc-claims Dataverse Full Access'  # the intentional god-mode role
 )
 $ErrorActionPreference = 'Stop'
-$here = Split-Path -Parent $PSCommandPath
-$dataDir = Join-Path (Split-Path -Parent $here) 'data'
+. (Join-Path $PSScriptRoot '_estate.ps1')
+$Estate = Resolve-Estate $Estate
+$dataDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'data'
+$p = $PublisherPrefix
 
-Import-Module Microsoft.Xrm.Data.PowerShell -ErrorAction Stop
-
-# --- Connect -----------------------------------------------------------------
-Write-Host "Connecting to Claims-Test org: $ClaimsTestEnvUrl"
-$connectArgs = @{ ServerUrl = $ClaimsTestEnvUrl }
-if ($Credential) { $connectArgs['Credential'] = $Credential } else { $connectArgs['InteractiveMode'] = $true }  # [verify] auth path per tenant (SPN/cert also valid)
-$conn = Connect-CrmOnline @connectArgs
-if (-not $conn -or -not $conn.IsReady) { throw "Failed to connect to $ClaimsTestEnvUrl" }
-Write-Host "Connected to $($conn.ConnectedOrgFriendlyName)"
-
-# --- Metadata helpers --------------------------------------------------------
-$req = 1033  # LCID for labels
-
-function New-Label([string]$text) {
-  New-Object Microsoft.Xrm.Sdk.Label($text, $req)
+# --- az rest wrapper ---------------------------------------------------------------------------------
+function Invoke-AzRest([string]$Method, [string]$Url, [string]$Resource, $Body, [switch]$AllowNotFound, [switch]$Return) {
+  $azArgs = @('rest', '--method', $Method, '--url', $Url, '--resource', $Resource,
+              '--headers', 'Content-Type=application/json', 'OData-Version=4.0', 'OData-MaxVersion=4.0')
+  if ($Return) { $azArgs += 'Prefer=return=representation' }
+  $file = $null
+  if ($null -ne $Body) {
+    $file = New-TemporaryFile
+    $Body | ConvertTo-Json -Depth 20 | Set-Content -Path $file -Encoding utf8
+    $azArgs += @('--body', "@$file")
+  }
+  # A freshly provisioned Dataverse env is flaky while it warms up, in two distinct ways, and NEITHER means
+  # the payload is wrong:
+  #   0x80040216 "An unexpected error occurred"     - the first attribute POST after a table/attribute create,
+  #                                                   while the customization subsystem settles
+  #   0x80048564 "Database is currently unavailable" - relationship creates, before the database is serving
+  # (0x80072322 is the ordinary concurrency error and retries just as well.) Back off and retry, so an
+  # automated rebuild doesn't need the whole script re-run to inch one step further each time.
+  $transient = '0x80040216|0x80072322|0x80048564|An unexpected error occurred|currently unavailable|Service Unavailable'
+  $attempt = 0; $out = $null; $code = 0; $err = $null
+  while ($true) {
+    $attempt++
+    $errFile = New-TemporaryFile
+    $out = az @azArgs 2> $errFile
+    $code = $LASTEXITCODE
+    $err = Get-Content $errFile -Raw; Remove-Item $errFile
+    if ($code -and $err -match $transient -and $attempt -lt 12) {
+      $wait = [Math]::Min(30, 3 * $attempt)
+      Write-Host "      transient Dataverse error (attempt $attempt) - retrying in ${wait}s..."
+      Start-Sleep -Seconds $wait; continue
+    }
+    break
+  }
+  if ($file) { Remove-Item $file }
+  if ($code) {
+    if ($AllowNotFound -and $err -match 'Not Found|does not exist|Could not find') { return $null }
+    throw "$Method $Url failed: $err"
+  }
+  $text = ($out | Out-String).Trim()
+  if ($text) { $text | ConvertFrom-Json }
 }
 
-function New-StringAttr([string]$schema, [string]$display, [int]$maxLen = 100) {
-  $a = New-Object Microsoft.Xrm.Sdk.Metadata.StringAttributeMetadata
-  $a.SchemaName = $schema
-  $a.MaxLength  = $maxLen
-  $a.FormatName = [Microsoft.Xrm.Sdk.Metadata.StringFormatName]::Text
-  $a.RequiredLevel = New-Object Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevelManagedProperty([Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevel]::None)
-  $a.DisplayName = New-Label $display
-  return $a
+# --- Resolve this estate's Claims-Test and the org ------------------------------------------------------
+$bap = 'https://api.bap.microsoft.com'
+$claimsName = Get-EstateName 'Claims-Test' $Estate
+$envs = (Invoke-AzRest GET "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01" 'https://service.powerapps.com/').value
+$claimsEnv = $envs | Where-Object { $_.properties.displayName -eq $claimsName } | Select-Object -First 1
+if (-not $claimsEnv) { throw "$claimsName not found - run Phase 3 first." }
+if (-not $ClaimsTestEnvUrl) { $ClaimsTestEnvUrl = $claimsEnv.properties.linkedEnvironmentMetadata.instanceUrl }
+$org = $ClaimsTestEnvUrl.TrimEnd('/')
+$api = "$org/api/data/v9.2"
+function Invoke-Dv([string]$Method, [string]$Path, $Body, [switch]$AllowNotFound, [switch]$Return) {
+  Invoke-AzRest $Method "$api/$Path" $org $Body -AllowNotFound:$AllowNotFound -Return:$Return
+}
+Invoke-Dv GET 'WhoAmI' | Out-Null
+Write-Host "Estate: $Estate   $claimsName -> $org"
+
+# Seed data names people canonically; map them to this estate's accounts on the tenant's domain.
+$domain = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
+  --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv
+function ConvertTo-LiveUpn([string]$Upn) {
+  if ($Upn -match '^(.+)@halcourtmutual\.onmicrosoft\.com$') { return "$(Get-EstateAlias $Matches[1] $Estate)@$domain" }
+  return $Upn
 }
 
-function New-DateAttr([string]$schema, [string]$display) {
-  $a = New-Object Microsoft.Xrm.Sdk.Metadata.DateTimeAttributeMetadata
-  $a.SchemaName = $schema
-  $a.Format     = [Microsoft.Xrm.Sdk.Metadata.DateTimeFormat]::DateOnly
-  $a.RequiredLevel = New-Object Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevelManagedProperty([Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevel]::None)
-  $a.DisplayName = New-Label $display
-  return $a
+# --- Metadata helpers ------------------------------------------------------------------------------------
+function New-Label([string]$Text) {
+  @{ '@odata.type' = 'Microsoft.Dynamics.CRM.Label'
+     LocalizedLabels = @(@{ '@odata.type' = 'Microsoft.Dynamics.CRM.LocalizedLabel'; Label = $Text; LanguageCode = 1033 }) }
 }
-
-function New-MoneyAttr([string]$schema, [string]$display) {
-  $a = New-Object Microsoft.Xrm.Sdk.Metadata.MoneyAttributeMetadata
-  $a.SchemaName = $schema
-  $a.RequiredLevel = New-Object Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevelManagedProperty([Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevel]::None)
-  $a.DisplayName = New-Label $display
-  return $a
+$optional = @{ Value = 'None'; CanBeChanged = $true; ManagedPropertyLogicalName = 'canmodifyrequirementlevelsettings' }
+function New-StringCol([string]$Schema, [string]$Display, [int]$MaxLength = 100, [switch]$Primary) {
+  $c = @{ '@odata.type' = 'Microsoft.Dynamics.CRM.StringAttributeMetadata'; SchemaName = $Schema
+          DisplayName = (New-Label $Display); RequiredLevel = $optional; MaxLength = $MaxLength; FormatName = @{ Value = 'Text' } }
+  if ($Primary) { $c.IsPrimaryName = $true }
+  $c
 }
-
-function Test-EntityExists([string]$logicalName) {
-  try {
-    $r = New-Object Microsoft.Xrm.Sdk.Messages.RetrieveEntityRequest
-    $r.LogicalName    = $logicalName
-    $r.EntityFilters  = [Microsoft.Xrm.Sdk.Metadata.EntityFilters]::Entity
-    $r.RetrieveAsIfPublished = $true
-    [void]$conn.ExecuteCrmOrganizationRequest($r)
-    return $true
-  } catch { return $false }
+function New-DateCol([string]$Schema, [string]$Display) {
+  @{ '@odata.type' = 'Microsoft.Dynamics.CRM.DateTimeAttributeMetadata'; SchemaName = $Schema
+     DisplayName = (New-Label $Display); RequiredLevel = $optional; Format = 'DateOnly'; DateTimeBehavior = @{ Value = 'DateOnly' } }
 }
-
-# Create a custom entity with a string primary-name column, then add extra columns.
-function New-CustomTable {
-  param(
-    [string]$Schema,            # e.g. mm_customer
-    [string]$DisplayName,
-    [string]$DisplayCollection,
-    [string]$PrimarySchema,     # e.g. mm_name
-    [string]$PrimaryDisplay,
-    [Microsoft.Xrm.Sdk.Metadata.AttributeMetadata[]]$ExtraColumns
-  )
+function New-MoneyCol([string]$Schema, [string]$Display) {
+  # Without AttributeType/AttributeTypeName and a value range the API fails with 0x80040216 ("unexpected error").
+  @{ '@odata.type' = 'Microsoft.Dynamics.CRM.MoneyAttributeMetadata'; SchemaName = $Schema
+     AttributeType = 'Money'; AttributeTypeName = @{ Value = 'MoneyType' }
+     DisplayName = (New-Label $Display); RequiredLevel = $optional; PrecisionSource = 2; MinValue = 0; MaxValue = 1000000000 }
+}
+function Confirm-Table([string]$Schema, [string]$Display, [string]$Plural, $PrimaryName, [array]$Columns) {
   $logical = $Schema.ToLowerInvariant()
-  if (Test-EntityExists $logical) {
-    Write-Host "  Table $Schema already exists — skipping create."
+  if (Invoke-Dv GET "EntityDefinitions(LogicalName='$logical')?`$select=LogicalName" -AllowNotFound) {
+    Write-Host "  Table $Schema exists - skipping create."
   } else {
     Write-Host "  Creating table $Schema"
-    $em = New-Object Microsoft.Xrm.Sdk.Metadata.EntityMetadata
-    $em.SchemaName       = $Schema
-    $em.DisplayName      = New-Label $DisplayName
-    $em.DisplayCollectionName = New-Label $DisplayCollection
-    $em.OwnershipType    = [Microsoft.Xrm.Sdk.Metadata.OwnershipTypes]::UserOwned
-    $em.IsActivity       = $false
-
-    $primary = New-StringAttr $PrimarySchema $PrimaryDisplay 100
-
-    $createEntity = New-Object Microsoft.Xrm.Sdk.Messages.CreateEntityRequest
-    $createEntity.Entity = $em
-    $createEntity.PrimaryAttribute = $primary
-    [void]$conn.ExecuteCrmOrganizationRequest($createEntity)
+    Invoke-Dv POST 'EntityDefinitions' @{
+      '@odata.type' = 'Microsoft.Dynamics.CRM.EntityMetadata'; SchemaName = $Schema
+      DisplayName = (New-Label $Display); DisplayCollectionName = (New-Label $Plural)
+      OwnershipType = 'UserOwned'; IsActivity = $false; HasActivities = $false; HasNotes = $false
+      Attributes = @($PrimaryName)
+    } | Out-Null
   }
-
-  foreach ($col in $ExtraColumns) {
-    if (Test-ColumnExists $logical $col.SchemaName.ToLowerInvariant()) {
-      Write-Host "    Column $($col.SchemaName) exists — skipping."
+  foreach ($col in $Columns) {
+    $colLogical = $col.SchemaName.ToLowerInvariant()
+    if (Invoke-Dv GET "EntityDefinitions(LogicalName='$logical')/Attributes(LogicalName='$colLogical')?`$select=LogicalName" -AllowNotFound) {
+      Write-Host "    Column $($col.SchemaName) exists - skipping."
       continue
     }
     Write-Host "    Adding column $($col.SchemaName)"
-    $ca = New-Object Microsoft.Xrm.Sdk.Messages.CreateAttributeRequest
-    $ca.EntityName = $logical
-    $ca.Attribute  = $col
-    [void]$conn.ExecuteCrmOrganizationRequest($ca)
+    # A column created before customizations are published can be invisible to the read above, so the create
+    # may report it already exists (0x80047013) - that counts as done.
+    try { Invoke-Dv POST "EntityDefinitions(LogicalName='$logical')/Attributes" $col | Out-Null }
+    catch { if ("$_" -match 'already exists') { Write-Host "    Column $($col.SchemaName) exists (unpublished) - skipping." } else { throw } }
   }
-  return $logical
 }
 
-function Test-ColumnExists([string]$entityLogical, [string]$attrLogical) {
-  try {
-    $r = New-Object Microsoft.Xrm.Sdk.Messages.RetrieveAttributeRequest
-    $r.EntityLogicalName    = $entityLogical
-    $r.LogicalName          = $attrLogical
-    $r.RetrieveAsIfPublished = $true
-    [void]$conn.ExecuteCrmOrganizationRequest($r)
-    return $true
-  } catch { return $false }
-}
-
-# Create a Customer lookup on Claim via a 1:N relationship (Customer 1 -> N Claim).
-function New-CustomerLookup {
-  param([string]$CustomerLogical, [string]$ClaimLogical, [string]$LookupSchema, [string]$LookupDisplay)
-  if (Test-ColumnExists $ClaimLogical $LookupSchema.ToLowerInvariant()) {
-    Write-Host "    Lookup $LookupSchema exists — skipping."
-    return
-  }
-  Write-Host "    Creating lookup $LookupSchema (Customer 1 -> N Claim)"
-  $lookup = New-Object Microsoft.Xrm.Sdk.Metadata.LookupAttributeMetadata
-  $lookup.SchemaName  = $LookupSchema
-  $lookup.DisplayName = New-Label $LookupDisplay
-  $lookup.RequiredLevel = New-Object Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevelManagedProperty([Microsoft.Xrm.Sdk.Metadata.AttributeRequiredLevel]::None)
-
-  $rel = New-Object Microsoft.Xrm.Sdk.Metadata.OneToManyRelationshipMetadata
-  $rel.SchemaName        = "${PublisherPrefix}_customer_claim"
-  $rel.ReferencedEntity  = $CustomerLogical
-  $rel.ReferencingEntity = $ClaimLogical
-
-  $create = New-Object Microsoft.Xrm.Sdk.Messages.CreateOneToManyRequest
-  $create.OneToManyRelationship = $rel
-  $create.Lookup = $lookup
-  [void]$conn.ExecuteCrmOrganizationRequest($create)
-}
-
-# --- Publisher (owns the mm_ prefix) -----------------------------------------
-Write-Host "Ensuring publisher with customization prefix '$PublisherPrefix'"
-$pub = Get-CrmRecords -conn $conn -EntityLogicalName publisher `
-  -FilterAttribute customizationprefix -FilterOperator eq -FilterValue $PublisherPrefix `
-  -Fields publisherid -WarningAction SilentlyContinue
-if ($pub.Count -eq 0) {
-  $pubFields = @{
-    uniquename          = 'halcourtmutual'
-    friendlyname        = 'Halcourt Mutual'
-    customizationprefix = $PublisherPrefix
-    customizationoptionvalueprefix = 20000   # [verify] pick a free option-value prefix in target org
-  }
-  [void](New-CrmRecord -conn $conn -EntityLogicalName publisher -Fields $pubFields)
-  Write-Host "  Created publisher (prefix $PublisherPrefix)."
+# --- Publisher (owns the mm_ prefix) ----------------------------------------------------------------------
+if ((Invoke-Dv GET "publishers?`$select=publisherid&`$filter=customizationprefix eq '$p'").value) {
+  Write-Host "Publisher with prefix '$p' already present."
 } else {
-  Write-Host "  Publisher with prefix $PublisherPrefix already present."
+  Invoke-Dv POST 'publishers' @{ uniquename = 'halcourtmutual'; friendlyname = 'Halcourt Mutual'
+                                 customizationprefix = $p; customizationoptionvalueprefix = 20000 } | Out-Null
+  Write-Host "Created publisher (prefix $p)."
 }
 
-# --- Tables ------------------------------------------------------------------
-# Customer(mm_name [primary], mm_customerid, mm_ssn, mm_dob)   <- PII: SSN + DOB
-# Claim(mm_claimid [primary], mm_customer [lookup], mm_status, mm_amount, mm_adjuster)
+# --- Tables --------------------------------------------------------------------------------------------------
+# Customer(mm_name [primary], mm_customernumber, mm_ssn, mm_dob)       <- PII: SSN + DOB
+# Claim(mm_claimnumber [primary], mm_customer [lookup], mm_status, mm_amount, mm_adjuster)
 Write-Host 'Creating Customer and Claim tables. Customer holds SSN/DOB (PII).'
+Confirm-Table "${p}_customer" 'Customer' 'Customers' (New-StringCol "${p}_name" 'Name' 100 -Primary) @(
+  (New-StringCol "${p}_customernumber" 'Customer ID' 20),
+  (New-StringCol "${p}_ssn" 'SSN' 11),
+  (New-DateCol   "${p}_dob" 'Date of Birth'))
+Confirm-Table "${p}_claim" 'Claim' 'Claims' (New-StringCol "${p}_claimnumber" 'Claim ID' 100 -Primary) @(
+  (New-StringCol "${p}_status" 'Status' 50),
+  (New-MoneyCol  "${p}_amount" 'Amount'),
+  (New-StringCol "${p}_adjuster" 'Adjuster' 200))
 
-$customerLogical = New-CustomTable `
-  -Schema "${PublisherPrefix}_customer" -DisplayName 'Customer' -DisplayCollection 'Customers' `
-  -PrimarySchema "${PublisherPrefix}_name" -PrimaryDisplay 'Name' `
-  -ExtraColumns @(
-    (New-StringAttr "${PublisherPrefix}_customerid" 'Customer ID' 20),
-    (New-StringAttr "${PublisherPrefix}_ssn" 'SSN' 11),
-    (New-DateAttr   "${PublisherPrefix}_dob" 'Date of Birth')
-  )
-
-$claimLogical = New-CustomTable `
-  -Schema "${PublisherPrefix}_claim" -DisplayName 'Claim' -DisplayCollection 'Claims' `
-  -PrimarySchema "${PublisherPrefix}_claimid" -PrimaryDisplay 'Claim ID' `
-  -ExtraColumns @(
-    (New-StringAttr "${PublisherPrefix}_status" 'Status' 50),
-    (New-MoneyAttr  "${PublisherPrefix}_amount" 'Amount'),
-    (New-StringAttr "${PublisherPrefix}_adjuster" 'Adjuster' 200)
-  )
-
-New-CustomerLookup -CustomerLogical $customerLogical -ClaimLogical $claimLogical `
-  -LookupSchema "${PublisherPrefix}_customer" -LookupDisplay 'Customer'
-
-# Publish customizations so the new tables/columns are usable for seeding.
+# Customer 1 -> N Claim, surfaced on Claim as the mm_customer lookup.
+if (Invoke-Dv GET "EntityDefinitions(LogicalName='${p}_claim')/Attributes(LogicalName='${p}_customer')?`$select=LogicalName" -AllowNotFound) {
+  Write-Host "    Lookup ${p}_customer exists - skipping."
+} else {
+  Write-Host "    Creating lookup ${p}_customer (Customer 1 -> N Claim)"
+  Invoke-Dv POST 'RelationshipDefinitions' @{
+    '@odata.type' = 'Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata'; SchemaName = "${p}_customer_claim"
+    ReferencedEntity = "${p}_customer"; ReferencingEntity = "${p}_claim"
+    Lookup = @{ '@odata.type' = 'Microsoft.Dynamics.CRM.LookupAttributeMetadata'; SchemaName = "${p}_customer"
+                DisplayName = (New-Label 'Customer'); RequiredLevel = $optional }
+  } | Out-Null
+}
 Write-Host 'Publishing customizations...'
-$pubAll = New-Object Microsoft.Crm.Sdk.Messages.PublishAllXmlRequest   # [verify] type namespace varies by SDK build
-[void]$conn.ExecuteCrmOrganizationRequest($pubAll)
+Invoke-Dv POST 'PublishAllXml' @{} | Out-Null
 
-# --- Seed rows ---------------------------------------------------------------
+# --- Seed rows -----------------------------------------------------------------------------------------------
+$custSet  = (Invoke-Dv GET "EntityDefinitions(LogicalName='${p}_customer')?`$select=EntitySetName").EntitySetName
+$claimSet = (Invoke-Dv GET "EntityDefinitions(LogicalName='${p}_claim')?`$select=EntitySetName").EntitySetName
+
 Write-Host "Seeding Customer rows from $dataDir/customers.csv"
-$custIdToRef = @{}   # CUS-xxx -> EntityReference for the Claim lookup
+$custIds = @{}   # CUS-xxx -> row id
 foreach ($row in (Import-Csv (Join-Path $dataDir 'customers.csv'))) {
-  $existing = Get-CrmRecords -conn $conn -EntityLogicalName $customerLogical `
-    -FilterAttribute "${PublisherPrefix}_customerid" -FilterOperator eq -FilterValue $row.mm_customerid `
-    -Fields "${PublisherPrefix}_customerid" -WarningAction SilentlyContinue
-  if ($existing.Count -gt 0) {
-    Write-Host "  Customer $($row.mm_customerid) exists — skipping."
-    $id = $existing.CrmRecords[0].("${PublisherPrefix}_customerid_Property").Value
-    $custIdToRef[$row.mm_customerid] = New-CrmEntityReference -EntityLogicalName $customerLogical -Id $existing.CrmRecords[0].($customerLogical + 'id')
-    continue
-  }
-  $fields = @{
-    "${PublisherPrefix}_name"       = $row.mm_name
-    "${PublisherPrefix}_customerid" = $row.mm_customerid
-    "${PublisherPrefix}_ssn"        = $row.mm_ssn
-    "${PublisherPrefix}_dob"        = [datetime]::Parse($row.mm_dob)
-  }
-  $guid = New-CrmRecord -conn $conn -EntityLogicalName $customerLogical -Fields $fields
-  $custIdToRef[$row.mm_customerid] = New-CrmEntityReference -EntityLogicalName $customerLogical -Id $guid
+  $existing = (Invoke-Dv GET "$custSet`?`$select=${p}_customerid&`$filter=${p}_customernumber eq '$($row.mm_customerid)'").value
+  if ($existing) { $custIds[$row.mm_customerid] = $existing[0]."${p}_customerid"; Write-Host "  Customer $($row.mm_customerid) exists - skipping."; continue }
+  $new = Invoke-Dv POST $custSet @{ "${p}_name" = $row.mm_name; "${p}_customernumber" = $row.mm_customerid
+                                    "${p}_ssn" = $row.mm_ssn; "${p}_dob" = $row.mm_dob } -Return
+  $custIds[$row.mm_customerid] = $new."${p}_customerid"
   Write-Host "  Created customer $($row.mm_customerid) ($($row.mm_name))"
 }
 
 Write-Host "Seeding Claim rows from $dataDir/claims.csv"
 foreach ($row in (Import-Csv (Join-Path $dataDir 'claims.csv'))) {
-  $existing = Get-CrmRecords -conn $conn -EntityLogicalName $claimLogical `
-    -FilterAttribute "${PublisherPrefix}_claimid" -FilterOperator eq -FilterValue $row.mm_claimid `
-    -Fields "${PublisherPrefix}_claimid" -WarningAction SilentlyContinue
-  if ($existing.Count -gt 0) { Write-Host "  Claim $($row.mm_claimid) exists — skipping."; continue }
-
-  $fields = @{
-    "${PublisherPrefix}_claimid"  = $row.mm_claimid
-    "${PublisherPrefix}_status"   = $row.mm_status
-    "${PublisherPrefix}_amount"   = (New-CrmMoney -Amount ([decimal]$row.mm_amount))
-    "${PublisherPrefix}_adjuster" = $row.mm_adjuster           # priya.nair / sam.olsen — both real personas
+  if ((Invoke-Dv GET "$claimSet`?`$select=${p}_claimid&`$filter=${p}_claimnumber eq '$($row.mm_claimid)'").value) {
+    Write-Host "  Claim $($row.mm_claimid) exists - skipping."; continue
   }
-  if ($custIdToRef.ContainsKey($row.mm_customer)) {
-    $fields["${PublisherPrefix}_customer"] = $custIdToRef[$row.mm_customer]
-  } else {
-    Write-Warning "  Claim $($row.mm_claimid): customer $($row.mm_customer) not found — leaving lookup empty."
-  }
-  [void](New-CrmRecord -conn $conn -EntityLogicalName $claimLogical -Fields $fields)
-  Write-Host "  Created claim $($row.mm_claimid) (adjuster $($row.mm_adjuster))"
+  $adjuster = ConvertTo-LiveUpn $row.mm_adjuster   # priya.nair / sam.olsen: this estate's accounts
+  $fields = @{ "${p}_claimnumber" = $row.mm_claimid; "${p}_status" = $row.mm_status
+               "${p}_amount" = [decimal]$row.mm_amount; "${p}_adjuster" = $adjuster }
+  if ($custIds.ContainsKey($row.mm_customer)) { $fields["${p}_customer@odata.bind"] = "/$custSet($($custIds[$row.mm_customer]))" }
+  else { Write-Warning "  Claim $($row.mm_claimid): customer $($row.mm_customer) not found - leaving lookup empty." }
+  Invoke-Dv POST $claimSet $fields | Out-Null
+  Write-Host "  Created claim $($row.mm_claimid) (adjuster $adjuster)"
 }
 
-# --- The over-broad role -----------------------------------------------------
-# INTENTIONAL planted problem (Scenario C / D). svc-claims gets ORGANIZATION-DEPTH (Global) read/write on
-# ALL Claim and Customer rows, PII included. No row-level security. The agent's job only needs the
-# requesting adjuster's own claims. Module 5 (least privilege) REPLACES this with a scoped role + RLS.
-# DO NOT scope this down here — the over-grant is the exercise.
-Write-Host "Granting svc-claims the over-broad Dataverse role: '$OverBroadRoleName'"
-
-# Root business unit (role lives here so its scope is the whole org).
-$bu = Get-CrmRecords -conn $conn -EntityLogicalName businessunit `
-  -FilterAttribute parentbusinessunitid -FilterOperator 'null' -FilterValue $null `
-  -Fields businessunitid -WarningAction SilentlyContinue
-$rootBuId = $bu.CrmRecords[0].businessunitid
-
-# Create the role (check-before-create).
-$roleRec = Get-CrmRecords -conn $conn -EntityLogicalName role `
-  -FilterAttribute name -FilterOperator eq -FilterValue $OverBroadRoleName `
-  -Fields roleid -WarningAction SilentlyContinue
-if ($roleRec.Count -gt 0) {
-  $roleId = $roleRec.CrmRecords[0].roleid
-  Write-Host "  Role already exists — reusing $roleId"
-} else {
-  $roleId = New-CrmRecord -conn $conn -EntityLogicalName role -Fields @{
-    name              = $OverBroadRoleName
-    businessunitid    = (New-CrmEntityReference -EntityLogicalName businessunit -Id $rootBuId)
-  }
+# --- The over-broad role -------------------------------------------------------------------------------------
+# INTENTIONAL planted problem (Scenario C / D). ORGANIZATION-DEPTH (Global) create/read/write on ALL Claim and
+# Customer rows, PII included. No row-level security. The agent's job only needs the requesting adjuster's
+# own claims. Module 5 (least privilege) REPLACES this with a scoped role + RLS. DO NOT scope this down here.
+Write-Host "Creating the over-broad Dataverse role: '$OverBroadRoleName'"
+$rootBu = (Invoke-Dv GET "businessunits?`$select=businessunitid&`$filter=_parentbusinessunitid_value eq null").value[0].businessunitid
+$role = (Invoke-Dv GET "roles?`$select=roleid&`$filter=name eq '$OverBroadRoleName' and _businessunitid_value eq $rootBu").value | Select-Object -First 1
+if ($role) { $roleId = $role.roleid; Write-Host "  Role already exists - reusing $roleId" }
+else {
+  $roleId = (Invoke-Dv POST 'roles' @{ name = $OverBroadRoleName; 'businessunitid@odata.bind' = "/businessunits($rootBu)" } -Return).roleid
   Write-Host "  Created role $roleId"
 }
-
-# Resolve the privileges to grant at GLOBAL (organization) depth on both tables.
-# Privilege records are named prv{Operation}{entitySchemaName}, e.g. prvReadmm_claim.
-$ops     = @('Create','Read','Write','Append','AppendTo','Assign','Share')
-$targets = @("${PublisherPrefix}_claim", "${PublisherPrefix}_customer")
-$rolePrivs = New-Object System.Collections.Generic.List[Microsoft.Crm.Sdk.Messages.RolePrivilege]
-foreach ($t in $targets) {
-  foreach ($op in $ops) {
-    $prvName = "prv$op$t"
-    $prv = Get-CrmRecords -conn $conn -EntityLogicalName privilege `
-      -FilterAttribute name -FilterOperator eq -FilterValue $prvName `
-      -Fields privilegeid -WarningAction SilentlyContinue
-    if ($prv.Count -eq 0) { Write-Warning "    Privilege $prvName not found — skipping."; continue }
-    $rp = New-Object Microsoft.Crm.Sdk.Messages.RolePrivilege
-    $rp.PrivilegeId = $prv.CrmRecords[0].privilegeid
-    $rp.Depth       = [Microsoft.Crm.Sdk.Messages.PrivilegeDepth]::Global   # Global = read/write ALL rows, no RLS
-    $rolePrivs.Add($rp)
+$privileges = foreach ($t in "${p}_claim", "${p}_customer") {
+  foreach ($op in 'Create', 'Read', 'Write', 'Append', 'AppendTo', 'Assign', 'Share') {
+    $priv = (Invoke-Dv GET "privileges?`$select=privilegeid&`$filter=name eq 'prv$op$t'").value | Select-Object -First 1
+    if ($priv) { @{ PrivilegeId = $priv.privilegeid; Depth = 'Global' } } else { Write-Warning "    Privilege prv$op$t not found - skipping." }
   }
 }
+Invoke-Dv POST "roles($roleId)/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = @($privileges) } | Out-Null
+Write-Host "  Granted $(@($privileges).Count) Global-depth privileges (Claim + Customer, incl. PII)."
 
-$addPriv = New-Object Microsoft.Crm.Sdk.Messages.AddPrivilegesRoleRequest
-$addPriv.RoleId     = $roleId
-$addPriv.Privileges = $rolePrivs.ToArray()
-[void]$conn.ExecuteCrmOrganizationRequest($addPriv)
-Write-Host "  Granted $($rolePrivs.Count) Global-depth privileges (Claim + Customer, incl. PII)."
-
-# Assign the role to svc-claims.
-$svc = Get-CrmRecords -conn $conn -EntityLogicalName systemuser `
-  -FilterAttribute domainname -FilterOperator eq -FilterValue $SvcClaimsUpn `
-  -Fields systemuserid -WarningAction SilentlyContinue
-if ($svc.Count -eq 0) { throw "svc-claims user '$SvcClaimsUpn' not found in Claims-Test (run 01_provision_entra first)." }
-$svcId = $svc.CrmRecords[0].systemuserid
-
-$assoc = New-Object Microsoft.Xrm.Sdk.Messages.AssociateRequest
-$assoc.Target        = New-Object Microsoft.Xrm.Sdk.EntityReference('systemuser', $svcId)
-$assoc.RelatedEntities = New-Object Microsoft.Xrm.Sdk.EntityReferenceCollection
-$assoc.RelatedEntities.Add((New-Object Microsoft.Xrm.Sdk.EntityReference('role', $roleId)))
-$assoc.Relationship  = New-Object Microsoft.Xrm.Sdk.Relationship('systemuserroles_association')
-try {
-  [void]$conn.ExecuteCrmOrganizationRequest($assoc)
-  Write-Host "  Assigned '$OverBroadRoleName' to $SvcClaimsUpn."
-} catch {
-  if ("$_" -match 'Cannot insert duplicate|already exists') { Write-Host "  Role already assigned to $SvcClaimsUpn." }
-  else { throw }
+# --- The service account -------------------------------------------------------------------------------------
+$svcUpn = "$(Get-EstateAlias 'svc-claims' $Estate)@$domain"
+$svc = (Invoke-Dv GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$svcUpn'").value | Select-Object -First 1
+if (-not $svc) {
+  # Force-sync the user into the environment (what PPAC's "Add user" does).
+  $svcOid = az ad user show --id $svcUpn --query id -o tsv
+  if ($LASTEXITCODE -or -not $svcOid) { throw "$svcUpn not found in Entra - run Phase 2 first." }
+  try {
+    Invoke-AzRest POST "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($claimsEnv.name)/addUser?api-version=2020-10-01" `
+      'https://service.powerapps.com/' @{ ObjectId = $svcOid } | Out-Null
+    $svc = (Invoke-Dv GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$svcUpn'").value | Select-Object -First 1
+  } catch {
+    if ("$_" -notmatch 'userNotLicensed') { throw }
+    Write-Warning "$svcUpn has no license, and Dataverse won't add an unlicensed user (userNotLicensed)."
+    Write-Warning "Assign it a license, then re-run this script: only the role assignment is left."
+  }
+}
+$assigned = $false
+if ($svc) {
+  $current = (Invoke-Dv GET "systemusers($($svc.systemuserid))/systemuserroles_association?`$select=roleid").value
+  if ($current.roleid -contains $roleId) { Write-Host "  Role already assigned to $svcUpn." }
+  else {
+    Invoke-Dv POST "systemusers($($svc.systemuserid))/systemuserroles_association/`$ref" @{ '@odata.id' = "$api/roles($roleId)" } | Out-Null
+    Write-Host "  Assigned '$OverBroadRoleName' to $svcUpn."
+  }
+  $assigned = $true
 }
 
-Write-Host 'Phase 5 complete. svc-claims now has org-wide read/write on Claim + Customer (intentional over-grant).'
+# --- Verify ----------------------------------------------------------------------------------------------------
+Write-Host ''
+Write-Host '================ Phase 5 verification ================'
+$custRows  = (Invoke-Dv GET "$custSet`?`$select=${p}_customernumber,${p}_name,${p}_ssn,${p}_dob").value
+$claimRows = (Invoke-Dv GET "$claimSet`?`$select=${p}_claimnumber,${p}_status,${p}_amount,${p}_adjuster,_${p}_customer_value").value
+Write-Host "Customer rows: $(@($custRows).Count) (with SSN: $(@($custRows | Where-Object { $_."${p}_ssn" }).Count))"
+Write-Host "Claim rows:    $(@($claimRows).Count) (linked to a customer: $(@($claimRows | Where-Object { $_."_${p}_customer_value" }).Count))"
+$claimRows | ForEach-Object { Write-Host ("  {0,-9} {1,-13} {2,8}  {3}" -f $_."${p}_claimnumber", $_."${p}_status", $_."${p}_amount", $_."${p}_adjuster") }
+$granted = (Invoke-Dv GET "roles($roleId)/roleprivileges_association?`$select=name").value
+Write-Host "Role '$OverBroadRoleName': $(@($granted).Count) privileges ($((@($granted.name) | Sort-Object) -join ', '))"
+Write-Host "svc-claims role assignment: $(if ($assigned) { "done ($svcUpn)" } else { "PENDING - $svcUpn needs a license" })"
+Write-Host "Phase 5 $(if ($assigned) { 'complete' } else { 'complete except the role assignment' })."

@@ -1,0 +1,3 @@
+# Per-build local state from `pac copilot clone/init/pull` - environment-specific ids (AgentId,
+# EnvironmentId, change tokens). Regenerated per environment on push; never replay these.
+*/.mcs/

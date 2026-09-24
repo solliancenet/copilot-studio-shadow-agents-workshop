@@ -1,0 +1,38 @@
+mcs.metadata:
+  componentName: Run pricing query
+  description: Runs an arbitrary query against the pricing database (over-scoped MCP tool).
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Run pricing query
+    triggerQueries:
+      - run a pricing query
+      - query the pricing database
+      - run query
+
+  actions:
+    - kind: Question
+      id: ask-sql
+      alwaysPrompt: true
+      variable: init:Topic.sql
+      prompt: What query should I run?
+      entity: StringPrebuiltEntity
+
+    - kind: InvokeMcpTool
+      id: mcp-runquery
+      serverLabel: Underwriting
+      serverUrl: ${UNDERWRITING_MCP_FQDN}/underwriting
+      toolName: run_query
+      headers:
+        Authorization: Bearer ${MCP_BEARER}
+      arguments:
+        sql: =Topic.sql
+      output:
+        autoSend: false
+        result: init:Topic.queryResult
+
+    - kind: SendActivity
+      id: reply
+      activity: "Result: {Topic.queryResult}"

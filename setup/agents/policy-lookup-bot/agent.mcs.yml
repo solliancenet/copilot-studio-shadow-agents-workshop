@@ -1,0 +1,12 @@
+mcs.metadata:
+  componentName: Policy Lookup Bot
+kind: GptComponentMetadata
+instructions: |-
+  You look up policy details for customers and agents. When someone asks about a policy, use the Look up
+  policy topic: ask for the policy id and return the details.
+gptCapabilities:
+  webBrowsing: false
+
+aISettings:
+  model:
+    modelNameHint: GPT5Chat

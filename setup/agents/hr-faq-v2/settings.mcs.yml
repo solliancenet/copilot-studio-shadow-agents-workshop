@@ -1,0 +1,28 @@
+displayName: HR FAQ v2 (copy)
+schemaName: new_HRFAQv2copy
+accessControlPolicy: GroupMembership
+authenticationMode: Integrated
+authenticationTrigger: Always
+authorizedSecurityGroupIds:
+  - 6ab14226-1bdb-4a62-9298-11443b1d9daa
+configuration:
+  settings:
+    GenerativeActionsEnabled: true
+
+  isAgentConnectable: true
+  gPTSettings:
+    defaultSchemaName: new_HRFAQv2copy.gpt.default
+
+  aISettings:
+    useModelKnowledge: true
+    isFileAnalysisEnabled: true
+    isSemanticSearchEnabled: true
+    contentModeration: Low
+    optInUseLatestModels: false
+
+  recognizer:
+    kind: GenerativeAIRecognizer
+
+publishedOn: 2026-09-21T15:06:49.0000000Z
+template: default-2.1.0
+language: 1033

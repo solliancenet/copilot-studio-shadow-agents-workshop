@@ -1,0 +1,10 @@
+{
+  // Project-local az / pac sign-in state — mirrors scripts/env.sh (keep the two in sync).
+  "terminal.integrated.env.linux": {
+    "AZURE_CONFIG_DIR": "${workspaceFolder}/.azure",
+    "AZURE_EXTENSION_DIR": "${env:HOME}/.azure/cliextensions",
+    "AZURE_CORE_COLLECT_TELEMETRY": "false",
+    "AZURE_LOGGING_ENABLE_LOG_FILE": "false",
+    "PATH": "${workspaceFolder}/scripts/shims:${env:PATH}"
+  }
+}

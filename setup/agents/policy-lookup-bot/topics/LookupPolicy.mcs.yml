@@ -1,0 +1,35 @@
+mcs.metadata:
+  componentName: Look up policy
+  description: Looks up a policy by id from the internal Policy API.
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Look up policy
+    triggerQueries:
+      - look up a policy
+      - policy details
+      - find a policy
+      - look up my policy
+      - policy lookup
+
+  actions:
+    - kind: Question
+      id: ask-policy-id
+      alwaysPrompt: true
+      variable: init:Topic.policyId
+      prompt: What's the policy id?
+      entity: StringPrebuiltEntity
+
+    - kind: HttpRequestAction
+      id: http-lookup
+      method: GET
+      url: ="${POLICY_API_FQDN}/policy/" & Topic.policyId
+      headers:
+        x-api-key: ${POLICY_API_KEY}
+      response: init:Topic.policyResult
+
+    - kind: SendActivity
+      id: reply
+      activity: "Policy {Topic.policyId}: {Topic.policyResult}"

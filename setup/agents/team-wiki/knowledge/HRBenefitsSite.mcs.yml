@@ -1,0 +1,7 @@
+mcs.metadata:
+  componentName: HR-Benefits-mgray
+  description: Team site for HR benefits content.
+kind: KnowledgeSourceConfiguration
+source:
+  kind: SharePointSearchSource
+  site: https://0zwdt94t.sharepoint.com/sites/HR-Benefits-mgray

@@ -207,6 +207,9 @@ before delivery and update `AGENTS.md` if reality differs:
 1. **Inventory/identity surfaces:** exact fields exposed by PPAC "Agents", CoE Starter Kit agent
    inventory, **Agent 365** admin, and Graph for agent/workload identities. Confirm the Entra
    app/service-principal listing for the auto-created agent identities ("since March 2026").
+   **Partly confirmed 2026-09-19:** Graph lists each as an `agentIdentity` service principal
+   (`servicePrincipalType: ServiceIdentity`) named `<agent name> (Microsoft Copilot Studio)`, created with
+   the agent — not the `cs-agent-<slug>-<env>` names the pack uses. PPAC / CoE / Agent 365 fields unchecked.
 2. **Solution portability:** whether Copilot Studio agents export/import as solutions (`pac solution`)
    cleanly enough to cut manual RUNBOOK authoring steps.
 3. **DLP granularity** for agents/connectors; whether **Conditional Access for workload identities**

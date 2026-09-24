@@ -36,6 +36,9 @@ fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE"
 
+# az sign-in state lives in the repo (.azure/), not ~/.azure — see scripts/env.sh.
+source "$HERE/scripts/env.sh"
+
 ENV_NAME="${1:-${ENV_NAME:-mmdev}}"
 SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:-6aa3be9e-6130-409f-882c-cdc4e4816a36}"
 LOCATION="${AZURE_LOCATION:-westus3}"

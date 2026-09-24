@@ -1,0 +1,24 @@
+mcs.metadata:
+  componentName: Search across Microsoft 365
+  description: Calls Microsoft Graph with the maker's access to find sites, pages and files.
+kind: TaskDialog
+modelDisplayName: Search across Microsoft 365
+modelDescription: "Find sites, pages and files anywhere in Microsoft 365 by calling Microsoft Graph. Pass a Graph GET URL, for example https://graph.microsoft.com/v1.0/sites?search=benefits or https://graph.microsoft.com/v1.0/sites/{site-id}/drive/root/search(q='comp bands')."
+inputs:
+  - kind: ManualTaskInput
+    propertyName: method
+    value: GET
+
+  - kind: AutomaticTaskInput
+    propertyName: url
+    description: The Microsoft Graph GET URL to call.
+
+action:
+  kind: InvokeConnectorTaskAction
+  connectionReference: cr090_TeamWiki.shared_webcontents.GraphDevKim
+  connectionProperties:
+    mode: Maker
+
+  operationId: InvokeHttp
+
+outputMode: All

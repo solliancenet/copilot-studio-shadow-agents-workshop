@@ -13,13 +13,53 @@ Requires:
 The exec-comp .xlsx is generated in-process as a minimal, valid OOXML workbook — no Excel / ImportExcel
 dependency — so it is grounded content the Benefits agent can read.
 
+Signs in ONCE, with a device code (the browser redirect of an interactive login can't reach a dev
+container), through the tenant's own Entra app registration - PnP.PowerShell 3.x has no shared app.
+-ClientId defaults to $env:ENTRAID_APP_ID; RUNBOOK Phase 4 registers the app with az (no extra sign-in).
+The one sign-in is to the root site; both team sites live on the same SharePoint host, so its token is
+reused for them instead of signing in per site.
+
+Estate (setup/scripts/_estate.ps1): the sites carry this build's estate id - /sites/HR-Benefits-<estate>,
+/sites/Claims-Knowledge-<estate> - so several people can build in one tenant. Pass -Estate or set
+HALCOURT_ESTATE.
+
 Lines marked [verify] depend on tenant specifics or unconfirmed 2026 cmdlet/param surface.
 #>
 param(
-  [Parameter(Mandatory=$true)][string]$TenantAdminUrl,   # https://<tenant>-admin.sharepoint.com
-  [Parameter(Mandatory=$true)][string]$RootSiteUrl       # https://<tenant>.sharepoint.com
+  [string]$Estate = $env:HALCOURT_ESTATE,                # this build's estate id, e.g. mgray (see _estate.ps1)
+  [Parameter(Mandatory=$true)][string]$RootSiteUrl,      # https://<tenant>.sharepoint.com
+  [string]$ClientId = $env:ENTRAID_APP_ID,               # PnP app registration (RUNBOOK Phase 4)
+  [string]$CertPath = $env:HALCOURT_PNP_CERT_PFX,        # app-only .pfx (Sites.FullControl.All) -> headless, no device code
+  [string]$CertPassword = $env:HALCOURT_PNP_CERT_PW,
+  [string]$SiteOwner = $env:HALCOURT_SITE_OWNER,         # app-only only: group-site owner (default: the az signed-in admin)
+  [switch]$Interactive                                   # browser sign-in (host / Windows); default: device code
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_estate.ps1')
+$Estate = Resolve-Estate $Estate
+if (-not $ClientId) { throw 'Pass -ClientId or set ENTRAID_APP_ID to your PnP app registration (RUNBOOK Phase 4).' }
+$RootSiteUrl = $RootSiteUrl.TrimEnd('/')
+# <tenant>.sharepoint.com -> <tenant>.onmicrosoft.com
+$tenantName = ([Uri]$RootSiteUrl).Host.Split('.')[0]
+# Three sign-in modes, in order of headlessness:
+#   -CertPath (app-only, Sites.FullControl.All): fully headless - no human, no browser, no device code, which
+#     is what an automated teardown+rebuild wants. It also needs the Graph Group.ReadWrite.All APPLICATION
+#     role, because a team site is an M365 group and the group is created through Graph (see the site-creation
+#     block below). Entra groups are resolved via az, so no further Graph app-role is needed.
+#   -Interactive: opens a browser tab; only works where the redirect can reach this process (host / Windows).
+#   default: device code - works anywhere, including the dev container, but a human must enter the code once.
+$AppOnly = [bool]$CertPath
+$pnpAuth = @{ ClientId = $ClientId; Tenant = "$tenantName.onmicrosoft.com" }
+if ($AppOnly) {
+  if (-not (Test-Path $CertPath)) { throw "CertPath '$CertPath' not found." }
+  $pnpAuth['CertificatePath'] = $CertPath
+  if ($CertPassword) { $pnpAuth['CertificatePassword'] = (ConvertTo-SecureString $CertPassword -AsPlainText -Force) }
+  # App-only has no current user, so a group team site would be created OWNERLESS and its SharePoint site would
+  # never provision. Group sites must therefore be created with an explicit owner (the delegated path gets this
+  # for free - the signing-in admin becomes owner). Default to the az signed-in admin.
+  if (-not $SiteOwner) { $SiteOwner = (az ad signed-in-user show --query userPrincipalName -o tsv 2>$null); if ($SiteOwner) { $SiteOwner = $SiteOwner.Trim() } }
+  if (-not $SiteOwner) { throw 'App-only site creation needs an owner: pass -SiteOwner or set HALCOURT_SITE_OWNER (an az sign-in also supplies it).' }
+} elseif ($Interactive) { $pnpAuth['Interactive'] = $true } else { $pnpAuth['DeviceLogin'] = $true }
 $here = Split-Path -Parent $PSCommandPath
 $dataDir = Join-Path (Split-Path -Parent $here) 'data'
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ("hm-sp-" + [Guid]::NewGuid().ToString('N'))
@@ -202,35 +242,100 @@ function Hide-DocxPayload {
 }
 
 # ===========================================================================
-Connect-PnPOnline -Url $TenantAdminUrl -Interactive
+# The one sign-in. Everything below runs on it: site creation on this connection, content through its
+# SharePoint token (same host for every team site).
+Connect-PnPOnline -Url $RootSiteUrl @pnpAuth
+$spToken = Get-PnPAccessToken -ResourceTypeName SharePoint
+function Use-Site([string]$Url) { Connect-PnPOnline -Url $Url -AccessToken $spToken }
+function Test-SiteExists([string]$Url) {
+  (Invoke-PnPSPRestMethod -Method Post -Url '/_api/SP.Site.Exists' -Content @{ url = $Url }).value
+}
+
+# The Entra groups the sites grant access to (AGENTS.md -> SharePoint access). Resolved now, while this
+# connection can still reach Graph - the per-site connections below carry a SharePoint token only.
+$groupIds = @{}
+foreach ($canon in 'HR-Team', 'Claims-Adjusters', 'All-Employees') {
+  $name = Get-EstateName $canon $Estate
+  if ($AppOnly) {
+    # App-only carries a SharePoint token only (no Graph app-role), so resolve the group through az's sign-in.
+    $gid = az ad group show --group $name --query id -o tsv 2>$null
+    if (-not $gid) { throw "Entra group $name not found (az) - run Phase 2 first." }
+    $groupIds[$canon] = $gid.Trim()
+  } else {
+    $g = Get-PnPEntraIDGroup -Identity $name -ErrorAction SilentlyContinue
+    if (-not $g) { throw "Entra group $name not found - run Phase 2 first." }
+    $groupIds[$canon] = $g.Id
+  }
+}
+# Members edit, visitors read. Security groups join a site's SharePoint groups by claim.
+function Grant-SiteAccess([string]$MemberGroup, [string]$ReaderGroup) {
+  Add-PnPGroupMember -Group (Get-PnPGroup -AssociatedMemberGroup) -LoginName "c:0t.c|tenant|$($groupIds[$MemberGroup])"
+  Add-PnPGroupMember -Group (Get-PnPGroup -AssociatedVisitorGroup) -LoginName "c:0t.c|tenant|$($groupIds[$ReaderGroup])"
+  Write-Host "  access: members $(Get-EstateName $MemberGroup $Estate), visitors (read) $(Get-EstateName $ReaderGroup $Estate)"
+}
 
 # --- Sites -------------------------------------------------------------------
-$hrUrl = "$RootSiteUrl/sites/HR-Benefits"
-$claimsUrl = "$RootSiteUrl/sites/Claims-Knowledge"
+$hrAlias     = Get-EstateName 'HR-Benefits' $Estate
+$claimsAlias = Get-EstateName 'Claims-Knowledge' $Estate
+$hrUrl = "$RootSiteUrl/sites/$hrAlias"
+$claimsUrl = "$RootSiteUrl/sites/$claimsAlias"
 Write-Host "Ensuring sites: $hrUrl and $claimsUrl"
 
 # Check-before-create for idempotency. Team sites give each a default 'Shared Documents' (Documents)
 # library, which is what Benefits Buddy grounds on whole-site.
 # [verify] New-PnPSite -Type TeamSite provisions an M365-group-backed team site; if grounding needs a
 # classic path, switch -Type to CommunicationSite (which takes -Url instead of -Alias).
-$existing = Get-PnPTenantSite -Detailed -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Url
-if ($existing -notcontains $hrUrl) {
-  New-PnPSite -Type TeamSite -Title 'HR Benefits' -Alias 'HR-Benefits' | Out-Null
-} else {
-  Write-Host "  HR-Benefits already exists — skipping create."
+foreach ($site in @(
+    @{ Alias = $hrAlias;     Url = $hrUrl;     Title = (Get-EstateDisplayName 'HR Benefits' $Estate) },
+    @{ Alias = $claimsAlias; Url = $claimsUrl; Title = (Get-EstateDisplayName 'Claims Knowledge' $Estate) })) {
+  if (Test-SiteExists $site.Url) {
+    Write-Host "  $($site.Alias) already exists — skipping create."
+    continue
+  }
+  Write-Host "  Creating team site $($site.Url)"
+  if ($AppOnly) {
+    # App-only: New-PnPSite -Owners resolves to an empty owners@odata.bind and 400s, and a groupless owner
+    # never provisions the site. So create the backing M365 group directly via Graph (owner bound, through
+    # az's admin sign-in); SharePoint then provisions the team site at /sites/<alias>, which the wait loop
+    # below picks up. Content still flows over the app-only PnP connection.
+    $ownerId = (az ad user show --id $SiteOwner --query id -o tsv 2>$null); if ($ownerId) { $ownerId = $ownerId.Trim() }
+    if (-not $ownerId) { throw "Site owner '$SiteOwner' not found in the directory." }
+    $gbody = @{ displayName = $site.Title; mailNickname = $site.Alias; mailEnabled = $true
+                securityEnabled = $false; groupTypes = @('Unified')
+                'owners@odata.bind' = @("https://graph.microsoft.com/v1.0/users/$ownerId") } | ConvertTo-Json -Depth 6
+    $gf = New-TemporaryFile; $gbody | Set-Content $gf -Encoding utf8
+    az rest --method POST --url 'https://graph.microsoft.com/v1.0/groups' --headers 'Content-Type=application/json' --body "@$gf" -o none
+    Remove-Item $gf
+  } else {
+    New-PnPSite -Type TeamSite -Title $site.Title -Alias $site.Alias | Out-Null
+  }
 }
-if ($existing -notcontains $claimsUrl) {
-  New-PnPSite -Type TeamSite -Title 'Claims Knowledge' -Alias 'Claims-Knowledge' | Out-Null
-} else {
-  Write-Host "  Claims-Knowledge already exists — skipping create."
+# A new group site provisions asynchronously and, on a fresh tenant, can take well over 5 minutes.
+foreach ($url in $hrUrl, $claimsUrl) {
+  $deadline = (Get-Date).AddMinutes(15)
+  while (-not (Test-SiteExists $url)) {
+    if ((Get-Date) -gt $deadline) { throw "$url still isn't available after 15 minutes." }
+    Start-Sleep -Seconds 15
+  }
 }
 
 # --- HR-Benefits content -----------------------------------------------------
-Connect-PnPOnline -Url $hrUrl -Interactive
+Use-Site $hrUrl
+Grant-SiteAccess 'HR-Team' 'All-Employees'
 
 # Leadership/ subfolder (Scenario B target location).
 if (-not (Get-PnPFolder -Url 'Shared Documents/Leadership' -ErrorAction SilentlyContinue)) {
   Add-PnPFolder -Name 'Leadership' -Folder 'Shared Documents' | Out-Null
+}
+# Leadership/ stops inheriting and drops the visitors: HR-Team (members) and owners keep access, employees
+# lose it - so the agent built on Marcus's reach can surface what the asking employee can't open (Scenario B).
+$leadership = Get-PnPFolder -Url 'Shared Documents/Leadership' -Includes ListItemAllFields
+try {
+  Set-PnPListItemPermission -List 'Documents' -Identity $leadership.ListItemAllFields.Id `
+    -Group (Get-PnPGroup -AssociatedVisitorGroup) -RemoveRole 'Read'
+  Write-Host '  Leadership/: inheritance broken, visitors removed'
+} catch {
+  Write-Host "  Leadership/: visitors already removed ($($_.Exception.Message))"
 }
 
 # Exec comp file that Benefits Buddy should NOT surface (Scenario B target). Generated from the fake
@@ -273,8 +378,34 @@ if ($built) {
 Write-Host 'Grounding config note: in Copilot Studio, ground Benefits Buddy on the WHOLE HR-Benefits site'
 Write-Host '(including Leadership/) so both Scenario A and B are reachable.'
 
+# Clean, all-staff "HR FAQ" library — grounding for the HR FAQ v2 (copy) DECOY. Deliberately SEPARATE
+# from Shared Documents (which holds the poisoned FAQ + Leadership/): a dedicated library, inheriting the
+# site's all-staff read, with a benign FAQ only. The decoy grounds on THIS library so it inspects clean.
+$faqLibTitle = 'HR FAQ'
+if (-not (Get-PnPList -Identity $faqLibTitle -ErrorAction SilentlyContinue)) {
+  New-PnPList -Title $faqLibTitle -Template DocumentLibrary -OnQuickLaunch | Out-Null
+  Write-Host "Created clean FAQ library '$faqLibTitle' (inherits site permissions = all-staff read)."
+} else {
+  Write-Host "Clean FAQ library '$faqLibTitle' already exists."
+}
+$faqLib      = Get-PnPList -Identity $faqLibTitle
+$faqLibUrl   = $faqLib.RootFolder.ServerRelativeUrl
+$cleanFaqMd   = Join-Path $dataDir 'HR-FAQ-Published.md'
+$cleanFaqDocx = Join-Path $work 'HR-FAQ-Published.docx'
+if (Test-Path $cleanFaqMd) {
+  $cleanBuilt = Convert-MdToDocx -MdPath $cleanFaqMd -OutDocx $cleanFaqDocx
+  # No Hide-DocxPayload here: this document must be clean end to end.
+  Add-PnPFile -Path ($cleanBuilt ? $cleanBuilt : $cleanFaqMd) -Folder $faqLibUrl | Out-Null
+  Write-Host "Uploaded the clean HR FAQ to '$faqLibUrl'."
+} else {
+  Write-Warning "Missing $cleanFaqMd - the HR FAQ v2 (copy) decoy has no clean grounding source."
+}
+Write-Host "Grounding config note: ground the HR FAQ v2 (copy) DECOY on the library only:"
+Write-Host "  https://<tenant>.sharepoint.com$faqLibUrl"
+
 # --- Claims-Knowledge content ------------------------------------------------
-Connect-PnPOnline -Url $claimsUrl -Interactive
+Use-Site $claimsUrl
+Grant-SiteAccess 'Claims-Adjusters' 'All-Employees'
 
 # Ordinary claims-procedure grounding so the site looks real (context for Claims Copilot).
 # Only a CSV source exists; upload it as-is and also publish a short procedures .docx placeholder.
@@ -305,6 +436,35 @@ if ($procBuilt) {
 } else {
   Add-PnPFile -Path $procMd -Folder 'Shared Documents' | Out-Null
 }
+
+# --- Verify: read back what the scenarios depend on ---------------------------
+Write-Host ''
+Write-Host '================ Phase 4 verification ================'
+foreach ($url in $hrUrl, $claimsUrl) {
+  Use-Site $url
+  Write-Host $url
+  foreach ($role in 'AssociatedMemberGroup', 'AssociatedVisitorGroup') {
+    $sel = @{}; $sel[$role] = $true
+    $who = (Get-PnPGroupMember -Group (Get-PnPGroup @sel) | ForEach-Object Title) -join ', '
+    Write-Host ("  {0,-9} {1}" -f $(if ($role -like '*Member*') { 'members' } else { 'visitors' }), $who)
+  }
+  Get-PnPListItem -List 'Documents' -Fields FileRef, FSObjType -PageSize 100 |
+    ForEach-Object { Write-Host ("  {0,-7} {1}" -f $(if ($_.FieldValues.FSObjType -eq 1) { 'folder' } else { 'file' }), $_.FieldValues.FileRef) }
+}
+Use-Site $hrUrl
+$item = (Get-PnPFolder -Url 'Shared Documents/Leadership' -Includes ListItemAllFields).ListItemAllFields
+Get-PnPProperty -ClientObject $item -Property HasUniqueRoleAssignments, RoleAssignments | Out-Null
+Write-Host "Leadership/ unique permissions: $($item.HasUniqueRoleAssignments)"
+foreach ($ra in $item.RoleAssignments) {
+  Get-PnPProperty -ClientObject $ra -Property Member, RoleDefinitionBindings | Out-Null
+  Write-Host ("  {0,-45} {1}" -f $ra.Member.Title, (($ra.RoleDefinitionBindings | ForEach-Object Name) -join ', '))
+}
+# The planted file as SharePoint serves it: payload hidden, but still there for grounding.
+$ms = Get-PnPFile -Url "/sites/$hrAlias/Shared Documents/Open-Enrollment-FAQ.docx" -AsMemoryStream
+$zip = New-Object System.IO.Compression.ZipArchive($ms)
+$reader = New-Object System.IO.StreamReader($zip.GetEntry('word/document.xml').Open())
+$xml = $reader.ReadToEnd(); $reader.Dispose(); $zip.Dispose()
+Write-Host "Open-Enrollment-FAQ.docx: hidden runs $(([regex]::Matches($xml, '<w:vanish/>')).Count), payload text present $($xml -match 'Note to assistant')"
 
 # --- Cleanup -----------------------------------------------------------------
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue

@@ -1,0 +1,36 @@
+mcs.metadata:
+  componentName: Submit expense
+  description: Submits an expense to the auto-approve flow (runs as Sam, an approver).
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Submit expense
+    triggerQueries:
+      - submit an expense
+      - approve my expense
+      - expense approval
+      - submit expense
+
+  actions:
+    - kind: Question
+      id: ask-amount
+      alwaysPrompt: true
+      variable: init:Topic.amount
+      prompt: What's the expense amount?
+      entity: NumberPrebuiltEntity
+
+    - kind: InvokeFlowAction
+      id: run-flow
+      flowId: ${FLOW:Submit and auto-approve expense under $500}
+      input:
+        binding:
+          amount: =Topic.amount
+      output:
+        binding:
+          status: Topic.flowStatus
+
+    - kind: SendActivity
+      id: reply
+      activity: "{Topic.flowStatus}"
