@@ -16,4 +16,5 @@ re-verified as products change.
 | File | Topic |
 |---|---|
 | `copilot-studio-billing.md` | Copilot Studio billing/licensing models, trial limits, workshop implications |
-| `runbook-errata.md` | Errata, options & known issues for the provisioning runbook |
+| `runbook-decisions.md` | Why the provisioning runbook is built the way it is — decisions, tradeoffs, manual alternatives |
+| `runbook-errata.md` | Errata, known issues & troubleshooting for the provisioning runbook |
