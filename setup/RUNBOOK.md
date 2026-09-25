@@ -12,8 +12,10 @@
 A single **shared demo tenant** hosts the live estate for the BREAK (Module 4) and CONTROL (Module 5)
 demos; attendees get a guest/read account (Ana Reyes) plus the low-priv **Jordan Blake** path. An
 **artifact pack** (five CSVs in `../worksheets/artifact-pack/`) is exported from that estate so the
-DISCOVER / MAP / threat-model / ASSESS work runs offline. **The committed pack is the canonical output of
-Phase 7** — regenerate it whenever the estate changes.
+DISCOVER / MAP / threat-model / ASSESS work runs offline. The committed pack is the **canonical** one;
+re-run [Phase 7](#phase-7--export-the-artifact-pack) after the estate changes to see what has drifted —
+but read the caveat there before regenerating it, because parts of the pack are hand-written and an export
+cannot reproduce them.
 
 {: .important }
 > The estate is deliberately broken. Provision it in an **isolated training tenant** you control. Never
