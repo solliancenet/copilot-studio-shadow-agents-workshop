@@ -29,10 +29,10 @@ bundle exec jekyll build       # production build into _site/
 ```
 
 Dev container: `.devcontainer/` (Jekyll image + the `setup/RUNBOOK.md` provisioning tooling — az/Bicep,
-azd, pac, PowerShell 7 + modules, pandoc) runs `bundle install` on create. Every provisioning phase runs
-in it except Phase 7 and teardown, which need the Power Platform admin module — it only signs in on
-Windows (the Windows build VM). The container's `docker` CLI drives the host's daemon, so it can start/stop
-that VM (`setup/windows-vm/compose.yaml`, which always runs on the host).
+azd, pac, PowerShell 7 + modules, pandoc, Playwright/Chromium) runs `bundle install` on create. **Every
+provisioning phase runs in it** — no phase needs Windows. `setup/windows-vm/` is an *optional* Windows 11
+desktop, useful only when you want a real browser for interactive sign-in and MFA; it always runs on the
+host's Docker daemon, which the container's `docker` CLI drives (`setup/windows-vm/compose.yaml`).
 
 ## Architecture
 
@@ -43,9 +43,11 @@ docs/                    # lab content — one folder per exercise
     NN_snake_case.md     # exercise LANDING page (has_children: true)
     NN_01.md, NN_02.md   # numbered TASK pages (parent: <landing title>)
 worksheets/              # take-home "Estate Binder" templates + CSV/JSON seeds (published)
+  artifact-pack/         # exported estate CSVs — the offline substitute for a live tenant
   answer-keys/           # filled versions (EXCLUDED)
 media/                   # screenshots: ex##_t##_kt##_s##.png
 setup/                   # facilitator provisioning kit (EXCLUDED)
+reference/               # background research + runbook errata; agent-readable (EXCLUDED)
 AGENTS.md                # canonical estate spec + ANSWER KEY (EXCLUDED — single source of truth)
 PLANNING.md              # instructor notes (EXCLUDED)
 ```
@@ -121,8 +123,11 @@ relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
   Never hard-code live names in `docs/`.
 - **CLOSES IT / DENTS IT / MISSES IT** is the Module 5 verdict vocabulary and *is* allowed in published
   pages (attendees fill blank verdict cells). The *filled* answer matrix stays in `AGENTS.md`.
-- **Hybrid lab model:** every analysis task must be completable from the exported **artifact pack**, not
-  only the live tenant.
+- **Artifact-pack parity:** every analysis task must be completable from the exported **artifact pack**
+  (`worksheets/artifact-pack/`) and not only against a live tenant — attendees without a tenant still do
+  the whole lab. Before a task tells an attendee to read something from the portal, check the fact is in
+  the pack. Phase 7 of `setup/RUNBOOK.md` regenerates it; note the pack is *curated* canon, so parts of it
+  are hand-written and an export will not reproduce them.
 - **House voice:** direct, plainspoken, security-review tone. Name trust boundaries explicitly. Prefer
   "whose authority is this agent exercising?" framing.
 
@@ -135,4 +140,5 @@ relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
 | `PLANNING.md` | Instructor notes, timing, open verifications (EXCLUDED) |
 | `_config.yml` | Theme, callouts, mermaid, **exclude list** |
 | `.github/workflows/jekyll-gh-pages.yml` | Build + deploy + **answer-key leak check** |
-| `setup/RUNBOOK.md` | Facilitator provisioning (EXCLUDED) |
+| `setup/RUNBOOK.md` | Facilitator provisioning, Phase 0–9 (EXCLUDED) |
+| `reference/runbook-errata.md` | Every trap a real build hit, phase-keyed: symptom, evidence, fix (EXCLUDED) |
