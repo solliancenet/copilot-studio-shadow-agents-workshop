@@ -8,9 +8,9 @@ nav_order: 1
 {: .fs-9 }
 
 Your makers are shipping Copilot Studio agents faster than anyone is tracking them. Each one gets an
-identity. Each one carries permissions for every connector it touches. Each one can reach Dataverse,
-SharePoint, and whatever that HTTP action points at. This workshop teaches you to find out what your
-agents can actually access, reach, and do — and whether the controls around them are enough.
+identity of its own, but what it can reach comes from its grounding, its tools, and whose credentials sit
+behind its connections. This workshop teaches you to find out what your agents can actually access,
+reach, and do — and whether the controls around them are enough.
 {: .fs-6 .fw-300 }
 
 [Get started]({% link docs/00_lab_environment/00_lab_environment.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
@@ -26,10 +26,11 @@ Ask most organizations three simple questions and nobody has the answers:
 2. **Who owns them?**
 3. **What can they access?**
 
-Since March 2026, Copilot Studio has created an Entra identity for every new agent automatically. Agent
-365 went GA in May. **The governance surface arrived faster than the governance did.** By the end of the
-day you will be able to answer all three questions for a real estate — and know which controls actually
-reduce the risk.
+Every new Copilot Studio agent now gets its own Entra identity, and Agent 365 (generally available since
+May 2026) gives admins a registry of their agents: owners, knowledge sources, tools. That list is where a
+review starts. By the end of the day you will be able to take the next steps for a sample estate — whose
+credentials each agent's tools actually run on, what those credentials can reach, and which controls
+actually reduce the risk.
 
 ## The through-line
 
@@ -62,9 +63,9 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 | 8 | [Wrap-up & hand-off]({% link docs/08_wrap_up_and_handoff/08_wrap_up_and_handoff.md %}) | Resources & next steps | — |
 
 {: .note }
-> The exercises (Modules 1–7) total ~270 minutes (~4.5 hours). The remaining ~90 minutes of the six-hour
-> day is reserved for the opening and orientation, brief lecture segments between modules, and the
-> wrap-up. Breaks are in addition to instructional time.
+> The exercises (Modules 1–7) total ~270 minutes (~4.5 hours). Another ~90 minutes goes to the opening
+> and Module 0 orientation, short lecture segments between modules, and the wrap-up — six hours of
+> instruction in all. The two breaks (45 minutes) come on top, so plan on about 6¾ hours start to finish.
 
 ## Your Estate Binder (deliverables)
 
@@ -83,11 +84,15 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 
 ## Prerequisites
 
-- A modern browser and the lab access details handed out at the start of Module 0.
-- The downloadable **artifact pack** (exported inventory + screenshots) — used whenever you are working
-  offline or tenant access is slow.
-- Read access to the shared **Halcourt Mutual** demo tenant (guest account provided by the facilitator).
-- Optional: a Copilot-enabled editor for the analysis tasks (see `.github/copilot-instructions.md`).
+- A modern browser, and the read-only lab account (username and password) the facilitator hands out at
+  the start of Module 0, along with the lab tenant's domain and your estate id.
+- The **artifact pack** — five CSV exports of the estate, in the
+  [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack). The discovery, mapping, threat-model
+  and assessment work runs from the pack alone; the live tenant hosts the Module 4 and 5 demos, so a slow
+  tenant never blocks you.
+- Optional: a Copilot-enabled editor for the analysis tasks — see
+  [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
+  in the workshop repo.
 
 {: .warning }
 > Everything you do runs against a **training estate that was deliberately built to be broken**. Do not

@@ -35,8 +35,8 @@ This exercise gets you access and oriented. No findings yet — just terrain.
 
 After this exercise you will be able to:
 
-- Sign in to the shared Halcourt Mutual demo tenant with your guest account and open the **Power Platform
-  admin center** in read-only mode.
+- Sign in to the shared Halcourt Mutual demo tenant with the lab account the facilitator hands out and open
+  the **Power Platform admin center** in read-only mode.
 - Download the **artifact pack** and confirm all five CSV exports open.
 - Name Halcourt Mutual's **four Power Platform environments** and read their type, DLP, and managed status
   straight from the export.
@@ -46,7 +46,7 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 15 minutes (orientation; not counted toward the six instructional hours).
+**Estimated time:** 15 minutes (part of the opening, outside the ~270 minutes of exercises).
 
 {: .warning }
 > Everything you touch runs against a **training estate that was deliberately built to be broken.** It
