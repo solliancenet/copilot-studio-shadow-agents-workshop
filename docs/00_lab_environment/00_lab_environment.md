@@ -14,8 +14,8 @@ has_children: true
 Studio to move faster. HR, Claims, Sales, Finance, and IT all have makers who can build. Over the last
 few months those makers shipped a fleet of Copilot Studio agents: benefits helpers, a claims lookup
 bot, a policy lookup bot, an underwriting assistant, an onboarding guide, and more. Every one of them
-got an Entra identity the moment it was created. Every one of them carries the permissions of whatever
-connections it touches.
+got an Entra identity the moment it was created. What each agent can access depends on its grounding
+sources, tools, and the credentials behind its connections.
 
 Nobody at Halcourt Mutual can answer three simple questions about that estate:
 
@@ -26,10 +26,11 @@ Nobody at Halcourt Mutual can answer three simple questions about that estate:
 You are joining as a **platform owner and security reviewer**. Your vantage point is read-only across the
 tenant — you can see the environments, the agents, the connections, and the identities, but this
 orientation is about getting in and getting your bearings, not fixing anything yet. Over the day you will
-build a running **Estate Binder** that answers all three questions and says, control by control, whether
-Microsoft's guardrails **CLOSE IT**, **DENT IT**, or **MISS IT**.
+build a running **Estate Binder** that answers all three questions and says whether each of Microsoft's
+controls **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
 
-This exercise gets you access and oriented. No findings yet — just terrain.
+This exercise gets you access and oriented. No findings yet — just terrain. If live tenant access is
+unavailable, use the artifact pack for the discovery and analysis tasks.
 
 ## Objectives
 
