@@ -27,10 +27,10 @@ Ask most organizations three simple questions and nobody has the answers:
 3. **What can they access?**
 
 Every new Copilot Studio agent now gets its own Entra identity, and Agent 365 (generally available since
-May 2026) gives admins a registry of their agents: owners, knowledge sources, tools. That list is where a
-review starts. By the end of the day you will be able to take the next steps for a sample estate — whose
-credentials each agent's tools actually run on, what those credentials can reach, and which controls
-actually reduce the risk.
+May 2026) gives admins a registry of their agents: owners and, where available, knowledge sources and
+tools. That list is where a review starts. By the end of the day you will be able to determine whose
+credentials each agent's tools run on, what access those credentials allow, and which controls reduce
+the risk.
 
 ## The through-line
 
