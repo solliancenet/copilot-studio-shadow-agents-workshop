@@ -116,11 +116,12 @@ relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
   (or a rendered `AGENTS/PLANNING/CLAUDE` page) reach `_site/`. Do not use these strings in `docs/`.
   Excluded files are listed in `_config.yml` `exclude:` and CI re-checks `_site/` every build, so VERIFY
   THE EXCLUDE LIST BEFORE EVERY DEPLOY — a prior workshop shipped its answer key to the live site.
-- **Canonical vs live names:** `AGENTS.md`, `docs/` and the artifact pack use canonical names
+- **Plain vs live names:** `AGENTS.md`, `docs/` and the artifact pack use plain names
   (`marcus.webb@halcourtmutual.onmicrosoft.com`, `Claims-Test`). A live build is an *estate* whose names
   carry an estate id and the tenant's own domain (`marcus.webb.mgray@<domain>`, `Claims-Test-mgray`) so
   several can share a tenant — rule in `AGENTS.md` → *Live estate naming*, code in `setup/scripts/_estate.ps1`.
-  Never hard-code live names in `docs/`.
+  Never hard-code live names in `docs/`, and never explain in `docs/` that the pack's account domain
+  differs from the tenant's: attendees only know the lab tenant, so there is nothing to explain.
 - **CLOSES IT / DENTS IT / MISSES IT** is the Module 5 verdict vocabulary and *is* allowed in published
   pages (attendees fill blank verdict cells). The *filled* answer matrix stays in `AGENTS.md`.
 - **Artifact-pack parity:** every analysis task must be completable from the exported **artifact pack**

@@ -20,7 +20,7 @@ failures on a training estate and write down what you saw, so that in Module 5 y
 Microsoft control actually removes each one.
 
 > **This is a deliberately-broken TRAINING estate.** Every agent, connection, key, and grounded document
-> in `halcourtmutual.onmicrosoft.com` was provisioned by the facilitator to fail in a specific, contained
+> in this estate was provisioned by the facilitator to fail in a specific, contained
 > way against safe, facilitator-controlled Azure Container Apps training endpoints and `example` hosts. The techniques you observe here —
 > indirect prompt injection, data exfiltration, confused-deputy escalation, credential exposure — are
 > real and are damaging against systems you do not own. **Never apply them to any tenant, agent, API, or
