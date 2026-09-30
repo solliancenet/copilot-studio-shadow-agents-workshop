@@ -124,11 +124,13 @@ relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
   differs from the tenant's: attendees only know the lab tenant, so there is nothing to explain.
 - **CLOSES IT / DENTS IT / MISSES IT** is the Module 5 verdict vocabulary and *is* allowed in published
   pages (attendees fill blank verdict cells). The *filled* answer matrix stays in `AGENTS.md`.
-- **Artifact-pack parity:** every analysis task must be completable from the exported **artifact pack**
-  (`worksheets/artifact-pack/`) and not only against a live tenant — attendees without a tenant still do
-  the whole lab. Before a task tells an attendee to read something from the portal, check the fact is in
-  the pack. Phase 7 of `setup/RUNBOOK.md` regenerates it; note the pack is *curated* canon, so parts of it
-  are hand-written and an export will not reproduce them.
+- **Artifact-pack parity:** every task must be completable with direct tenant access *or* from the
+  **artifact pack** (`worksheets/artifact-pack/`); the portal and APIs are the preferred path and the pack
+  is the fallback. Before a task tells an attendee to read something from the portal, check the fact is in
+  the pack. The pack holds only what someone with tenant access could find in the portal or APIs, plus
+  fields an analyst would write themselves (descriptions, notes, calls like `is_service_account`).
+  `worksheets/artifact-pack/blank/` holds the same five CSVs with headers only, for attendees to fill in
+  from the tenant. Phase 7 of `setup/RUNBOOK.md` regenerates the filled set.
 - **House voice:** direct, plainspoken, security-review tone. Name trust boundaries explicitly. Prefer
   "whose authority is this agent exercising?" framing.
 

@@ -13,19 +13,20 @@ the **artifact pack** (exported estate data), so you are never blocked when the 
 
 ## The artifact pack
 
-Exports of the Halcourt Mutual estate, tidied for the lab: connectors carry friendly names, the agent
-descriptions were written by hand, and `connections-export.csv` also lists three integrations that aren't
-Power Platform connections (an HTTP action, an MCP server and a cloud flow) so every credential sits in one
-file. Analyze them offline as you would a real tenant export. Join across them to answer *how many agents,
-who owns them, what can they reach*.
+Five CSVs that describe the Halcourt Mutual estate. If you can reach the tenant, start from the blank
+copies and fill them in from the portal and APIs as you go. If you can't, use the filled-in set: exports
+of the estate, tidied for the lab. Its connectors carry friendly names, the agent descriptions were written
+by hand, and `connections-export.csv` also lists three integrations that aren't Power Platform connections
+(an HTTP action, an MCP server and a cloud flow) so every credential sits in one file. Either way, join
+across them to answer *how many agents, who owns them, what can they reach*.
 
-| Export | What's in it |
-|---|---|
-| [`agents-export.csv`]({% link worksheets/artifact-pack/agents-export.csv %}) | Every agent, environment, owner, status, dates |
-| [`connections-export.csv`]({% link worksheets/artifact-pack/connections-export.csv %}) | Connections, connectors, connection owners, sharing, auth type |
-| [`agent-identities-export.csv`]({% link worksheets/artifact-pack/agent-identities-export.csv %}) | Each agent's auto-created Entra identity. The pack labels it `cs-agent-<slug>-<env>`; in Entra it is named `<agent name> (Microsoft Copilot Studio)`, and the app ids won't match the tenant's |
-| [`users-export.csv`]({% link worksheets/artifact-pack/users-export.csv %}) | Accounts: enabled/disabled, last sign-in, service/shared |
-| [`environments-export.csv`]({% link worksheets/artifact-pack/environments-export.csv %}) | Environments, type, DLP applied, managed |
+| Export | What's in it | Blank | Filled in |
+|---|---|---|---|
+| `agents-export.csv` | Every agent, environment, owner, status, dates | [download]({% link worksheets/artifact-pack/blank/agents-export.csv %}) | [download]({% link worksheets/artifact-pack/agents-export.csv %}) |
+| `connections-export.csv` | Connections, connectors, connection owners, sharing, auth type | [download]({% link worksheets/artifact-pack/blank/connections-export.csv %}) | [download]({% link worksheets/artifact-pack/connections-export.csv %}) |
+| `agent-identities-export.csv` | Each agent's auto-created Entra identity. The pack labels it `cs-agent-<slug>-<env>`; in Entra it is named `<agent name> (Microsoft Copilot Studio)`, and the app ids won't match the tenant's | [download]({% link worksheets/artifact-pack/blank/agent-identities-export.csv %}) | [download]({% link worksheets/artifact-pack/agent-identities-export.csv %}) |
+| `users-export.csv` | Accounts: enabled/disabled, last sign-in, service/shared | [download]({% link worksheets/artifact-pack/blank/users-export.csv %}) | [download]({% link worksheets/artifact-pack/users-export.csv %}) |
+| `environments-export.csv` | Environments, type, DLP applied, managed | [download]({% link worksheets/artifact-pack/blank/environments-export.csv %}) | [download]({% link worksheets/artifact-pack/environments-export.csv %}) |
 
 {: .tip }
 > The clues are all here, but no single file tells the whole story. The findings live in the **joins** —

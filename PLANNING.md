@@ -20,6 +20,9 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | 6 | **RESOLVED — the "0 GB Dataverse" blocker was false** | RESOLVED | Live run 2026-09-08: the E5 sandbox carried **5 GB prepaid Dataverse** (not 0 GB), and a Dataverse-backed env (`Claims-Test`) created normally, no PAYG needed. Copilot Studio billing also resolved — a **region-matched PPAC billing plan** (`ppccdevcanada`, Copilot Studio meter) was linked to Claims-Test after fixing **RBAC** (Entra → Access management for Azure resources → Contributor). Lesson: billing plans are **region-locked** and must match the env region. |
 | 7 | Validate/dry-run on a **developer sandbox** tenant first (do NOT build the paid conference tenant yet) | IN PROGRESS | Sequencing decision recorded below. Fix the Azure-plan linkage, dry-run `setup/RUNBOOK.md` end-to-end on a throwaway dev sandbox, prove the estate reproduces — *then* decide on a permanent paid tenant. |
 | 8 | **Agent 365** — not a provisioning prerequisite; a govern-the-fleet concern for a future module | DEFERRED | Cut from RUNBOOK Phase 0 (not on the build/publish critical path). If a future "govern the fleet" module is added, check Agent 365 licensing (bundled vs add-on) and admin/identity surfaces then. Relevant to the GUARD "what's next" governance story, not the estate build. |
+| 9 | Create the attendee lab accounts | OPEN — deferred | Not until the content review is done. Give them the roles they need to gather the pack's data from the portal and APIs. For reference, the Phase 7 export uses the Power Platform admin APIs, Microsoft Graph, and a Dataverse security role in every environment. |
+| 10 | Blank-CSV path through Modules 1–2 | OPEN | Attendees with tenant access fill in `worksheets/artifact-pack/blank/` from the portal and APIs. Modules 1–2 need the steps that do it (01_01 still counts rows in the filled `agents-export.csv`), and the filled set needs screenshots showing where each value comes from. |
+| 11 | Make the pack match the tenant | OPEN | The pack may hold only what the portal and APIs show, plus analyst-written fields. It doesn't yet: identity names (`cs-agent-*`; Entra's are `<agent name> (Microsoft Copilot Studio)`) and placeholder app ids; March–May 2026 created dates (the tenant shows build dates); `SP-Onboarding` listed as used by Onboarding Guide, which binds only Outlook; `used_by_agent` and the HTTP, MCP and flow rows written by hand; Meeting Notes Summarizer's description differs from the agent's. Once fixed, drop the Estate Binder's note on identity labels. |
 
 _Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
 
@@ -232,7 +235,8 @@ before delivery and update `AGENTS.md` if reality differs:
   `_site/`. Re-verify after any `_config.yml` change. Never screenshot this file's content into `docs/`.
 - **Tenant/wifi fragility.** Hybrid model exists for this reason — the exported **artifact pack** must be
   downloadable so DISCOVER/MAP/BREAK-analysis/ASSESS continue offline. Only the live BREAK and CONTROL
-  demos strictly need the tenant.
+  demos strictly need the tenant. Pre-record the BREAK and CONTROL demos, in case nobody can reach the
+  tenant on delivery day.
 - **Feature drift.** Copilot Studio / Agent 365 move fast; re-run the verifications above per delivery.
 - **Over-running Module 4.** It's the centerpiece and the time sink. Keep a hard stop; push spillover
   into the Module 5 retest.

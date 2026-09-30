@@ -84,12 +84,12 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 
 ## Prerequisites
 
-- A modern browser, and the read-only lab account (username and password) the facilitator hands out at
-  the start of Module 0, along with the lab tenant's domain and your estate id.
-- The **artifact pack** — five CSV exports of the estate, in the
-  [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack). The discovery, mapping, threat-model
-  and assessment work runs from the pack alone; the live tenant hosts the Module 4 and 5 demos, so a slow
-  tenant never blocks you.
+- A modern browser.
+- For the preferred, hands-on path: the read-only lab account (username and password) the facilitator
+  hands out at the start of Module 0, along with the lab tenant's domain and your estate id. You gather
+  the estate's data into blank CSVs from the
+  [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
+- Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
 - Optional: a Copilot-enabled editor for the analysis tasks — see
   [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
   in the workshop repo.
