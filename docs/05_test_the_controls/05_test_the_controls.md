@@ -50,9 +50,10 @@ boundary lies), walks you through configuring it against the Halcourt Mutual est
 the specific Module 4 scenario to retest. You will not be told the verdict — you have to reach it. You
 *will* be told what to look for and where the control stops being able to help.
 
-Every task has an **offline path**: if the live tenant is slow or unavailable, you can reason each verdict
-from the [artifact pack]({% link worksheets/index.md %}#the-artifact-pack) — the same exports you have
-used all day — because the exports already tell you which environment carries which DLP policy, which
+Work each task in the live tenant, the preferred path. Every task also has an **offline path**: if the
+tenant is slow or unavailable, you can reason each verdict from your CSVs — the copies you filled in from
+the tenant, or the filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack) if you are
+working without it — because they already tell you which environment carries which DLP policy, which
 connection runs as a service account, and which identity actually authenticates.
 
 ## Objectives

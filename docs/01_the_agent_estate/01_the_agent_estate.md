@@ -53,6 +53,7 @@ Module 4. The vocabulary you build here — *identity, connection, grounding, bo
 you use for the rest of the day.
 
 {: .note }
-> Work these tasks from the exported [artifact pack]({% link worksheets/index.md %}#the-artifact-pack).
-> A live tenant is optional here — the goal is the mental model, and the CSV exports carry everything you
-> need to build it.
+> Work these tasks in the live tenant if you can reach it: Task 01-01 has you fill in your agents, users,
+> and connections CSVs from the portals and APIs, and Task 01-02 your agent identities. If you can't, the
+> filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack) carries everything you need
+> to build the mental model.

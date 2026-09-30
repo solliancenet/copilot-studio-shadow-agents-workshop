@@ -47,8 +47,8 @@ After this exercise you will be able to:
 
 - Convert an ad-hoc inventory, access map, and control assessment into a repeatable **agent security
   baseline** organized as KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT.
-- State, for each stage, the concrete criterion an agent must meet and how to verify it from a tenant
-  export or the live admin surfaces.
+- State, for each stage, the concrete criterion an agent must meet and how to verify it in the live admin
+  surfaces, or from a tenant export when you can't reach them.
 - Distinguish the failures that a control genuinely **CLOSES IT** from the ones a platform toggle only
   **DENTS IT**, and reflect that honesty in the baseline.
 - Define a **production promotion gate** — the hard pass/fail conditions that must be true before any

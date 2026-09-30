@@ -29,9 +29,9 @@ In this exercise you separate three things people routinely conflate:
 - **Effective access** — what actually becomes reachable once you **stack** identity, permissions,
   connector, tool, accessible data, and user input together. Each layer can look harmless alone.
 
-You work the Halcourt Mutual estate from the artifact pack, confirm what you can in the tenant, and produce
-an Access Map for three agents that answers one blunt question for each: **can this agent obtain data, or
-cause an action, that its intended users could not?**
+You work the Halcourt Mutual estate in the live tenant, or from the filled-in artifact pack if you can't
+reach it, and produce an Access Map for three agents that answers one blunt question for each: **can this
+agent obtain data, or cause an action, that its intended users could not?**
 
 ## Objectives
 
@@ -58,8 +58,9 @@ The **Agent Access Map** — one completed map per agent, worked for three agent
 - Template: [02 — Agent Access Map]({% link worksheets/templates/02-agent-access-map.md %})
 
 {: .note }
-> Everything in this exercise is completable **offline** from the artifact pack in the
-> [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack). The live tenant is where you *confirm*
-> scope you can only infer from the exports (a Dataverse role's breadth, a SharePoint site's membership, an
-> API key's server-side scope). Where the pack cannot tell you, record it as an open question to verify —
-> that gap is itself a finding.
+> The live tenant is the preferred way through this exercise: its portals show what the exports can't,
+> such as a Dataverse role's breadth or how much of a site an agent grounds on. If you can't reach the
+> tenant, everything here is still completable **offline** from the filled-in artifact pack in the
+> [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack). Record whatever you can't determine as
+> an open question to verify — a SharePoint site's membership, an API key's server-side scope, or, from the
+> pack alone, a role's breadth or an agent's grounding scope. That gap is itself a finding.

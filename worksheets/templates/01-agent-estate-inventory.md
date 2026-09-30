@@ -9,8 +9,9 @@ search_exclude: true
 # Agent Estate Inventory
 
 **Deliverable for Module 2 (DISCOVER).** One row per agent you find — across *every* environment, not
-just the ones you were told about. Build it from the [artifact pack]({% link worksheets/index.md %}#the-artifact-pack) and the
-live tenant.
+just the ones you were told about. Build it from the live tenant: the CSVs you filled in from it, plus
+Copilot Studio and the admin portals for what they don't hold. If you can't reach the tenant, use the
+filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack).
 
 | # | Agent | Environment | Owner | Status | Identity | Connections | Connectors | Tools / actions | Grounding / data | Permissions (summary) | External systems |
 |---|-------|-------------|-------|--------|----------|-------------|------------|-----------------|------------------|-----------------------|------------------|

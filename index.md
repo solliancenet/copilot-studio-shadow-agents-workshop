@@ -86,8 +86,9 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 
 - A modern browser.
 - For the preferred, hands-on path: the read-only lab account (username and password) the facilitator
-  hands out at the start of Module 0, along with the lab tenant's domain and your estate id. You gather
-  the estate's data into blank CSVs from the
+  hands out at the start of Module 0, along with the lab tenant's domain and your estate id, and the
+  [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"} for the few
+  facts only an API returns. You gather the estate's data into blank CSVs from the
   [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
 - Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
 - Optional: a Copilot-enabled editor for the analysis tasks — see

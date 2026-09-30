@@ -70,9 +70,9 @@ subject of this module.
 | [E]({% link docs/04_break_the_agents/04_05.md %}) | The HTTP / MCP / tool boundary | Policy Lookup Bot; Underwriting Assistant |
 | [F]({% link docs/04_break_the_agents/04_06.md %}) | Lifecycle (orphan / test-became-prod) | Onboarding Guide; Claims Copilot |
 
-> Every scenario is completable **offline** from the five CSVs in the artifact pack plus the provided
-> screenshots — you are never blocked when the tenant is slow or the demo queue is long. The live path is
-> better theater; the offline path is the one that will still work at your desk on Monday.
+> The live tenant is the preferred path: you drive the agents and read their configuration yourself.
+> Every scenario is also completable **offline** from the five filled-in CSVs in the artifact pack plus
+> the provided screenshots, so you are never blocked when the tenant is slow or the demo queue is long.
 {: .note }
 
 ## Objectives
@@ -98,8 +98,8 @@ After this exercise you will be able to:
 **Estimated time:** 60 minutes.
 
 This is the centerpiece of the day and the most likely module to over-run. Roughly 15 minutes per
-scenario. If the room is tight, run A and D live and treat B, C, E, and F as guided walk-throughs from the
-artifact pack — the recorded rows are what matter.
+scenario. If the room is tight, run A and D hands-on and take B, C, E, and F as guided walk-throughs in the
+live tenant, or from the artifact pack if you can't reach it — the recorded rows are what matter.
 
 ## Deliverable
 

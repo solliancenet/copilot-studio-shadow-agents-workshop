@@ -38,9 +38,10 @@ After this exercise you will be able to:
 
 - Sign in to the shared Halcourt Mutual demo tenant with the lab account the facilitator hands out and open
   the **Power Platform admin center** in read-only mode.
-- Download the **artifact pack** and confirm all five CSV exports open.
+- Download the **artifact pack** — the blank CSVs you fill in from the tenant, or the filled-in set if you
+  can't reach it — and confirm all five CSVs open.
 - Name Halcourt Mutual's **four Power Platform environments** and read their type, DLP, and managed status
-  straight from the export.
+  in the Power Platform admin center, or from the filled-in export if you can't reach the tenant.
 - Describe the day's arc — **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE** — and restate
   the three questions in your own words.
 - Find the **Estate Binder** templates you will fill in as you work.
