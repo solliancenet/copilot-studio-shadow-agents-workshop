@@ -393,3 +393,56 @@ still need a human. Read the diff as *drift to review*, not as a test that shoul
 `-Canonicalize` maps the live names back to the canon's (strips the estate id, restores
 `@halcourtmutual.onmicrosoft.com`) so the export lands on the committed pack and `git diff` shows the
 drift. Without it the script refuses to write into the committed pack, which is published with the site.
+
+## Phase 8b — attendee accounts
+
+### Why attendees get `Global Reader` and nothing more
+
+The ceiling is set by a constraint that is easy to miss: **the moment an account holds a privileged admin
+role, a handed-out password stops working.** `CA-Require-MFA-Admins`
+(`setup/scripts/00_conditional_access_baseline.ps1`) includes Power Platform Administrator alongside
+Microsoft's admin-MFA template roles, so such an account is forced to enrol in MFA and a password-only
+sign-in fails with `AADSTS50079`. Handing out usernames and passwords and giving attendees a platform-admin
+role are mutually exclusive in this tenant, by our own design.
+
+`Global Reader` is not in that policy, so it is the useful ceiling. Verified live on
+`0zwdt94t.onmicrosoft.com`, 2026-10-01, with a disposable unlicensed account:
+
+| Surface | Result |
+|---|---|
+| ROPC password sign-in (`service.powerapps.com`, `graph.microsoft.com`) | **200** — token issued, no MFA prompt |
+| Graph `/users`, `/groups`, `/users?$select=signInActivity` | **200** — every `users-export.csv` column, `last_sign_in_utc` included |
+| `api.bap.microsoft.com/.../scopes/admin/environments` | **404 `CRMRequestFailed`** |
+| Same call as the build admin (control) | **200** with full data |
+| Power Platform Administrator instead of Global Reader | sign-in **fails**, `AADSTS50079` |
+
+The `404` is the finding worth remembering: the tenant-admin Power Platform endpoints **hide themselves
+from an unauthorized caller** instead of returning `403`, so an attendee following Lab 01-01 step 4 sees
+"not found" and reasonably concludes the estate is empty. It is an authorization result wearing a
+not-found costume.
+
+Consequence for the lab: the connections step cannot be completed from an attendee account. It comes from
+the artifact pack, or the facilitator drives it. This is exactly the case the artifact-pack parity rule
+exists for (`CLAUDE.md` → *Key Patterns*) — tenant access is the preferred path, and the pack is what makes
+a step like this survivable when the preferred path is closed.
+
+### Why licence assignment is best effort
+
+A Dev Program sandbox carries **25** E5 seats. The estate itself needs eight (Phase 2), and the optional
+content pack's ~16 sample users hold most of the rest; on the build tenant `subscribedSkus` reported
+`DEVELOPERPACK_V2_E5` at **25/25 consumed, 0 free**, so every attendee account came out unlicensed.
+
+That is why `07_provision_lab_users.ps1` checks seat availability up front, attempts assignment per account,
+never treats a failure as fatal, and prints who actually got one. Nothing an attendee does needs a seat:
+Entra reads do not, and opening an agent in Copilot Studio is already gated on being its owner or
+co-author (Lab 01-01 step 6), which an attendee never is. `FLOW_FREE` (10,000 seats, 1 consumed) is
+available if some surface merely requires *a* licence to be present.
+
+The accounts still get `usageLocation` stamped from the tenant's country, because a licence cannot be
+assigned to an account without one — so freeing seats later and re-running is enough.
+
+### Why the script purges, not just deletes
+
+Deleting a user only **soft**-deletes it: it sits in `directory/deletedItems` for 30 days holding its UPN
+and `mailNickname`. The next delivery's `student01.<estate>` would collide with the last one's. `-Destroy`
+therefore deletes and then purges, the same lesson Phase 9 learned about sites and groups.

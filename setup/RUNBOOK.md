@@ -116,6 +116,7 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 6. Author the agents           → as each owner, from the committed workspaces
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
+8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
 9. Teardown / reseed
 ```
 
@@ -633,6 +634,51 @@ What the export confirms on its own, without driving an agent: every published a
 right owner and environment; each has exactly one Entra identity; DLP is attached to Prod and nowhere
 else; and the accounts are as Phase 2 left them. Reproducing Scenarios A–F still means talking to the
 agents.
+
+### Phase 8b — Lab (attendee) accounts
+
+Per *delivery*, not per estate: attendees sign in to the lab tenant with a native account you hand out, so
+they review the estate from inside the tenant rather than as guests. Run it shortly before the delivery and
+tear it down after.
+
+```bash
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20                      # student01.<estate> .. student20.<estate>
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20 -UniquePasswords     # a distinct password each
+pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
+```
+
+Accounts are estate-scoped (`student01.<estate>@<domain>`), so two facilitators can run deliveries in one
+tenant. The run prints a handout table and writes `setup/lab-users-<estate>.local.csv` — **plaintext
+passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone (the
+script cannot read a password back, so it says `(unchanged)` rather than inventing one).
+
+**Attendees get `Global Reader`, and that ceiling is deliberate.** Verified live 2026-10-01:
+
+| Attendee account can | Attendee account cannot |
+|---|---|
+| Sign in with just the handed-out password — no MFA enrolment | Read the tenant-admin Power Platform APIs under `/scopes/admin/` |
+| Read Entra: `/users`, `/groups`, `signInActivity` — every column of `users-export.csv`, `last_sign_in_utc` included | Open an agent in Copilot Studio (needs owner/co-author — Lab 01-01 step 6 already says so) |
+
+> {: .warning }
+> **Do not widen this to Power Platform Administrator.** That role is in `CA-Require-MFA-Admins`
+> (`00_conditional_access_baseline.ps1`), so the account can no longer sign in with a handed-out password
+> at all — `AADSTS50079`, *"must enroll in multi-factor authentication"*. It would also give every attendee
+> write access to the estate they are reviewing. The script warns if you ask for such a role.
+
+**Lab 01-01 step 4** (list connections via `api.powerapps.com/.../scopes/admin/...`) therefore cannot be
+run from an attendee account: Global Reader gets `404 CRMRequestFailed` where the build admin gets `200` —
+that API hides itself from unauthorized callers rather than returning `403`. Attendees take that step from
+the artifact pack, or you drive it on the projector.
+
+**Licences are best effort and usually fail.** A sandbox has 25 E5 seats, the estate needs eight, and the
+content-pack sample users hold the rest — on the build tenant it was 25/25 consumed, so every attendee came
+out unlicensed. That is fine: nothing in the table above needs a seat. Assignment is attempted, never
+fatal, and the end-of-run table reports exactly who got one. To change that, free seats in **M365 admin
+center → Billing → Licenses** first, or pass `-LicenseSku FLOW_FREE` (10,000 seats) if a licence merely
+needs to be present.
+
+Why Global Reader and not something else:
+[decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
 
 ### Phase 9 — Teardown / reseed
 
