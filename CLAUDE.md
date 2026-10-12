@@ -13,6 +13,16 @@ answer key, and provisioning kit are facilitator-only and excluded from the site
 The narrative arc is **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE** against a fictional
 insurer, **Halcourt Mutual**.
 
+## Questions are questions
+
+When I ask a question, answer it. That is the only action.
+
+- A question is not permission to act. Do not edit files, run commands, or start a process
+  because a question mentioned it. "Do you understand how the process works?" gets an answer,
+  not the process.
+- Do not read files or do research to answer unless I asked for it. If you need to, ask first.
+- If you see a next step, offer it in one line after the answer. I decide whether you do it.
+
 ## Environment
 
 `az` and `pac` sign-in state is **project-local**: `.azure/` and `.pac/` in the repo root (gitignored),
