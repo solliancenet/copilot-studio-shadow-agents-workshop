@@ -22,6 +22,8 @@ When I ask a question, answer it. That is the only action.
   not the process.
 - Do not read files or do research to answer unless I asked for it. If you need to, ask first.
 - If you see a next step, offer it in one line after the answer. I decide whether you do it.
+- When you have asked for permission, only an explicit yes counts. Frustration, silence, or a change
+  of topic is not a yes.
 
 ## Environment
 
