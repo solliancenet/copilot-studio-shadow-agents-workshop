@@ -29,6 +29,8 @@ param(
   [string]$DomainSuffix,                               # default: tenant's default verified domain
   [string]$LabPassword = 'Lab-Only-Passw0rd!',
   [string[]]$Agents,                                   # slugs to limit to; default: all with a workspace
+  [string]$TargetEnvironment,                          # build into THIS environment instead of the manifest's
+                                                       # (per-student slices, Phase 8c); use with -Agents
   [switch]$SkipConnections,
   [switch]$SkipPrereqs,
   [switch]$VerifyOnly
@@ -88,7 +90,12 @@ function Invoke-Bap([string]$Method, [string]$Path, $Body, [string]$Api = '2021-
 Write-Host "Estate '$Estate' on $DomainSuffix - resolving environments..."
 $allEnvs = (Invoke-Bap GET 'scopes/admin/environments').value
 function Resolve-Env([string]$Canonical) {
-  $name = if ($manifest.environments.$Canonical -eq 'shared') { $Canonical } else { Get-EstateName $Canonical $Estate }
+  # -TargetEnvironment redirects EVERY canonical name to one environment. Phase 8c uses it to build an
+  # agent and its connections into a per-student slice; the manifest still says Claims-Test, but the
+  # slice is where it lands. Only sensible together with -Agents.
+  $name = if ($TargetEnvironment) { $TargetEnvironment }
+          elseif ($manifest.environments.$Canonical -eq 'shared') { $Canonical }
+          else { Get-EstateName $Canonical $Estate }
   $e = $allEnvs | Where-Object { $_.properties.displayName -eq $name } | Select-Object -First 1
   if (-not $e) { throw "Environment '$name' not found (canonical '$Canonical')." }
   [pscustomobject]@{ Name = $name; Id = $e.name; Org = $e.properties.linkedEnvironmentMetadata.instanceUrl.TrimEnd('/') }
@@ -420,7 +427,13 @@ if (-not $SkipConnections) {
 
 if (-not $SkipConnections -and $manifest.flows) {
   Write-Host "`n== Flows =="
-  foreach ($f in $manifest.flows) { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
+  foreach ($f in $manifest.flows) {
+    # One flow must not end the run. A slice build (-TargetEnvironment) targets a brand-new environment
+    # where the flow's owner holds no Dataverse role yet, so the read throws 0x80042f09 - report it and
+    # carry on to the agents, which are what the slice is for.
+    try   { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
+    catch { "{0,-42} -> SKIPPED ({1})" -f $f.name, ($_.Exception.Message.Split([char]10)[0]) | Write-Host }
+  }
 }
 
 Write-Host "`n== Agents =="
