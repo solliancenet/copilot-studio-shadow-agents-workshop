@@ -170,9 +170,22 @@ foreach ($n in 1..$Count) {
   }
 
   if (-not $SkipSeed) {
-    # svc-claims must be IN the environment before Phase 5 can give it the over-broad role.
-    Add-EnvUser $env.name "$(Get-EstateAlias 'svc-claims' $Estate)@$DomainSuffix" | Out-Null
+    # svc-claims must be IN the environment before Phase 5 can give it the over-broad role - and addUser
+    # is ASYNCHRONOUS. Phase 5 reports a missing user record as "needs a license", which is the wrong
+    # diagnosis and leaves the slice without the over-broad role, so wait for the record to appear.
+    $svcUpn = "$(Get-EstateAlias 'svc-claims' $Estate)@$DomainSuffix"
+    $svcOid = Add-EnvUser $env.name $svcUpn
     Invoke-DvRetry $url 'WhoAmI' | Out-Null
+    if ($svcOid) {
+      $seen = $false
+      foreach ($try in 1..12) {
+        $hit = (Invoke-DvRetry $url ("systemusers?`$select=systemuserid&`$filter=" + [uri]::EscapeDataString("azureactivedirectoryobjectid eq $svcOid"))).value
+        if ($hit) { $seen = $true; break }
+        Start-Sleep -Seconds 10
+      }
+      if ($seen) { Write-Host '  svc-claims is present in the environment' }
+      else       { Write-Warning '  svc-claims has not appeared yet - the over-broad role will be left unassigned; re-run to finish.' }
+    }
     Write-Host '  seeding Claim/Customer + the over-broad role (Phase 5 into this environment)...'
     & (Join-Path $PSScriptRoot '04_provision_dataverse.ps1') -Estate $Estate -ClaimsTestEnvUrl $url | ForEach-Object {
       if ($_ -match 'Phase 5 complete|role assignment|Customer rows|Claim rows') { Write-Host "    $_" }
