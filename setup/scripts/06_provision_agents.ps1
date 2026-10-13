@@ -32,7 +32,9 @@ param(
   [string]$TargetEnvironment,                          # build into THIS environment instead of the manifest's
                                                        # (per-student slices, Phase 8c); use with -Agents
   [string]$DisplayNameSuffix,                          # slice builds: keeps each slice's agent - and so its
-                                                       # tenant-wide Entra identity - distinguishable
+                                                       # tenant-wide Entra identity - distinguishable.
+                                                       # APPLIES ON FIRST BUILD ONLY: a rebuild pushes the
+                                                       # committed workspace's own name and renames nothing
   [switch]$SkipConnections,
   [switch]$SkipPrereqs,
   [switch]$VerifyOnly

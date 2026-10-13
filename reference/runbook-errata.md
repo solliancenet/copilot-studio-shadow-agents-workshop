@@ -862,3 +862,23 @@ one who would see the stale value.
 **Operationally** it joins the other lags in this kit - Conditional Access group membership, and `az`
 settling a token for a brand-new org. Build the slices, and disable `tom.dean`, well before the delivery
 rather than minutes before it. Nothing here is fast-path safe.
+
+
+### Phase 8c · the slice suffix only takes on a FIRST build
+
+`-DisplayNameSuffix` is applied by `pac copilot init`, which runs only when the agent does not yet exist.
+On a rebuild, clone-first finds the agent by schema name and pushes the committed workspace, which carries
+its own display name - so the agent is **not** renamed, and neither is the Entra identity it was born with.
+Verified: rebuilding `claims-copilot` into a slice with `-DisplayNameSuffix mgray-01` republished it as
+plain `Claims Copilot`, and the tenant still held two identities called
+`Claims Copilot (Microsoft Copilot Studio)`.
+
+**So set the suffix on the first build of a slice.** Getting it wrong is not repaired by re-running with
+the right flag; it is repaired by deleting the agent (or the whole slice environment) and building again.
+Because an identity outlives its agent, each correction leaves an orphaned principal behind - which is the
+same trap the default-environment agents fell into, arrived at from the other direction.
+
+Practical consequence for a twenty-slice delivery: build each slice **once**, with the suffix, and treat a
+slice as disposable rather than editable. Deleting the environment removes its agents; the orphaned
+identities that remain are harmless **provided** they were named distinctly in the first place, because
+then they can be told apart from the estate's own.
