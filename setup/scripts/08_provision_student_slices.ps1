@@ -26,10 +26,22 @@ WHAT THIS BUILDS, PER ATTENDEE (slice = one environment, not a whole estate):
   4. the attendee added as System Administrator OF THEIR OWN environment, so they can create roles,
      enable row-level security and remediate - none of which they can do in the shared estate.
 
-NOT YET BUILT HERE - the slice is not complete until these land:
-  - the SharePoint site + grounding document (Benefits-Buddy-shaped agent);
-  - the two agents, including the orphaned-connection agent owned by the disabled `tom.dean`.
-Both need a per-environment override in `03_provision_sharepoint.ps1` and `06_provision_agents.ps1`.
+NOT YET WIRED IN HERE - run these per slice until they are:
+
+  - AGENTS. `06_provision_agents.ps1 -Agents <slug> -TargetEnvironment Lab-<estate>-NN
+    -DisplayNameSuffix <estate>-NN`. The suffix is not cosmetic: agent display names are the only thing
+    telling apart the Entra identities Copilot Studio creates, and those are tenant-wide, so without it
+    twenty slices leave twenty-one principals called "Claims Copilot (Microsoft Copilot Studio)".
+  - THE ORPHAN AGENT. `onboarding-guide` is owned by `tom.dean`, whom Phase 6.5 disables on purpose. He
+    must be enabled to author it and consent its connection, then disabled again - and if a run dies in
+    between he is left enabled, which silently un-plants Scenario F for the whole shared estate. Enable
+    once, build it into every slice, disable once. Do not build slices independently while he is needed.
+  - SHAREPOINT. `03_provision_sharepoint.ps1 -SiteSuffix NN` gives each attendee their own
+    /sites/HR-Benefits-<estate>-NN to label in Lab 05-06. NEEDS THE PnP APP REGISTRATION AND CERTIFICATE
+    (ENTRAID_APP_ID + HALCOURT_PNP_CERT_PFX/PW, RUNBOOK Phase 4). Without them that script falls back to
+    an interactive device code, so it cannot run unattended - and twenty sites is the slowest part of a
+    delivery. This repo has also hit site-URL collisions with soft-deleted sites before, so test the
+    suffix on two slices before trusting it on twenty.
 
   pwsh setup/scripts/08_provision_student_slices.ps1 -Count 20
   pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy
