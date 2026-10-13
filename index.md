@@ -9,8 +9,8 @@ nav_order: 1
 
 Your makers are shipping Copilot Studio agents faster than anyone is tracking them. Each one gets an
 identity of its own, but what it can reach comes from its grounding, its tools, and whose credentials sit
-behind its connections. This workshop teaches you to find out what your agents can actually access,
-reach, and do — and whether the controls around them are enough.
+behind its connections. This workshop teaches you to find out what your agents can actually reach and
+do — and whether the controls around them are enough.
 {: .fs-6 .fw-300 }
 
 [Get started]({% link docs/00_lab_environment/00_lab_environment.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
@@ -26,11 +26,11 @@ Ask most organizations three simple questions and nobody has the answers:
 2. **Who owns them?**
 3. **What can they access?**
 
-Every new Copilot Studio agent now gets its own Entra identity, and Agent 365 (generally available since
-May 2026) gives admins a registry of their agents: owners and, where available, knowledge sources and
-tools. That list is where a review starts. By the end of the day you will be able to determine whose
-credentials each agent's tools run on, what access those credentials allow, and which controls reduce
-the risk.
+Every new Copilot Studio agent now gets its own Entra identity, and Microsoft Agent 365 (generally
+available since May 2026) gives admins a registry of their agents: owners and, where available, knowledge
+sources and tools. That list is where a review starts. By the end of the day you will be able to
+determine whose credentials each tool runs on, what access those credentials allow, and which controls
+reduce the risk.
 
 ## The through-line
 
@@ -85,10 +85,11 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 ## Prerequisites
 
 - A modern browser.
-- For the preferred, hands-on path: the read-only lab account (username and password) the facilitator
-  hands out at the start of Module 0, along with the lab tenant's domain and your estate id, and the
+- For the preferred, hands-on path: the lab account (username and password) the facilitator hands out at
+  the start of Module 0, along with the lab tenant's domain and your estate id, and the
   [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"} for the few
-  facts only an API returns. You gather the estate's data into blank CSVs from the
+  facts only an API returns. The account can inspect the whole estate. Treat the estate as read-only:
+  look, but don't change anything. You gather the estate's data into blank CSVs from the
   [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
 - Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
 - Optional: a Copilot-enabled editor for the analysis tasks — see
