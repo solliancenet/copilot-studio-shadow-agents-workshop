@@ -117,6 +117,7 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
 8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
+8c. Per-student slices         → an environment each, so Module 5's control work is hands-on for everyone
 9. Teardown / reseed
 ```
 
@@ -706,6 +707,39 @@ seats) if a licence merely needs to be present.
 
 Why this role and not something weaker:
 [decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
+
+### Phase 8c — Per-student slices (Module 5 hands-on)
+
+Module 5 has attendees *apply* controls — a scoped Dataverse role, row-level security, a DLP policy,
+orphan remediation — and then retest to reach their own **CLOSES IT / DENTS IT / MISSES IT** verdict. Those
+are environment-scoped changes, so on one shared estate the first attendee to enable row-level security
+deletes the "before" state for everyone else. Each attendee needs an environment of their own.
+
+```bash
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20        # accounts first
+pwsh setup/scripts/08_provision_student_slices.ps1 -Count 20   # then a slice each
+pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy    # after the delivery
+```
+
+**Why this is affordable.** Dataverse security roles and row-level security are **per environment**, so the
+one shared `svc-claims` can hold the over-broad role in one attendee's environment and a scoped role in
+another's at the same time. The slices need **no new licences** — which matters, because the tenant has 25
+E5 seats with none free, and that is what rules out giving each attendee a whole estate.
+
+Each slice is one Sandbox environment with Dataverse, linked to the estate's PAYG billing policy, holding
+the Phase 5 seed (Claim and Customer with PII rows, and the over-broad `svc-claims Dataverse Full Access`
+role). The attendee is **System Administrator of their own slice only**. Verified 2026-10-13: an attendee
+creating a scoped role gets `204` in their slice and `403` in the shared estate.
+
+> {: .important }
+> **The slice is not finished.** It still needs the SharePoint grounding site and the two agents, including
+> the orphaned-connection agent owned by the disabled `tom.dean`. Those need a per-environment override in
+> `03_provision_sharepoint.ps1` and `06_provision_agents.ps1`, which is the next piece of work.
+
+Two things learned building it, both verified: a new environment's Dataverse was **Ready in about 30
+seconds**, far faster than Phase 3's wait suggests; and the first calls against a brand-new org can fail
+with *"Interactive authentication is needed"* while `az` settles a token for the new resource — it clears
+on its own, so the script retries rather than failing the slice.
 
 ### Phase 9 — Teardown / reseed
 
