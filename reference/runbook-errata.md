@@ -730,3 +730,54 @@ system topics still cross-referenced the *original* agent's dialogs (`cr3f5_HRFA
 Push succeeded and publish failed with `InvalidReferenceError` / `NotFound`. Fixed by rewriting the committed
 topic references to the agent's own schema. **When you capture a "copy" agent, grep `topics/*.mcs.yml` for
 stale `<old-schema>.topic.*` references.**
+
+
+### Phase 6 · the default-environment agents are orphans, not absences (diagnosed 2026-10-13)
+
+**Symptom.** `Halcourt (default)` appears to contain no agents. The build admin reads `bots` and gets
+`200` with an empty array. Every persona - including `sam.olsen`, the canonical owner of Expense Helper -
+reads the same empty array. `pac copilot list` as that owner reports *"No Chatbots found"*. Three
+independent reads agree, and all three are wrong.
+
+**What is actually there.** The bot records exist. `pac copilot init` for `cr458_ExpenseHelper` fails with
+the only message that tells the truth:
+
+```
+user with id 0bc88b57-... does not have WriteAccess right(s) for record with id 4cf3a8fe-...
+of entity Agent ... OwnerPrincipal: 48b56557-a6b6-f111-aaab-000d3a32c3db
+```
+
+Resolving that owner gives `fullname = "# Sam Olsen (mgray)"` and
+`domainname = ea559c6438cf4b19bd097c953a2abe15sam.olsen.mgray@...`. The GUID-prefixed UPN and the `#`
+prefix are how Dataverse renames the `systemuser` record of a **deleted** user. Its Entra object id
+(`ea559c64-...`) is not the live `sam.olsen` (`1264def9-...`).
+
+So the agents belong to a sam.olsen from an **earlier build of this same estate**. When Phase 9 removed the
+personas and Phase 2 recreated them, the new accounts got new `systemuser` records; the bots stayed behind,
+owned by the dead one. `bot` is user-owned, so a user-scoped read shows every live account an empty list.
+
+**Why it is worth writing down.** The failure mode is indistinguishable from "the agents were never built"
+unless you ask a tool that reports ownership. It is the same trap Lab 02-01 teaches - *an empty result can
+mean no access, not no agents* - landing on the facilitator rather than the attendee. It also means a
+rebuild cannot proceed: the schema name is taken, and the live owner has no write access to the record
+holding it.
+
+**What it is NOT.** Not another estate's agents, and not a schema-name collision between two estates -
+the usual reading of "the default-env agents are not estate-scoped". The collision here is between two
+builds of the *same* estate, across a teardown.
+
+**The fix needs rights the build admin does not have.** In `Halcourt (default)` the admin holds only
+Environment Maker and Basic User, so it cannot read the records, cannot create a security role
+(`403` on `POST /roles`) and cannot reassign or delete the bots. One of these has to happen first:
+
+- give the admin **System Administrator** in the default environment - PPAC -> the environment ->
+  Settings -> Users + permissions, or `pac admin assign-user --environment <id> --user <admin UPN>
+  --role "System Administrator"` (needs a fresh `pac` sign-in; the device-code flow is interactive); then
+- **reassign** the two bots to the live `sam.olsen` and `tom.dean`, which restores them without a rebuild,
+  **or delete** them and re-run `06_provision_agents.ps1 -Agents expense-helper` and `-Agents
+  onboarding-guide`. Onboarding Guide is owned by `tom.dean`, so it must be built **before** Phase 6.5
+  disables him, or he must be re-enabled for the build and disabled again afterwards.
+
+**Prevention.** Phase 9 should remove the default environment's agents while their owners still exist, or
+the teardown should reassign them to a surviving principal first. Deleting the personas before the agents
+is what strands them.
