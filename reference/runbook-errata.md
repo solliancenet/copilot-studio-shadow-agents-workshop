@@ -781,3 +781,40 @@ Environment Maker and Basic User, so it cannot read the records, cannot create a
 **Prevention.** Phase 9 should remove the default environment's agents while their owners still exist, or
 the teardown should reassign them to a surviving principal first. Deleting the personas before the agents
 is what strands them.
+
+
+### Phase 8c · agent identities collide across slices (found 2026-10-13)
+
+**Symptom.** Build the same agent into a per-student slice and the tenant gains a second Entra principal
+with the *same* name. Building `claims-copilot` into one slice was enough:
+`Claims Copilot (Microsoft Copilot Studio)` x2. At twenty slices it is twenty-one.
+
+**Why it matters twice over.**
+
+- **Lab 01-02** has attendees match each identity to an agent in `agents-export.csv`. The page already
+  anticipates duplicates and tells them to compare the identity's Object ID with the agent's **Entra Agent
+  ID** in Copilot Studio -> Settings -> Advanced -> Metadata. That works for two candidates. It does not
+  work for twenty-one.
+- **Phase 7's export** dedupes agent identities **newest-per-display-name**. With duplicates it silently
+  keeps whichever slice was built last, so a student's throwaway environment can end up in the committed
+  artifact pack.
+
+**Fix.** `06_provision_agents.ps1 -DisplayNameSuffix <slice>` suffixes the agent's display name, and the
+identity follows it: `Claims Copilot (mgray-01)`. The same idea the manifest already uses for the shared
+default environment (`estateSuffixName`), applied to slices.
+
+**Not a fix for the general case.** Two *estates* in one tenant still collide on the non-default agents,
+because only the default-environment two carry the estate id. That is the separate, known gap.
+
+### Phase 8c · the connection-reference bind warning is pre-existing
+
+A slice build reports `could not bind DV-Claims-Shared as svc-claims: 403 (Forbidden)` and the agent still
+publishes. It is tempting to read that as the slice being broken. It is not: `connectionreferences` in the
+**working** `Claims-Test-<estate>` shows the same three references with `connectionid` empty, exactly as a
+freshly built slice does. The slice is at parity with the estate, and Copilot Studio evidently carries the
+binding in its own agent settings rather than those rows.
+
+Retrying does not clear the 403 - it failed identically on a second run with svc-claims holding the same
+roles in both environments - so it is not the privilege-cache lag that explains several other delays in
+this kit. Whether the scenario actually fires is a functional question: drive the agent and watch, which is
+Module 4 work, not something the build can assert.

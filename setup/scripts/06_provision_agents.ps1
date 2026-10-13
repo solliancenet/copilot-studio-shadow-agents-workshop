@@ -31,6 +31,8 @@ param(
   [string[]]$Agents,                                   # slugs to limit to; default: all with a workspace
   [string]$TargetEnvironment,                          # build into THIS environment instead of the manifest's
                                                        # (per-student slices, Phase 8c); use with -Agents
+  [string]$DisplayNameSuffix,                          # slice builds: keeps each slice's agent - and so its
+                                                       # tenant-wide Entra identity - distinguishable
   [switch]$SkipConnections,
   [switch]$SkipPrereqs,
   [switch]$VerifyOnly
@@ -281,7 +283,13 @@ function Provision-Agent([object]$A) {
   #   3. make the committed config authoritative - drop the clone's server-state knowledge/tools/conn-refs
   #      and overlay the committed ones (schema-prefixed to match);
   #   4. push. Preserves the agent identity (no delete) and is conflict-free.
+  # Agent DISPLAY NAMES are the only thing distinguishing the Entra identities Copilot Studio creates, and
+  # those identities are TENANT-wide. Two builds of the same agent therefore produce two principals called
+  # "<name> (Microsoft Copilot Studio)" - verified: building claims-copilot into one slice already gave the
+  # tenant two. At 20 slices that is 21, which breaks Lab 01-02's identity matching and makes Phase 7's
+  # newest-per-name dedupe pick an arbitrary student's slice. So a slice build suffixes the name.
   $display = if ($A.estateSuffixName) { "$($A.display) ($Estate)" } else { $A.display }   # shared default env: estate-suffixed
+  if ($DisplayNameSuffix) { $display = "$display ($DisplayNameSuffix)" }
   $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "halcourt-ws/$($A.slug)"
   # Get a synced workspace via clone - pac's OWN existence view (the Dataverse `bots` table can disagree,
   # e.g. a soft-deleted ghost that pac still sees). If clone finds nothing, the agent truly is absent:
