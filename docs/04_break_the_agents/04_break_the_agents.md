@@ -56,8 +56,8 @@ flowchart LR
   A --> P
 ```
 
-The gap between the small circle around the user and the large circle around the agent is the whole
-subject of this module.
+Everything inside that box is reachable through the agent, whether or not the user could reach it
+directly. That gap is the whole subject of this module.
 
 ### The six scenarios
 
