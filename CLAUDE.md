@@ -24,6 +24,9 @@ When I ask a question, answer it. That is the only action.
 - If you see a next step, offer it in one line after the answer. I decide whether you do it.
 - When you have asked for permission, only an explicit yes counts. Frustration, silence, or a change
   of topic is not a yes.
+- During feedback capture — from when I start giving feedback on a page until I ask you to propose
+  changes — everything I say is feedback, including questions and requests like "check the links".
+  Record it; don't act on it or answer it unless I say I want an answer now.
 
 ## Environment
 
