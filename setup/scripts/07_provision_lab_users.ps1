@@ -63,6 +63,7 @@ param(
   [string[]]$Roles           = @('Power Platform Administrator'),  # see the header: needed for Lab 01-01
   [string]$LabGroup,                                   # CA-exclusion group; default Lab-Students-<estate>
   [switch]$NoCaExclusion,                              # skip the CA exclusion (sign-in will then fail)
+  [switch]$NoDataverseRole,                            # skip the per-environment Dataverse read role
   [string[]]$LicenseSku      = @('DEVELOPERPACK_V2_E5'),  # skuPartNumber(s), best effort, in order
   [switch]$NoLicense,                                  # skip licensing entirely
   [string]$CredentialCsv,                              # default: setup/lab-users-<estate>.local.csv
@@ -305,6 +306,7 @@ $labGroupId = $null
 if ($needsCaExclusion -and -not $NoCaExclusion) { $labGroupId = Get-LabGroupId -CreateIfMissing }
 
 $report = @()
+$provisioned = @()        # upn + object id per account, for the Dataverse role grant
 foreach ($i in 1..$Count) {
   $upn   = Get-LabUpn $i
   $alias = Get-EstateAlias ("{0}{1:d2}" -f $Prefix, $i) $Estate
@@ -318,7 +320,10 @@ foreach ($i in 1..$Count) {
     # Left as it is - including its password, which this script cannot read back.
     Write-Host "Exists:   $upn - leaving it as is."
     $row.created = 'existing'
-    $row.password = if ($UniquePasswords) { '(unchanged - set on first run)' } else { $pw }
+    # Never print a password for an account this run did not create. The script cannot read one back, and
+    # the first run may have used -UniquePasswords - claiming the shared default here would put a wrong
+    # credential on the handout.
+    $row.password = '(unchanged - from the run that created it)'
   } else {
     $body = @{
       accountEnabled    = $true
@@ -367,7 +372,103 @@ foreach ($i in 1..$Count) {
       else      { $row.license = $target.Part; $target.Free -= 1 }
     }
   }
+  $provisioned += [pscustomobject]@{ Upn = $upn; Id = $u.id }
   $report += [pscustomobject]$row
+}
+
+# --- Dataverse read-only role -------------------------------------------------------------------------------
+# Lab 03-02 and 03-04 send attendees to read the acting identity's SECURITY ROLE inside an environment. Power
+# Platform Administrator is a TENANT role and grants nothing in Dataverse, so without this the read fails with
+# 0x80042f09 "has not been assigned any roles" (verified 2026-10-13). The fix is a purpose-built role with
+# organization-scope READ on the few tables the exercise needs - never System Administrator, which would hand
+# attendees write access to the estate they are reviewing.
+$DvRoleName       = 'Lab Reviewer (read-only)'
+$DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector')
+
+function Invoke-Dv([string]$OrgUrl, [string]$Method, [string]$Path, $Body) {
+  $h = @{ Authorization = "Bearer $(Get-AdminToken $OrgUrl)"; Accept = 'application/json'
+          'OData-MaxVersion' = '4.0'; 'OData-Version' = '4.0' }
+  $uri = "$OrgUrl/api/data/v9.2/$Path"
+  if ($null -ne $Body) { Invoke-RestMethod -Method $Method -Uri $uri -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 10) }
+  else                 { Invoke-RestMethod -Method $Method -Uri $uri -Headers $h }
+}
+function Get-DvFilter([string]$Set, [string]$Select, [string]$Filter) {
+  "$Set`?`$select=$Select&`$filter=" + [uri]::EscapeDataString($Filter)
+}
+
+function Get-EstateDataverseEnvironments {
+  $tok  = Get-AdminToken 'https://service.powerapps.com/'
+  $envs = (Invoke-RestMethod -Method GET -Headers @{ Authorization = "Bearer $tok" } `
+            -Uri 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01').value
+  $names = 'Halcourt-Prod', 'Claims-Test', 'Maker-Sandbox' | ForEach-Object { Get-EstateName $_ $Estate }
+  @($envs | Where-Object { $_.properties.displayName -in $names } | ForEach-Object {
+      [pscustomobject]@{ Name = $_.properties.displayName; Id = $_.name
+                         OrgUrl = $_.properties.linkedEnvironmentMetadata.instanceApiUrl } } |
+    Where-Object { $_.OrgUrl })
+}
+
+function Grant-DvReader($TargetEnv, [object[]]$Users) {
+  # 1. The account must exist in the environment before it can hold a role there. This admin endpoint adds it
+  #    WITHOUT a licence - Dataverse's usual userNotLicensed rule does not apply on this path (verified).
+  $bapTok = Get-AdminToken 'https://service.powerapps.com/'
+  foreach ($u in $Users) {
+    # Already there? Adding again answers 400, so check first and keep the output quiet on a re-run.
+    $have = $null
+    try { $have = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'systemusers' 'systemuserid' "azureactivedirectoryobjectid eq $($u.Id)") $null).value | Select-Object -First 1 } catch { }
+    if ($have) { continue }
+    try {
+      Invoke-RestMethod -Method POST -Headers @{ Authorization = "Bearer $bapTok" } -ContentType 'application/json' `
+        -Uri "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($TargetEnv.Id)/addUser?api-version=2021-04-01" `
+        -Body (@{ objectId = $u.Id } | ConvertTo-Json) | Out-Null
+    } catch {
+      Write-Warning "  $($TargetEnv.Name): could not add $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])"
+    }
+  }
+  # 2. The role, created once per environment and reused on re-runs.
+  $esc  = $DvRoleName.Replace("'", "''")
+  $role = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$esc'") $null).value | Select-Object -First 1
+  if (-not $role) {
+    $bu = (Invoke-Dv $TargetEnv.OrgUrl GET 'businessunits?$select=businessunitid&$top=1' $null).value[0].businessunitid
+    Invoke-Dv $TargetEnv.OrgUrl POST 'roles' @{ name = $DvRoleName; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
+    $role = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$esc'") $null).value | Select-Object -First 1
+    $privs = @(foreach ($p in $DvPrivilegeNames) {
+      $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
+      if ($pv) { @{ PrivilegeId = $pv.privilegeid; Depth = 'Global' } }
+      else     { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped." }
+    })
+    Invoke-Dv $TargetEnv.OrgUrl POST "roles($($role.roleid))/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = $privs } | Out-Null
+    Write-Host "  $($TargetEnv.Name): created '$DvRoleName' ($($privs.Count) read privileges)"
+  }
+  # 3. Assign it. Dataverse provisions the user record asynchronously, so give it a few seconds to appear.
+  $granted = 0
+  foreach ($u in $Users) {
+    $su = $null
+    foreach ($try in 1..6) {
+      # Match on the ENTRA OBJECT ID, never the UPN. A destroy/recreate cycle leaves the old, dead
+      # systemuser record behind under the same UPN, and granting the role to that one looks like it
+      # worked while the live account still gets 0x80042f09.
+      $su = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'systemusers' 'systemuserid' "azureactivedirectoryobjectid eq $($u.Id)") $null).value | Select-Object -First 1
+      if ($su) { break }
+      Start-Sleep -Seconds 5
+    }
+    if (-not $su) { Write-Warning "  $($TargetEnv.Name): no user record for $($u.Upn) yet - re-run to finish the grant."; continue }
+    try {
+      Invoke-Dv $TargetEnv.OrgUrl POST "systemusers($($su.systemuserid))/systemuserroles_association/`$ref" `
+        @{ '@odata.id' = "$($TargetEnv.OrgUrl)/api/data/v9.2/roles($($role.roleid))" } | Out-Null
+      $granted++
+    } catch {
+      if ("$($_.Exception.Message)" -match 'duplicate|already|Cannot insert duplicate') { $granted++ }
+      else { Write-Warning "  $($TargetEnv.Name): role grant failed for $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])" }
+    }
+  }
+  Write-Host "  $($TargetEnv.Name): $granted of $($Users.Count) account(s) hold '$DvRoleName'"
+}
+
+if (-not $NoDataverseRole -and $provisioned.Count) {
+  Write-Host "`nGranting '$DvRoleName' in the estate's Dataverse environments (Lab 03-02 and 03-04 need it)..."
+  $dvEnvs = @(Get-EstateDataverseEnvironments)
+  if (-not $dvEnvs) { Write-Warning '  no estate environments with Dataverse found - skipping.' }
+  foreach ($e in $dvEnvs) { Grant-DvReader $e $provisioned }
 }
 
 # --- Conditional Access exclusion -------------------------------------------------------------------------

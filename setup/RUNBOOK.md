@@ -673,6 +673,24 @@ Verified end to end on 2026-10-13: sign-in with the handed-out password succeeds
 both connections — including `DV-CRM-Shared`, owned by the disabled `tom.dean`, which is the row the Ex 02
 hunts turn on. `-Destroy` put the policy back to 15 admin roles and no exclusions.
 
+**Attendees also get a read-only Dataverse role.** Lab 03-02 and 03-04 send them to read the acting
+identity's *security role* inside an environment. Power Platform Administrator is a **tenant** role and
+grants nothing in Dataverse, so without this the read fails with `0x80042f09` *"has not been assigned any
+roles"*. The script therefore creates **`Lab Reviewer (read-only)`** in each of the estate's three Dataverse
+environments — organization-scope READ on user, role, organization, business unit and connector, and
+nothing else — adds each account to the environment, and assigns it. Verified 2026-10-13: an attendee then
+reads `svc-claims` and its security role in `Claims-Test`, which is the answer Task 03-04 is built around,
+while a write still returns 403. `-NoDataverseRole` skips it.
+
+Two things that bite here, both verified:
+
+- **Create the accounts well before the delivery.** Group membership takes time to reach Conditional
+  Access. An account minutes old can fail its first sign-in with `AADSTS50079` on Dataverse-backed pages,
+  then work fine later.
+- **A re-run cannot reprint passwords.** An account that already exists is left alone, and the handout
+  shows `(unchanged - from the run that created it)` rather than inventing a value. If you lose the
+  handout, destroy and recreate rather than guessing.
+
 > {: .caution }
 > **An attendee account is a tenant-wide Power Platform admin, exempt from the admin MFA policy.** It can
 > change or delete any environment in the tenant, including another facilitator's estate. Give a delivery

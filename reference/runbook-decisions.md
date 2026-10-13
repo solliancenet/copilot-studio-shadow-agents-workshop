@@ -468,3 +468,28 @@ The same applies to `Lab-Students-<estate>`, and it matters more there: a soft-d
 its `mailNickname`, so the next delivery could not recreate it, and the Conditional Access exclusion would
 be left pointing at a group nobody can see. `-Destroy` removes the exclusion first, then deletes and purges
 the group, in that order.
+
+### Why attendees need a Dataverse role as well, and which one
+
+Power Platform Administrator is a **tenant** role. It reaches the admin APIs and PPAC, and it grants
+nothing at all inside a Dataverse environment: reading `systemusers` or `roles` there fails with
+`0x80042f09` *"has not been assigned any roles"* (verified 2026-10-13). Lab 03-02 and 03-04 both depend on
+that read — it is where an attendee sizes the acting identity's grant — so the account needs an
+in-environment role too.
+
+`Lab Reviewer (read-only)` is created per environment with organization-scope READ on five tables only:
+user, role, organization, business unit, connector. **Not System Administrator**, which is the obvious
+shortcut and would hand every attendee write access to the estate they are reviewing, on top of the
+tenant-wide admin role they already hold.
+
+Three findings came out of building it, none of them obvious:
+
+- **The usual licensing rule does not apply on this path.** Dataverse normally refuses unlicensed users
+  (`userNotLicensed`), and this tenant has zero free seats. The BAP admin `addUser` endpoint adds an
+  unlicensed account to an environment anyway, and a role assigned afterwards works.
+- **Match the account by Entra object id, never by UPN.** A destroy/recreate cycle leaves the previous
+  account's `systemuser` record behind under the *same* UPN. Granting the role to that one reports success
+  while the live account still gets `0x80042f09` — which is exactly what happened on the first attempt.
+- **A Developer environment can refuse `addUser` with 400.** Its owner is its only System Administrator
+  (the same rule Phase 7 hit), so Maker-Sandbox may need a re-run or a manual add. Ex 03 does not depend on
+  it; Claims-Test and Halcourt-Prod carry the agents the exercise maps.
