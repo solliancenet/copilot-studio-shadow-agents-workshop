@@ -8,21 +8,33 @@ own accounts (marcus.webb, priya.nair, ...) are canon and are built by 01_provis
 
 Runs anywhere `az` runs (Linux included): Graph over REST with az's saved sign-in, like 99_teardown.ps1.
 
-WHAT AN ATTENDEE ACCOUNT CAN AND CANNOT DO (verified live 2026-10-01 on 0zwdt94t.onmicrosoft.com)
+WHY ATTENDEES GET AN ADMIN ROLE, AND WHAT THAT COSTS
 
-  Default role is Global Reader, and that is a deliberate ceiling, not a guess:
+  Lab 01-01 has attendees enumerate an environment's connections. Only the tenant-admin Power Platform
+  endpoints under /scopes/admin/ can do that, and only Power Platform Administrator reaches them.
+  Verified live 2026-10-13: nothing weaker works, and the weaker options were not guesses -
 
-  - WORKS, unlicensed, password-only (no MFA prompt): sign-in; Entra read; Graph /users, /groups and
-    signInActivity - which is every column of users-export.csv, including last_sign_in_utc.
-  - DOES NOT WORK: the tenant-admin Power Platform endpoints under /scopes/admin/ (Lab 01-01 step 4).
-    Global Reader gets HTTP 404 CRMRequestFailed where the build admin gets 200 - that API hides itself
-    from unauthorized callers instead of returning 403. Attendees take the connections step from the
-    artifact pack, or the facilitator drives it on the projector.
-  - DO NOT "FIX" THAT WITH Power Platform Administrator. It is in CA-Require-MFA-Admins
-    (00_conditional_access_baseline.ps1), so the account can no longer sign in with a handed-out
-    password at all: AADSTS50079, "must enroll in multi-factor authentication". It would also hand
-    every attendee write access to the estate they are supposed to be reviewing. This script warns if
-    you ask for such a role.
+  - Global Reader gets HTTP 404 CRMRequestFailed where a tenant admin gets 200. Those endpoints hide
+    themselves from an unauthorized caller instead of returning 403, so the attendee sees an empty
+    estate rather than an error.
+  - A per-environment role does not help either. The maker-facing connections API is caller-scoped: a
+    maker who owns one of an environment's two connections sees exactly that one, and environment
+    members who own none see zero. No environment role enumerates another person's connections.
+
+  So the role is necessary. It is also MFA-gated: Power Platform Administrator sits in
+  CA-Require-MFA-Admins (00_conditional_access_baseline.ps1), and an account holding it cannot sign in
+  with a handed-out password at all - AADSTS50079, "must enroll in multi-factor authentication".
+
+  This script resolves that by excluding ONE group from that policy: Lab-Students-<estate>, holding only
+  this delivery's attendee accounts. The exclusion is added to the policy's excludeGroups without
+  touching any exclusion another estate added, and -Destroy removes only this estate's group id.
+
+  THE COST, STATED PLAINLY. An attendee account is a tenant-wide Power Platform admin that is exempt
+  from the admin MFA policy. It can change or delete any environment in the tenant, including another
+  facilitator's estate. Run a delivery in its own tenant where you can. Nothing here is appropriate
+  outside an isolated, disposable training tenant.
+
+  Attendees still do not need a LICENCE: Entra reads and the admin APIs both work unlicensed.
 
 LICENSES ARE BEST EFFORT BY DESIGN. A Dev Program sandbox has 25 E5 seats and the estate itself needs
 eight (RUNBOOK -> Phase 2); the content-pack sample users hold the rest. Assignment is attempted, never
@@ -48,7 +60,9 @@ param(
   [string]$DomainSuffix,                               # default: the tenant's default verified domain
   [string]$InitialPassword   = 'Lab-Only-Passw0rd!',   # one shared password; rotate per delivery
   [switch]$UniquePasswords,                            # instead: a distinct typed-by-hand password each
-  [string[]]$Roles           = @('Global Reader'),     # directory roles; see the header before widening
+  [string[]]$Roles           = @('Power Platform Administrator'),  # see the header: needed for Lab 01-01
+  [string]$LabGroup,                                   # CA-exclusion group; default Lab-Students-<estate>
+  [switch]$NoCaExclusion,                              # skip the CA exclusion (sign-in will then fail)
   [string[]]$LicenseSku      = @('DEVELOPERPACK_V2_E5'),  # skuPartNumber(s), best effort, in order
   [switch]$NoLicense,                                  # skip licensing entirely
   [string]$CredentialCsv,                              # default: setup/lab-users-<estate>.local.csv
@@ -98,6 +112,75 @@ function New-LabPassword {
   -join ($core.ToCharArray() | Sort-Object { Get-Random })
 }
 
+if (-not $LabGroup) { $LabGroup = Get-EstateName 'Lab-Students' $Estate }
+
+# Returns this delivery's CA-exclusion group, creating it on first use. Estate-scoped, so two deliveries
+# in one tenant never share a group - which is the whole point: the exclusion must name only these users.
+function Get-LabGroupId([switch]$CreateIfMissing) {
+  $g = @((Graph GET "groups?`$filter=displayName eq '$LabGroup'&`$select=id,displayName").value) | Select-Object -First 1
+  if ($g) { return $g.id }
+  if (-not $CreateIfMissing) { return $null }
+  Write-Host "Creating group $LabGroup (Conditional Access exclusion for this delivery)"
+  (Graph POST 'groups' @{
+      displayName     = $LabGroup
+      mailNickname    = $LabGroup
+      mailEnabled     = $false
+      securityEnabled = $true
+      description     = "Attendee accounts for estate '$Estate'. Excluded from $CaPolicyName. Delete after the delivery."
+    }).id
+}
+
+# --- Conditional Access exclusion ------------------------------------------------------------------------
+# The attendee role is MFA-gated (see the header), so these accounts must be excluded from the admin MFA
+# policy or they cannot sign in at all.
+#
+# This needs no extra sign-in. 00_conditional_access_baseline.ps1 connects separately because it needs
+# Policy.ReadWrite.ConditionalAccess, but az's delegated Directory.AccessAsUser.All already covers reading
+# and patching Conditional Access for a Global Administrator - verified 2026-10-13 (GET 200, PATCH 204).
+$CaPolicyName = 'CA-Require-MFA-Admins'
+$CaUri        = 'identity/conditionalAccess/policies'
+# Graph replaces 'conditions' wholesale on PATCH, so the policy is read, ONE field is changed, and the whole
+# conditions object goes back. Nulls are stripped because Graph rejects some of them on write.
+function Remove-NullKeys($o) {
+  if ($o -is [System.Collections.IDictionary]) {
+    $clean = @{}
+    foreach ($k in $o.Keys) { if ($null -ne $o[$k]) { $clean[$k] = Remove-NullKeys $o[$k] } }
+    return $clean
+  }
+  if ($o -is [object[]]) { return @($o | ForEach-Object { Remove-NullKeys $_ }) }
+  return $o
+}
+function Set-CaExclusion([string]$GroupId, [string]$Action) {   # Action: 'add' | 'remove'
+  $policy = @((Graph GET $CaUri).value) |
+            Where-Object { $_.displayName -eq $CaPolicyName } | Select-Object -First 1
+  if (-not $policy) { throw "No '$CaPolicyName' policy in this tenant - run 00_conditional_access_baseline.ps1 first." }
+
+  # Additive both ways: every exclusion another estate added stays, only this group id moves.
+  $current = @($policy.conditions.users.excludeGroups | Where-Object { $_ })
+  $updated = if ($Action -eq 'add') { @($current) + $GroupId | Select-Object -Unique }
+             else                   { @($current | Where-Object { $_ -ne $GroupId }) }
+  if (($current -join ',') -eq ((@($updated)) -join ',')) {
+    Write-Host "  $CaPolicyName already has this estate's exclusion as it should be."
+    return
+  }
+  $roleCountBefore = @($policy.conditions.users.includeRoles).Count
+  $conditions = Remove-NullKeys $policy.conditions
+  $conditions.users.excludeGroups = @($updated)
+  Graph PATCH "$CaUri/$($policy.id)" @{ conditions = $conditions } | Out-Null
+
+  # Never take the write on trust: this policy is what keeps MFA on the tenant's real admins.
+  $after = @((Graph GET $CaUri).value) |
+           Where-Object { $_.displayName -eq $CaPolicyName } | Select-Object -First 1
+  $roleCountAfter = @($after.conditions.users.includeRoles).Count
+  $nowExcluded    = @($after.conditions.users.excludeGroups | Where-Object { $_ })
+  Write-Host "  ${CaPolicyName}: excludeGroups $($current.Count) -> $($nowExcluded.Count), state $($after.state)"
+  if ($roleCountAfter -ne $roleCountBefore) {
+    Write-Warning "  $CaPolicyName now targets $roleCountAfter admin roles, was $roleCountBefore - CHECK IT in Entra before delivering."
+  }
+  if ($Action -eq 'add'    -and $GroupId -notin $nowExcluded) { Write-Warning "  the exclusion did not take - attendees will hit AADSTS50079." }
+  if ($Action -eq 'remove' -and $GroupId -in    $nowExcluded) { Write-Warning "  the exclusion is still in place - remove $LabGroup from $CaPolicyName by hand." }
+}
+
 Write-Host "Estate: $Estate   Tenant: $TenantId   Domain: $DomainSuffix"
 Write-Host "Accounts: $(Get-LabUpn 1) .. $(Get-LabUpn $Count)"
 
@@ -107,10 +190,13 @@ Write-Host "Accounts: $(Get-LabUpn 1) .. $(Get-LabUpn $Count)"
 if ($Destroy) {
   $pattern = "^$([regex]::Escape($Prefix))\d+\.$([regex]::Escape($Estate))@"
   $found = @((Graph GET "users?`$select=id,userPrincipalName&`$top=999").value | Where-Object { $_.userPrincipalName -match $pattern })
-  if (-not $found) { Write-Host "No attendee accounts match '$Prefix<NN>.$Estate@$DomainSuffix' - nothing to remove."; return }
+  $groupId = Get-LabGroupId
+  if (-not $found -and -not $groupId) { Write-Host "Nothing to remove for estate '$Estate'."; return }
 
-  Write-Host "`nAbout to delete and purge $($found.Count) attendee account(s):"
-  $found | Sort-Object userPrincipalName | ForEach-Object { Write-Host "  $($_.userPrincipalName)" }
+  Write-Host "`nAbout to remove, for estate '$Estate':"
+  Write-Host "  $($found.Count) attendee account(s), deleted and purged"
+  $found | Sort-Object userPrincipalName | ForEach-Object { Write-Host "    $($_.userPrincipalName)" }
+  if ($groupId) { Write-Host "  the group $LabGroup, and its exclusion from $CaPolicyName" }
   if (-not $Force) {
     $answer = Read-Host "`nType the estate id ('$Estate') to confirm"
     if ($answer -ne $Estate) { Write-Host 'Aborted - nothing was removed.'; return }
@@ -128,6 +214,25 @@ if ($Destroy) {
     if ($err) { Write-Warning "  $($u.userPrincipalName): deleted but NOT purged - $err"; Write-Host "    purge by hand: az rest --method DELETE --url https://graph.microsoft.com/v1.0/directory/deletedItems/$($u.id)" }
     else      { Write-Host "  removed and purged $($u.userPrincipalName)" }
   }
+
+  # The exclusion weakens the admin MFA policy, so it goes before the group does - and it only ever drops
+  # THIS estate's group id, leaving any other delivery's exclusion in place.
+  if ($groupId) {
+    if ($NoCaExclusion) { Write-Host "Leaving $CaPolicyName alone (-NoCaExclusion)." }
+    else {
+      Write-Host "`nRemoving $LabGroup from $CaPolicyName..."
+      try { Set-CaExclusion -GroupId $groupId -Action 'remove' }
+      catch { Write-Warning "  could not update ${CaPolicyName}: $($_.Exception.Message.Split([char]10)[0])"
+              Write-Warning "  REMOVE $LabGroup FROM $CaPolicyName BY HAND - until you do, the policy has a stale exclusion." }
+    }
+    Try-Graph DELETE "groups/$groupId" $null ([ref]$err) | Out-Null
+    if ($err) { Write-Warning "  could not delete $LabGroup - $err" }
+    else {
+      Start-Sleep -Seconds 2
+      Try-Graph DELETE "directory/deletedItems/$groupId" $null ([ref]$err) | Out-Null
+      Write-Host "  removed group $LabGroup$(if ($err) { ' (soft-deleted; purge by hand)' } else { ' (purged)' })"
+    }
+  }
   Write-Host "`nDone. Licenses the accounts held are returned to the tenant pool."
   return
 }
@@ -139,9 +244,9 @@ if ($Count -lt 1 -or $Count -gt 99) { throw "-Count must be 1-99 (got $Count); t
 $org = (Graph GET 'organization?$select=countryLetterCode').value[0]
 $usageLocation = if ($org.countryLetterCode) { $org.countryLetterCode } else { 'US' }
 
-# Resolve each requested role to an ACTIVATED directoryRole, and refuse to walk into the MFA trap quietly.
+# Resolve each requested role to an ACTIVATED directoryRole, and track whether any of them is MFA-gated.
 # These template ids are in CA-Require-MFA-Admins (00_conditional_access_baseline.ps1): hold one and a
-# handed-out password stops working (AADSTS50079), which defeats the point of this script.
+# handed-out password stops working (AADSTS50079) unless the account sits in the excluded group.
 $mfaRoleTemplates = @(
   '62e90394-69f5-4237-9190-012177145e10','9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3','c4e39bd9-1100-46d3-8c65-fb160da0071f',
   'b0f54661-2d74-4c50-afa3-1ec803f12efe','158c047a-c907-4556-b7ef-446551a6b5f7','b1be1c3e-b65d-4f19-8427-f6fa0d97feb9',
@@ -151,12 +256,19 @@ $mfaRoleTemplates = @(
 )
 $templates = (Graph GET 'directoryRoleTemplates?$select=id,displayName').value
 $roleTargets = @()
+$needsCaExclusion = $false
 foreach ($roleName in $Roles) {
   $t = $templates | Where-Object { $_.displayName -eq $roleName } | Select-Object -First 1
   if (-not $t) { throw "No directory role template named '$roleName'. Check the spelling against the Entra portal." }
   if ($t.id -in $mfaRoleTemplates) {
-    Write-Warning "'$roleName' is covered by CA-Require-MFA-Admins: these accounts will be REQUIRED to enroll in MFA"
-    Write-Warning "  and a handed-out password alone will fail with AADSTS50079. See this script's header."
+    $needsCaExclusion = $true
+    Write-Warning "'$roleName' is tenant-wide admin and is covered by $CaPolicyName."
+    if ($NoCaExclusion) {
+      Write-Warning "  -NoCaExclusion was passed, so these accounts will NOT be able to sign in (AADSTS50079)."
+    } else {
+      Write-Warning "  These accounts get it anyway (Lab 01-01 needs it) and are excluded from that policy via $LabGroup."
+      Write-Warning "  They can change or delete ANY environment in this tenant. Isolated training tenants only."
+    }
   }
   # A role has no id until it is activated in the tenant; activate on first use.
   $role = $null
@@ -187,13 +299,18 @@ if (-not $NoLicense) {
 }
 
 # --- Create ---------------------------------------------------------------------------------------------
+# The CA-exclusion group is only needed when a requested role is MFA-gated; make it before the accounts so
+# every one of them can be added as it is created.
+$labGroupId = $null
+if ($needsCaExclusion -and -not $NoCaExclusion) { $labGroupId = Get-LabGroupId -CreateIfMissing }
+
 $report = @()
 foreach ($i in 1..$Count) {
   $upn   = Get-LabUpn $i
   $alias = Get-EstateAlias ("{0}{1:d2}" -f $Prefix, $i) $Estate
   $pw    = if ($UniquePasswords) { New-LabPassword } else { $InitialPassword }
   $err   = $null
-  $row   = [ordered]@{ upn = $upn; password = $pw; created = ''; roles = ''; license = '' }
+  $row   = [ordered]@{ upn = $upn; password = $pw; created = ''; roles = ''; group = ''; license = '' }
 
   $existing = (Try-Graph GET "users?`$filter=userPrincipalName eq '$upn'&`$select=id,userPrincipalName" $null ([ref]$err)).value
   $u = $existing | Select-Object -First 1
@@ -229,6 +346,15 @@ foreach ($i in 1..$Count) {
   }
   $row.roles = $roleResults -join '; '
 
+  # Group membership is what the Conditional Access exclusion actually resolves to, so a failure here
+  # means that account cannot sign in. Report it per-account rather than failing the run.
+  if (-not $labGroupId) { $row.group = if ($NoCaExclusion) { 'skipped (-NoCaExclusion)' } else { 'not needed' } }
+  else {
+    Try-Graph POST "groups/$labGroupId/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
+    if (-not $err -or $err -match 'already exist') { $row.group = $LabGroup }
+    else { $row.group = 'FAILED'; Write-Warning "  $upn - could not join $LabGroup (sign-in will fail): $err" }
+  }
+
   # Licensing: attempt, record, never stop the run. This is the column Jim asked for.
   if ($NoLicense)            { $row.license = 'skipped (-NoLicense)' }
   elseif (-not $skuPlan)     { $row.license = 'skipped (no matching SKU)' }
@@ -244,17 +370,29 @@ foreach ($i in 1..$Count) {
   $report += [pscustomobject]$row
 }
 
+# --- Conditional Access exclusion -------------------------------------------------------------------------
+# Last, so every account is already in the group when the policy starts honouring it.
+if ($labGroupId) {
+  Write-Host "`nExcluding $LabGroup from $CaPolicyName so these accounts can sign in with a password..."
+  Set-CaExclusion -GroupId $labGroupId -Action 'add'
+} elseif ($needsCaExclusion) {
+  Write-Warning "`nNo CA exclusion was made (-NoCaExclusion). These accounts hold an MFA-gated role and will"
+  Write-Warning '  fail to sign in with AADSTS50079 until they are excluded or the role is removed.'
+}
+
 # --- Handout ---------------------------------------------------------------------------------------------
 Write-Host "`n================ attendee accounts (estate '$Estate') ================"
-$report | Format-Table -AutoSize -Property upn, password, created, roles, license | Out-String -Width 400 | Write-Host
+$report | Format-Table -AutoSize -Property upn, password, created, roles, group, license | Out-String -Width 400 | Write-Host
 
 $licensed = @($report | Where-Object { $_.license -and $_.license -notmatch '^(skipped|none free|FAILED)' })
 $failed   = @($report | Where-Object { $_.created -like 'FAILED*' })
+$noGroup  = @($report | Where-Object { $_.group -eq 'FAILED' })
 Write-Host "Created/present: $($report.Count - $failed.Count) of $Count     Licensed: $($licensed.Count)     Not licensed: $($report.Count - $failed.Count - $licensed.Count)"
 if ($failed.Count)   { Write-Warning "$($failed.Count) account(s) could not be created - see the table." }
+if ($noGroup.Count)  { Write-Warning "$($noGroup.Count) account(s) are NOT in $LabGroup and will fail to sign in - see the table." }
 if ($licensed.Count -lt ($report.Count - $failed.Count)) {
-  Write-Host 'Unlicensed accounts still sign in and still do every task that needs only Entra read'
-  Write-Host '  (users-export.csv, groups, sign-in activity). See this script header for what needs a seat.'
+  Write-Host 'Unlicensed accounts still sign in and still do every task in Ex 00-02: Entra reads and the'
+  Write-Host '  Power Platform admin APIs both work without a seat.'
 }
 
 if (-not $CredentialCsv) { $CredentialCsv = Join-Path (Split-Path $PSScriptRoot -Parent) "lab-users-$Estate.local.csv" }

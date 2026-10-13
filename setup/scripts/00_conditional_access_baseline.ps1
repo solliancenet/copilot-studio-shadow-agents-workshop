@@ -13,6 +13,13 @@ baseline keeps the two protections that matter for a lab tenant: MFA for admins 
 It deliberately creates NO policy targeting workload/agent identities (a Module 5 finding) and NO policy
 blocking device-code flow.
 
+CA-Require-MFA-Admins is also written to by Phase 8b: 07_provision_lab_users.ps1 adds one group per
+delivery (Lab-Students-<estate>) to its excludeGroups, because attendee accounts hold Power Platform
+Administrator and would otherwise be unable to sign in with a handed-out password (AADSTS50079). That
+edit is additive and -Destroy removes only its own group id. This script leaves an existing policy's
+settings alone, so re-running it never clears those exclusions - but it also never re-adds them, so if
+you delete and recreate the policy, re-run Phase 8b.
+
 Run as the lab global admin. The first time, security defaults are still on and block device codes, so run
 it from the host or the Windows build VM with the default browser sign-in. Safe to re-run: it skips
 policies that already exist (by name). If creating a policy fails, it deletes the ones it created and

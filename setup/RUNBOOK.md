@@ -652,32 +652,41 @@ tenant. The run prints a handout table and writes `setup/lab-users-<estate>.loca
 passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone (the
 script cannot read a password back, so it says `(unchanged)` rather than inventing one).
 
-**Attendees get `Global Reader`, and that ceiling is deliberate.** Verified live 2026-10-01:
+**Attendees get `Power Platform Administrator`, and a Conditional Access exclusion so they can still sign
+in.** Lab 01-01 has them enumerate an environment's connections, and only the tenant-admin endpoints under
+`/scopes/admin/` can do that. Nothing weaker reaches them — verified live 2026-10-13, both the obvious
+alternatives fail:
 
-| Attendee account can | Attendee account cannot |
+| Weaker option | Result |
 |---|---|
-| Sign in with just the handed-out password — no MFA enrolment | Read the tenant-admin Power Platform APIs under `/scopes/admin/` |
-| Read Entra: `/users`, `/groups`, `signInActivity` — every column of `users-export.csv`, `last_sign_in_utc` included | Open an agent in Copilot Studio (needs owner/co-author — Lab 01-01 step 6 already says so) |
+| `Global Reader` | **404 `CRMRequestFailed`** where a tenant admin gets `200`. The endpoint hides itself from an unauthorized caller instead of returning `403`, so the attendee sees an empty estate, not an error. |
+| A per-environment role | No help. The maker-facing connections API is caller-scoped: a maker owning 1 of an environment's 2 connections sees exactly that one; members owning none see zero. |
 
-> {: .warning }
-> **Do not widen this to Power Platform Administrator.** That role is in `CA-Require-MFA-Admins`
-> (`00_conditional_access_baseline.ps1`), so the account can no longer sign in with a handed-out password
-> at all — `AADSTS50079`, *"must enroll in multi-factor authentication"*. It would also give every attendee
-> write access to the estate they are reviewing. The script warns if you ask for such a role.
+That role is MFA-gated, so the script creates one group per delivery — `Lab-Students-<estate>`, holding
+only this delivery's accounts — and adds it to `CA-Require-MFA-Admins`'s `excludeGroups`. The edit is
+additive: another estate's exclusion is never touched, and `-Destroy` removes only this estate's group id,
+then deletes the group. After the policy write the script re-reads it and warns if the admin-role count
+changed.
 
-**Lab 01-01 step 4** (list connections via `api.powerapps.com/.../scopes/admin/...`) therefore cannot be
-run from an attendee account: Global Reader gets `404 CRMRequestFailed` where the build admin gets `200` —
-that API hides itself from unauthorized callers rather than returning `403`. Attendees take that step from
-the artifact pack, or you drive it on the projector.
+Verified end to end on 2026-10-13: sign-in with the handed-out password succeeds (previously `AADSTS50079`),
+`scopes/admin/environments` returns 200 with 5 environments, and the Halcourt-Prod connections call returns
+both connections — including `DV-CRM-Shared`, owned by the disabled `tom.dean`, which is the row the Ex 02
+hunts turn on. `-Destroy` put the policy back to 15 admin roles and no exclusions.
+
+> {: .caution }
+> **An attendee account is a tenant-wide Power Platform admin, exempt from the admin MFA policy.** It can
+> change or delete any environment in the tenant, including another facilitator's estate. Give a delivery
+> its own tenant where you can, and run `-Destroy` the moment it ends. `-NoCaExclusion` skips the policy
+> change, but then the accounts cannot sign in at all.
 
 **Licences are best effort and usually fail.** A sandbox has 25 E5 seats, the estate needs eight, and the
 content-pack sample users hold the rest — on the build tenant it was 25/25 consumed, so every attendee came
-out unlicensed. That is fine: nothing in the table above needs a seat. Assignment is attempted, never
-fatal, and the end-of-run table reports exactly who got one. To change that, free seats in **M365 admin
-center → Billing → Licenses** first, or pass `-LicenseSku FLOW_FREE` (10,000 seats) if a licence merely
-needs to be present.
+out unlicensed. That is fine: Entra reads and the Power Platform admin APIs both work without a seat.
+Assignment is attempted, never fatal, and the end-of-run table reports exactly who got one. To change that,
+free seats in **M365 admin center → Billing → Licenses** first, or pass `-LicenseSku FLOW_FREE` (10,000
+seats) if a licence merely needs to be present.
 
-Why Global Reader and not something else:
+Why this role and not something weaker:
 [decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
 
 ### Phase 9 — Teardown / reseed
