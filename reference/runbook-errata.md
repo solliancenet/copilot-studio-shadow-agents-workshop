@@ -839,3 +839,26 @@ The shared estate is in exactly the same state (`connectionreferences` with `con
 `Claims-Test-<estate>`), so this is long-standing and not a regression. Copilot Studio evidently carries
 the binding in the agent's own settings rather than those rows. Treat the warning as expected for any
 service-account connection, and judge the scenario by driving the agent, not by reading that table.
+
+
+### Phase 8c · Dataverse learns an owner is disabled late, not never
+
+Disable a persona in Entra and Dataverse's `systemuser.isdisabled` does **not** follow immediately.
+Measured 2026-10-13, same account, two environments:
+
+| environment | disabled in Entra | `isdisabled` in Dataverse |
+|---|---|---|
+| `Lab-mgray-01` (slice) | ~15 minutes earlier | **False** |
+| `Halcourt-Prod-<estate>` | weeks earlier | **True** |
+
+So it is a propagation lag, not a permanent divergence - worth knowing before someone reports it as a
+bug, and worth not "fixing" by re-disabling the account.
+
+**It does not affect the exercises.** Lab 02-03's orphan hunt and Lab 03-01's owner cross-check both read
+`account_enabled`, which comes from **Entra** via `users-export.csv`, and Entra is correct immediately. A
+student who queries an environment's `systemusers` table directly on the day a slice was built is the only
+one who would see the stale value.
+
+**Operationally** it joins the other lags in this kit - Conditional Access group membership, and `az`
+settling a token for a brand-new org. Build the slices, and disable `tom.dean`, well before the delivery
+rather than minutes before it. Nothing here is fast-path safe.
