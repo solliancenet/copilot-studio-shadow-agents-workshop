@@ -23,11 +23,12 @@ Nobody at Halcourt Mutual can answer three simple questions about that estate:
 2. **Who owns them?**
 3. **What can they actually access?**
 
-You are joining as a **platform owner and security reviewer**. Your vantage point is read-only across the
-tenant — you can see the environments, the agents, the connections, and the identities, but this
-orientation is about getting in and getting your bearings, not fixing anything yet. Over the day you will
-build a running **Estate Binder** that answers all three questions and says whether each of Microsoft's
-controls **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
+You are joining as a **platform owner and security reviewer**. You observe the estate; you do not change
+it — you look at the environments, the agents, the connections, and the identities, and this orientation is
+about getting in and getting your bearings, not fixing anything yet. Your lab account is deliberately given
+more access than that stance implies, for a reason Task 00-01 explains. Over the day you will build a
+running **Estate Binder** that answers all three questions and says whether each of Microsoft's controls
+**CLOSES IT**, **DENTS IT**, or **MISSES IT**.
 
 This exercise gets you access and oriented. No findings yet — just terrain. If live tenant access is
 unavailable, use the artifact pack for the discovery and analysis tasks.
@@ -36,8 +37,9 @@ unavailable, use the artifact pack for the discovery and analysis tasks.
 
 After this exercise you will be able to:
 
-- Sign in to the shared Halcourt Mutual demo tenant with the lab account the facilitator hands out and open
-  the **Power Platform admin center** in read-only mode.
+- Sign in to the shared Halcourt Mutual demo tenant with the lab account the facilitator hands out, open
+  the **Power Platform admin center**, and say why that account holds more access than a reviewer would
+  normally ask for.
 - Download the **artifact pack** — the blank CSVs you fill in from the tenant, or the filled-in set if you
   can't reach it — and confirm all five CSVs open.
 - Name Halcourt Mutual's **four Power Platform environments** and read their type, DLP, and managed status
