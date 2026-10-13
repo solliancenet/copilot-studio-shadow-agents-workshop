@@ -118,7 +118,10 @@ Collapsible detailed steps inside a Key Task:
 **Diagrams:** Mermaid in a fenced ```mermaid block (enabled in `_config.yml`).
 
 **Screenshots:** `media/ex##_t##_kt##_s##.png` (exercise, task, key-task, step). Reference with a
-relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
+relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`. A screenshot that hasn't been
+captured yet stays in the page as a commented-out image line, with a row in
+`setup/screenshot-capture-list.md`. Never remove or weaken a planned screenshot's reference because it
+hasn't been captured yet.
 
 **Navigation:** never hand-author next/prev links — `nav_order`/`parent`/`has_children` drive it.
 
