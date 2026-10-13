@@ -288,8 +288,11 @@ function Provision-Agent([object]$A) {
   # "<name> (Microsoft Copilot Studio)" - verified: building claims-copilot into one slice already gave the
   # tenant two. At 20 slices that is 21, which breaks Lab 01-02's identity matching and makes Phase 7's
   # newest-per-name dedupe pick an arbitrary student's slice. So a slice build suffixes the name.
-  $display = if ($A.estateSuffixName) { "$($A.display) ($Estate)" } else { $A.display }   # shared default env: estate-suffixed
-  if ($DisplayNameSuffix) { $display = "$display ($DisplayNameSuffix)" }
+  # A slice suffix REPLACES the estate suffix rather than stacking on it - appending produced
+  # "Onboarding Guide (mgray) (mgray-01)", which is just noise in the identity list.
+  $display = if ($DisplayNameSuffix)   { "$($A.display) ($DisplayNameSuffix)" }
+             elseif ($A.estateSuffixName) { "$($A.display) ($Estate)" }        # shared default env
+             else                      { $A.display }
   $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "halcourt-ws/$($A.slug)"
   # Get a synced workspace via clone - pac's OWN existence view (the Dataverse `bots` table can disagree,
   # e.g. a soft-deleted ghost that pac still sees). If clone finds nothing, the agent truly is absent:

@@ -818,3 +818,24 @@ Retrying does not clear the 403 - it failed identically on a second run with svc
 roles in both environments - so it is not the privilege-cache lag that explains several other delays in
 this kit. Whether the scenario actually fires is a functional question: drive the agent and watch, which is
 Module 4 work, not something the build can assert.
+
+
+### Phase 6 · a connection reference binds only when the agent owner owns the connection
+
+Building two agents into the same slice showed the rule the earlier `403` was hiding:
+
+| agent | agent owner | connection owner | bind |
+|---|---|---|---|
+| `onboarding-guide` | tom.dean | tom.dean (`O365-Outlook-Onboarding`) | **bound** |
+| `claims-copilot` | priya.nair | svc-claims (`DV-Claims-Shared`) | `403 Forbidden` |
+
+So the bind is not flaky, not a propagation delay and not slice-specific: it succeeds when one principal
+owns **both** the agent and the connection, and fails when they differ. That matches the rule the Phase 6
+notes already state - the agent owner binds its own agent's references, and a connection reference can
+only be bound by the connection's owner - the two requirements simply cannot both be met when the
+connection belongs to a service account.
+
+The shared estate is in exactly the same state (`connectionreferences` with `connectionid` empty in
+`Claims-Test-<estate>`), so this is long-standing and not a regression. Copilot Studio evidently carries
+the binding in the agent's own settings rather than those rows. Treat the warning as expected for any
+service-account connection, and judge the scenario by driving the agent, not by reading that table.
