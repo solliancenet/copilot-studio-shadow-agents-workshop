@@ -1035,3 +1035,51 @@ working credential, since the script cannot read a password back from Entra. It 
 path up front and carries forward any password already recorded, and says
 `(unknown - set by an earlier run; reset it or use -Destroy and recreate)` only when there is genuinely
 nothing to carry.
+
+### Phase 8b · CORRECTION - the role editor is gated by SYSTEM ADMINISTRATOR, not by a licence (2026-10-14)
+
+The entries above conclude that Task 03-02 needs a Dataverse-capable licence and that attendee accounts
+must be licensed the day before a delivery. **That conclusion was drawn from one account that differed in
+two ways at once, and it is wrong.** A single-variable test says otherwise:
+
+| Account | Entra licence | Dataverse state | Dataverse role | Role editor |
+|---|---|---|---|---|
+| `student01` (morning) | none | `islicensed=False`, `accessmode=1` | Lab Reviewer (read-only) | **FAILS** |
+| `student01` (after E5) | E5 | `islicensed=True`, `accessmode=0` | Lab Reviewer (read-only) | works |
+| `student02` | **none** | `islicensed=False`, `accessmode=1` | **System Administrator** | **works** |
+
+An unlicensed account runs in **Administrative access mode**, which is designed to allow administrative
+work without a seat while withholding business *data*. System Administrator's privileges survive that
+filtering; a hand-built 21-privilege read-only role does not - it was applied as 17, and the ones dropped
+were exactly the metadata privileges the editor needs (`prvReadAttribute`, `prvReadRelationship`,
+`prvReadEntityRecordFilter`).
+
+**What this means for a delivery.** `08_provision_student_slices.ps1` already makes each attendee
+**System Administrator of their own slice**, and that slice already carries the substrate Task 03-02 asks
+about (`svc-claims` holding the over-broad role). So an attendee reading role scope **in their own slice
+needs no licence at all**. It fails only in the shared estate, where they hold just the reviewer role -
+and granting them System Administrator there is not an option, because it would give them write access to
+the shared estate and contradict "a security reviewer observes; they do not change the estate".
+
+So the fix is a ROUTING change, not a procurement one: point Task 03-02's role reading at the attendee's
+own slice.
+
+**The licence-sync trap recorded above is still real and still bidirectional** - it just is not the cause
+of this failure. Measured both ways on this tenant:
+
+| Change | Dataverse caught up after |
+|---|---|
+| E5 assigned | hours, and only after a BAP `addUser` nudge |
+| account created with no licence | ~50 minutes, during which it reported `islicensed=True` |
+
+The optimistic direction is the dangerous one: a freshly created unlicensed account reports as **licensed**
+for a while, so a rehearsal can pass and the delivery fail. Check
+`systemusers(<id>)?$select=islicensed,accessmode,modifiedon` and distrust it until `modifiedon` moves past
+your change.
+
+**Still unverified:** whether an unlicensed System Administrator can **create** a role (Module 5's ask, as
+opposed to reading one). The PPAC "New role" command renders **enabled** and its click produced **zero**
+4xx responses, so there is no evidence of a permission block - but the editor did not open under headless
+automation, so this is untested rather than proven. Also unverified: Module 5 retests that require reading
+Claim/Customer rows **as the attendee**, which Administrative access mode would block; retests performed by
+chatting with the agent run as `svc-claims` and are unaffected.
