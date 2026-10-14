@@ -918,3 +918,32 @@ they would for any corporate lab. That is strictly better than what is built tod
 
 The accounts still need Power Platform Administrator for Lab 01-01's `/scopes/admin/` calls - that finding
 is unchanged. What changes is that the MFA exclusion built to go with it is the wrong half of the trade.
+
+
+### Phase 8b · RESOLVED - MFA enrolment restores every portal (2026-10-13)
+
+The entry above records that a lab account reached PPAC and nothing else. Enrolling MFA fixes it, and the
+enrolment needs no phone: Entra's wizard offers **"Set up a different authentication app"**, which ends on
+a screen whose **"Can't scan the QR code?"** link prints the base32 secret. Capture it, generate the code
+in software (RFC 6238), finish the wizard.
+
+Measured after enrolling one account:
+
+| Portal | Before | After |
+|---|---|---|
+| Power Platform admin center | works | works |
+| Microsoft Entra admin center | blocked | **works** |
+| Microsoft 365 admin center | blocked | **works** (redirects to `admin.cloud.microsoft`) |
+| Exchange admin center | blocked | **works** |
+
+Two things that cost time and are worth knowing:
+
+- **Exchange asks to register a SECOND method after the code**, and only there is a skip offered - *"Not
+  now"*. Without taking it the sign-in parks on the registration page forever, which looks exactly like
+  the original block.
+- **The secret must be read up to whitespace.** The screen reads `Secret key: <key> Copy key`, and the
+  words that follow are themselves valid base32 letters, so a greedy character class swallows "Copy key"
+  into the key and every generated code is rejected as incorrect.
+
+So the facilitator instruction is simply: tell attendees to bring an authenticator app and register at
+first sign-in. Nothing in the kit has to weaken `CA-Require-MFA-Admins` to make the labs work.
