@@ -947,3 +947,55 @@ Two things that cost time and are worth knowing:
 
 So the facilitator instruction is simply: tell attendees to bring an authenticator app and register at
 first sign-in. Nothing in the kit has to weaken `CA-Require-MFA-Admins` to make the labs work.
+
+
+### Phase 8b · Lab 03-02's role editor needs a LICENCE, not more privileges (2026-10-14)
+
+**Symptom.** An attendee follows Task 03-02 to *"open a role under **Security roles** to see what it grants
+on each table"* and the page renders **"Loading role failed!"**. The roles *list* loads; only the editor
+fails — and the editor is the only place scope (user / business unit / organization) is visible.
+
+**Evidence.** Three Dataverse calls behind the editor return 403, and their bodies name the cause:
+
+```
+EntityDefinitions?$select=Privileges,…   PrivilegeName: prvReadAttribute … User Privileges Count: 15
+roles(roleid = …)?$select=…              is missing prvReadTeam privilege
+recordfilters?…                          is missing prvReadEntityRecordFilter privilege
+```
+
+and each carries:
+
+> `System Administrator unlicensed user with filtered privileges from associated roles. Consider assigning
+> License for the privileges to take affect. … unlicensed administrators get Administrative access mode only`
+
+**Why adding privileges does not fix it.** `Lab Reviewer (read-only)` was granted four more privileges,
+taking it to **18**; Dataverse still applied **15** (`privilegeCount=15`) and still reported
+`prvReadEntityRecordFilter` missing **by the exact id that had just been granted**. An account with no
+licence gets access mode `1 Administrative` and its roles' privileges are filtered. Assigning `FLOW_FREE`
+changed nothing — it is not a Dataverse-capable plan.
+
+**The blocker.** The tenant has no seat to give:
+
+| SKU | Enabled | Consumed | Free |
+|---|---|---|---|
+| `DEVELOPERPACK_V2_E5` | 25 | 25 | **0** |
+| `FLOW_FREE` | 10000 | 1 | 9999 (does not help) |
+
+The 25 E5 seats are held by **14 Microsoft demo sample users** (AdeleV, AlexW, DiegoS, GradyA, HenriettaM,
+IsaiahL, JohannaL, JoniS, LeeG, LidiaH, MeganB, MiriamG, NestorW, PattiF) that have nothing to do with
+Halcourt, the **8 estate personas**, and **3 admin accounts**. So ~14 seats are recoverable, which is also
+the real answer to "how many licensed attendees does this tenant support": about 14, not an arbitrary N.
+
+**Decision required before a delivery** — the two options are not equivalent:
+
+1. **Licence the lab accounts.** Free seats from the demo users and assign E5 in `07_provision_lab_users.ps1`.
+   Task 03-02 then works as written. Note the tenant is shared between estates, so those demo accounts may
+   belong to someone else's build — confirm before stripping them.
+2. **Reword Task 03-02.** Drop "open a role" and have attendees read the roles list, recording role breadth
+   as the **open question** that step 3 of the same task already sanctions ("role breadth unknown from
+   export; verify in tenant"). Pedagogically defensible, but it removes the one place the lab shows scope.
+
+**Also fixed here.** `07_provision_lab_users.ps1` granted privileges only in the branch that *created* the
+role, so adding a name to `$DvPrivilegeNames` silently did nothing in any environment that already had it —
+while still printing a success line. That is how the live role drifted to 14 privileges against a list of 5.
+Privileges are now reconciled on every run by diffing `RetrieveRolePrivilegesRole`.

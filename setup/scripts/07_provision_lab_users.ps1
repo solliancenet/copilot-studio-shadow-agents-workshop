@@ -446,7 +446,18 @@ if ($report.Count) {
 # organization-scope READ on the few tables the exercise needs - never System Administrator, which would hand
 # attendees write access to the estate they are reviewing.
 $DvRoleName       = 'Lab Reviewer (read-only)'
-$DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector')
+# The first five carry Lab 03-02 and 03-04. The rest are what the PPAC ROLE EDITOR asks for when an
+# attendee opens a role to read its scope - prvReadAttribute and prvReadTeam were named directly in its
+# 403 bodies, the others back the EntityDefinitions and recordfilters calls it makes alongside them.
+#
+# These do nothing on their own. Dataverse treats an account with NO LICENCE as access mode
+# '1 Administrative' and FILTERS the privileges its roles grant: a role holding 18 was applied as 15,
+# and the editor still reported a privilege missing by the exact id that had just been granted. The
+# role editor therefore needs a Dataverse-capable licence (E5 / Power Apps per user) on the lab
+# account, not more privileges. See reference/runbook-errata.md.
+$DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector',
+                      'prvReadAttribute', 'prvReadTeam', 'prvReadEntity', 'prvReadCustomization',
+                      'prvReadRecordFilter', 'prvReadEntityRecordFilter')
 
 function Invoke-Dv([string]$OrgUrl, [string]$Method, [string]$Path, $Body) {
   $h = @{ Authorization = "Bearer $(Get-AdminToken $OrgUrl)"; Accept = 'application/json'
@@ -487,20 +498,36 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
       Write-Warning "  $($TargetEnv.Name): could not add $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])"
     }
   }
-  # 2. The role, created once per environment and reused on re-runs.
+  # 2. The role is created once per environment, but its PRIVILEGES are reconciled on EVERY run.
+  #    They used to be granted only in the branch that created the role, so adding a name to
+  #    $DvPrivilegeNames silently did nothing in any environment that already had the role - and the
+  #    script still printed a success line. That is how the live role drifted to 14 privileges while
+  #    this list held 5.
   $esc  = $DvRoleName.Replace("'", "''")
   $role = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$esc'") $null).value | Select-Object -First 1
   if (-not $role) {
     $bu = (Invoke-Dv $TargetEnv.OrgUrl GET 'businessunits?$select=businessunitid&$top=1' $null).value[0].businessunitid
     Invoke-Dv $TargetEnv.OrgUrl POST 'roles' @{ name = $DvRoleName; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
     $role = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$esc'") $null).value | Select-Object -First 1
-    $privs = @(foreach ($p in $DvPrivilegeNames) {
-      $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
-      if ($pv) { @{ PrivilegeId = $pv.privilegeid; Depth = 'Global' } }
-      else     { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped." }
-    })
+    Write-Host "  $($TargetEnv.Name): created '$DvRoleName'"
+  }
+  $held = @{}
+  try {
+    $rp = Invoke-Dv $TargetEnv.OrgUrl GET "RetrieveRolePrivilegesRole(RoleId=$($role.roleid))" $null
+    foreach ($h in $rp.RolePrivileges) { $held["$($h.PrivilegeId)"] = $true }
+  } catch {
+    Write-Warning "  $($TargetEnv.Name): could not read current privileges - $($_.Exception.Message.Split([char]10)[0])"
+  }
+  $privs = @(foreach ($p in $DvPrivilegeNames) {
+    $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
+    if (-not $pv) { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped."; continue }
+    if (-not $held["$($pv.privilegeid)"]) { @{ PrivilegeId = $pv.privilegeid; Depth = 'Global' } }
+  })
+  if ($privs.Count) {
     Invoke-Dv $TargetEnv.OrgUrl POST "roles($($role.roleid))/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = $privs } | Out-Null
-    Write-Host "  $($TargetEnv.Name): created '$DvRoleName' ($($privs.Count) read privileges)"
+    Write-Host "  $($TargetEnv.Name): added $($privs.Count) privilege(s) to '$DvRoleName'"
+  } else {
+    Write-Host "  $($TargetEnv.Name): '$DvRoleName' already holds every listed privilege"
   }
   # 3. Assign it. Dataverse provisions the user record asynchronously, so give it a few seconds to appear.
   $granted = 0
