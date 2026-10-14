@@ -17,7 +17,7 @@ can reach, or which identity it acts as.
 
 A security review cannot start from a partial picture. The first trust boundary you have to name is the
 one between the **sanctioned inventory** (the agents IT believes exist) and the **actual inventory**
-(every agent in every environment, including the personal and "test" ones nobody registered). Agents you
+(every agent in every environment, including the personal and "test" ones nobody reviews). Agents you
 cannot see are agents you cannot govern. Before you assess a single control, you build the map.
 
 In this exercise you work in the live Halcourt Mutual tenant. You start from the five CSVs you filled in
@@ -34,8 +34,8 @@ After this exercise you will be able to:
 
 - Enumerate the discovery surfaces available for a Copilot Studio estate — the Power Platform admin center
   Inventory page, the CoE Starter Kit inventory, Microsoft Graph for agent and workload identities, the
-  Agent 365 admin experience, and your five CSVs — and state what each **reveals** and what it
-  **misses**.
+  Microsoft 365 admin center agent registry, and your five CSVs — and state what each **reveals** and
+  what it **misses**.
 - Join your five CSVs (agents, connections, agent identities, users, environments) into one complete
   inventory row per agent, covering every environment including the sandbox and personal ones.
 - Distinguish the **agent owner** from the **connection owner** and from the **effective actor**, and
@@ -49,7 +49,7 @@ After this exercise you will be able to:
 
 ## Deliverable
 
-The **Agent Estate Inventory** — one row per agent, every column filled, flags set, counts computed.
+The **Agent Estate Inventory** — one row per agent, no blank cells, flags set, counts computed.
 Build it in the take-home template: [01 — Agent Estate Inventory]({% link worksheets/templates/01-agent-estate-inventory.md %}).
 
 The live tenant is the preferred way through this exercise. If it is slow or unavailable, everything here
