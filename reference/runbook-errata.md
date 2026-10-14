@@ -882,3 +882,39 @@ Practical consequence for a twenty-slice delivery: build each slice **once**, wi
 slice as disposable rather than editable. Deleting the environment removes its agents; the orphaned
 identities that remain are harmless **provided** they were named distinctly in the first place, because
 then they can be told apart from the estate's own.
+
+
+### Phase 8b · attendee accounts can use PPAC and nothing else (found 2026-10-13)
+
+Signing a lab account into each portal the exercises use, in a real browser:
+
+| Portal | Lab account |
+|---|---|
+| Power Platform admin center | **works** |
+| Microsoft Entra admin center | **blocked** - *"Let's keep your account secure"*, MFA registration |
+| Microsoft 365 admin center | **blocked** - same |
+| Exchange admin center | **blocked** - same |
+| Graph Explorer | page loads (queries while signed in untested) |
+
+There is **no skip**: none of *Skip setup*, *Skip for now*, *Ask later*, *Maybe later* or *Not now* is
+offered. This is Microsoft's own mandatory MFA for admin portals, which is enforced independently of
+tenant Conditional Access - so `CA-Require-MFA-Admins`'s exclusion, which is what lets these accounts sign
+in with a handed-out password at all, does not reach it.
+
+**What it blocks.** Every task that sends an attendee anywhere but PPAC:
+
+- 01-01 KT01 step 3, and 02-01 KT01 step 4 - the agent registry in the M365 admin center;
+- 01-01 KT02 step 2, 03-01 KT02 step 3, 03-04 KT01 step 7 - owner checks in the Entra admin center;
+- 01-02 KT01 step 2 - *Entra ID -> Agents -> Agent identities*;
+- 01-01 KT02 step 2, 02-03 hunt 5, 03-01 KT02 step 3 - shared mailboxes in the Exchange admin center.
+
+**The fix is to stop avoiding MFA and enrol it.** Have attendees register MFA on first sign-in, the way
+they would for any corporate lab. That is strictly better than what is built today:
+
+- every portal the exercises use comes back;
+- the **CA exclusion becomes unnecessary**, so `CA-Require-MFA-Admins` no longer has to be weakened for a
+  delivery, and the accounts can hold Power Platform Administrator without that trade;
+- the only cost is each attendee needing an authenticator app and about two minutes at the start.
+
+The accounts still need Power Platform Administrator for Lab 01-01's `/scopes/admin/` calls - that finding
+is unchanged. What changes is that the MFA exclusion built to go with it is the wrong half of the trade.
