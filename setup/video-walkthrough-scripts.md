@@ -21,11 +21,19 @@ Each shot carries four things, and the last two are the point of the exercise:
 Read this first. Video is the most expensive asset in the kit to re-cut, and three things will force a
 re-shoot if you skip them.
 
-1. **Decide the audience, and keep the two products separate.** Ex 00 is findings-free by design, so one
-   recording serves everyone. From Ex 01 on, a walkthrough that correlates actions to instructions *and*
-   explains why **is an answer key in video form** — the lab pages deliberately send attendees to discover
-   those facts. Either cut an attendee-safe version that stops short of the findings, or mark the
-   walkthrough facilitator-only and host it where attendees cannot reach it.
+1. **The audience is the ATTENDEE** (decided 2026-10-13), and that decides the content rule: a shot shows
+   **where the data lives and what to record**, never what the record turns out to say. No agent is named
+   as orphaned, over-permissioned or shared; no owner is called out; no count is given as an answer. An
+   attendee who watches should be able to *start* the task, not skip it.
+
+   This is not a softer version of a facilitator walkthrough — it is a different product. A walkthrough
+   that correlates actions to instructions *and* explains why each finding matters is an answer key in
+   video form, and the lab pages deliberately send attendees to discover those facts. If a facilitator cut
+   is ever wanted, record it separately and host it where attendees cannot reach it.
+
+   One useful consequence: because an attendee cut stops short of the findings, it does **not** depend on
+   the estate being complete. It can be recorded against an estate that is missing agents, and it does not
+   have to be re-cut when the estate is fixed.
 2. **Do not put video in `media/`.** That folder is published with the site. `_config.yml`'s exclude list
    does not cover it, and the CI leak check greps `_site/` for answer-key strings — it cannot read an MP4,
    so a spoiler video would ship silently. Facilitator recordings belong outside the repo entirely, or
