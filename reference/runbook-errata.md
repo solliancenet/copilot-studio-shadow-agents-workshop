@@ -999,3 +999,39 @@ the real answer to "how many licensed attendees does this tenant support": about
 role, so adding a name to `$DvPrivilegeNames` silently did nothing in any environment that already had it —
 while still printing a success line. That is how the live role drifted to 14 privileges against a list of 5.
 Privileges are now reconciled on every run by diffing `RetrieveRolePrivilegesRole`.
+
+**Update (2026-10-14, same day): the licence is necessary but not sufficient — Dataverse must RE-SYNC it.**
+
+After freeing seats and assigning `DEVELOPERPACK_V2_E5`, the editor still failed with the same
+"unlicensed user with filtered privileges" message. Entra was correct; Dataverse was not. It keeps its own
+copy of licence state on the `systemuser` record and refreshes it asynchronously:
+
+```
+systemusers(<id>)?$select=islicensed,accessmode,modifiedon
+  islicensed  False          <- Dataverse still thinks the account is unlicensed
+  accessmode  1              <- 'Administrative', the mode that triggers privilege filtering
+  modifiedon  2026-10-14T01:36:41Z   <- PREDATES the licence assignment entirely
+```
+
+**`modifiedon` predating the licence assignment is the tell.** Until it moves, privileges are filtered
+(20 granted, 17 applied) and the error messages blame privileges rather than the sync — which sends you
+chasing privilege names that are already granted. On this build the flip took hours and did not happen
+until a BAP `addUser` nudge:
+
+```
+POST https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/
+     environments/<envId>/addUser?api-version=2021-04-01   { "objectId": "<entra object id>" }
+```
+
+After the flip: `islicensed True`, `accessmode 0` (Read-Write), and the granted privileges apply.
+
+**Facilitator consequence:** licence the attendee accounts the DAY BEFORE a delivery, not the morning of.
+An account licensed an hour before the lab will still fail Task 03-02, and the failure looks like a
+privilege problem, not a timing one. Verify with the `systemusers` query above before you start.
+
+**Also fixed (2026-10-14).** Re-running `07_provision_lab_users.ps1` against existing accounts rewrote the
+handout's password column as `(unchanged - from the run that created it)` — destroying the only copy of a
+working credential, since the script cannot read a password back from Entra. It now resolves the handout
+path up front and carries forward any password already recorded, and says
+`(unknown - set by an earlier run; reset it or use -Destroy and recreate)` only when there is genuinely
+nothing to carry.

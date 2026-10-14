@@ -313,6 +313,18 @@ foreach ($roleName in $Roles) {
   Write-Host "Role: $roleName (directoryRole $($role.id))"
 }
 
+# The handout path is resolved up front, not at write time, so a re-run can read back the passwords
+# the FIRST run recorded. Without this, re-running to fix roles or privileges rewrote the password
+# column as '(unchanged ...)' and destroyed the only copy of a working credential.
+if (-not $CredentialCsv) { $CredentialCsv = Join-Path (Split-Path $PSScriptRoot -Parent) "lab-users-$Estate.local.csv" }
+$priorPw = @{}
+if (Test-Path $CredentialCsv) {
+  foreach ($r in (Import-Csv $CredentialCsv)) {
+    if ($r.upn -and $r.password -and $r.password -notmatch '^\(') { $priorPw[$r.upn] = $r.password }
+  }
+  if ($priorPw.Count) { Write-Host "Handout: carrying forward $($priorPw.Count) password(s) already recorded in $(Split-Path $CredentialCsv -Leaf)" }
+}
+
 # Seats, up front: this is the number that decides whether licensing is even possible today.
 $skuPlan = @()
 if (-not $NoLicense) {
@@ -358,10 +370,11 @@ foreach ($i in 1..$Count) {
     # Left as it is - including its password, which this script cannot read back.
     Write-Host "Exists:   $upn - leaving it as is."
     $row.created = 'existing'
-    # Never print a password for an account this run did not create. The script cannot read one back, and
-    # the first run may have used -UniquePasswords - claiming the shared default here would put a wrong
-    # credential on the handout.
-    $row.password = '(unchanged - from the run that created it)'
+    # Never INVENT a password for an account this run did not create - the first run may have used
+    # -UniquePasswords, so claiming the shared default would put a wrong credential on the handout.
+    # But if the previous handout recorded one, carry it forward rather than overwriting it with a
+    # placeholder: that placeholder is what a re-run used to leave behind, wiping the real password.
+    $row.password = if ($priorPw.ContainsKey($upn)) { $priorPw[$upn] } else { '(unknown - set by an earlier run; reset it or use -Destroy and recreate)' }
   } else {
     $body = @{
       accountEnabled    = $true
@@ -457,7 +470,7 @@ $DvRoleName       = 'Lab Reviewer (read-only)'
 # account, not more privileges. See reference/runbook-errata.md.
 $DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector',
                       'prvReadAttribute', 'prvReadTeam', 'prvReadEntity', 'prvReadCustomization',
-                      'prvReadRecordFilter', 'prvReadEntityRecordFilter')
+                      'prvReadRecordFilter', 'prvReadEntityRecordFilter', 'prvReadRelationship')
 
 function Invoke-Dv([string]$OrgUrl, [string]$Method, [string]$Path, $Body) {
   $h = @{ Authorization = "Bearer $(Get-AdminToken $OrgUrl)"; Accept = 'application/json'
@@ -613,7 +626,6 @@ if ($licensed.Count -lt ($report.Count - $failed.Count)) {
   Write-Host '  Power Platform admin APIs both work without a seat.'
 }
 
-if (-not $CredentialCsv) { $CredentialCsv = Join-Path (Split-Path $PSScriptRoot -Parent) "lab-users-$Estate.local.csv" }
 $report | Export-Csv -Path $CredentialCsv -NoTypeInformation -UseQuotes AsNeeded
 Write-Host "`nHandout written to $CredentialCsv"
 Write-Warning 'That file holds PLAINTEXT passwords. It is gitignored (*.local.csv); delete it after the delivery.'
