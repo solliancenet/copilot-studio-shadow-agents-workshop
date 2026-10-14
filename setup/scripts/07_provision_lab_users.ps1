@@ -8,33 +8,37 @@ own accounts (marcus.webb, priya.nair, ...) are canon and are built by 01_provis
 
 Runs anywhere `az` runs (Linux included): Graph over REST with az's saved sign-in, like 99_teardown.ps1.
 
-WHY ATTENDEES GET AN ADMIN ROLE, AND WHAT THAT COSTS
+WHY ATTENDEES GET AN ADMIN ROLE, AND WHY THEY ENROL MFA
 
   Lab 01-01 has attendees enumerate an environment's connections. Only the tenant-admin Power Platform
   endpoints under /scopes/admin/ can do that, and only Power Platform Administrator reaches them.
-  Verified live 2026-10-13: nothing weaker works, and the weaker options were not guesses -
+  Verified live 2026-10-13, nothing weaker works:
 
   - Global Reader gets HTTP 404 CRMRequestFailed where a tenant admin gets 200. Those endpoints hide
-    themselves from an unauthorized caller instead of returning 403, so the attendee sees an empty
-    estate rather than an error.
+    themselves from an unauthorized caller instead of returning 403, so the attendee sees an empty estate
+    rather than an error.
   - A per-environment role does not help either. The maker-facing connections API is caller-scoped: a
-    maker who owns one of an environment's two connections sees exactly that one, and environment
-    members who own none see zero. No environment role enumerates another person's connections.
+    maker who owns one of an environment's two connections sees exactly that one, and members who own
+    none see zero.
 
-  So the role is necessary. It is also MFA-gated: Power Platform Administrator sits in
-  CA-Require-MFA-Admins (00_conditional_access_baseline.ps1), and an account holding it cannot sign in
-  with a handed-out password at all - AADSTS50079, "must enroll in multi-factor authentication".
+  THE ACCOUNTS ENROL MFA AT FIRST SIGN-IN. That is deliberate, and it replaces an earlier design that
+  excluded them from CA-Require-MFA-Admins so a handed-out password alone would work. That exclusion was
+  the wrong half of the trade: it buys PPAC and nothing else, because Entra, Microsoft 365 and Exchange
+  admin centers enforce MFA for admin portals through MICROSOFT's own policy, which tenant Conditional
+  Access cannot exclude. Verified by signing a lab account into each one - all three answer "Let's keep
+  your account secure" with no skip offered.
 
-  This script resolves that by excluding ONE group from that policy: Lab-Students-<estate>, holding only
-  this delivery's attendee accounts. The exclusion is added to the policy's excludeGroups without
-  touching any exclusion another estate added, and -Destroy removes only this estate's group id.
+  So enrolling is strictly better: every portal the labs use comes back, and CA-Require-MFA-Admins is
+  left alone instead of being weakened for the delivery. Tell attendees to bring an authenticator app;
+  it costs about two minutes each, once.
 
-  THE COST, STATED PLAINLY. An attendee account is a tenant-wide Power Platform admin that is exempt
-  from the admin MFA policy. It can change or delete any environment in the tenant, including another
-  facilitator's estate. Run a delivery in its own tenant where you can. Nothing here is appropriate
-  outside an isolated, disposable training tenant.
+  -ExcludeFromAdminMfa restores the old behaviour as a fallback for a delivery that cannot use
+  authenticator apps. It gives PPAC only, and the labs that need the other portals will not work.
 
-  Attendees still do not need a LICENCE: Entra reads and the admin APIs both work unlicensed.
+  THE COST OF THE ROLE ITSELF, STATED PLAINLY. An attendee account is a tenant-wide Power Platform admin.
+  It can change or delete any environment in the tenant, including another facilitator's estate. Run a
+  delivery in its own tenant where you can. Nothing here is appropriate outside an isolated, disposable
+  training tenant.
 
 LICENSES ARE BEST EFFORT BY DESIGN. A Dev Program sandbox has 25 E5 seats and the estate itself needs
 eight (RUNBOOK -> Phase 2); the content-pack sample users hold the rest. Assignment is attempted, never
@@ -62,7 +66,10 @@ param(
   [switch]$UniquePasswords,                            # instead: a distinct typed-by-hand password each
   [string[]]$Roles           = @('Power Platform Administrator'),  # see the header: needed for Lab 01-01
   [string]$LabGroup,                                   # CA-exclusion group; default Lab-Students-<estate>
-  [switch]$NoCaExclusion,                              # skip the CA exclusion (sign-in will then fail)
+  [switch]$ExcludeFromAdminMfa,                        # FALLBACK ONLY: weaken CA-Require-MFA-Admins so these
+                                                       # accounts sign in password-only. Buys PPAC and nothing
+                                                       # else - the other portals are gated by Microsoft, not
+                                                       # by us. Default: attendees enrol MFA instead.
   [switch]$NoDataverseRole,                            # skip the per-environment Dataverse read role
   [string[]]$LicenseSku      = @('DEVELOPERPACK_V2_E5'),  # skuPartNumber(s), best effort, in order
   [switch]$NoLicense,                                  # skip licensing entirely
@@ -219,8 +226,10 @@ if ($Destroy) {
   # The exclusion weakens the admin MFA policy, so it goes before the group does - and it only ever drops
   # THIS estate's group id, leaving any other delivery's exclusion in place.
   if ($groupId) {
-    if ($NoCaExclusion) { Write-Host "Leaving $CaPolicyName alone (-NoCaExclusion)." }
-    else {
+    # Always try the removal when the group exists, whatever flags this run was given: the group may be a
+    # leftover from a delivery built with -ExcludeFromAdminMfa, and skipping it would strand a weakened
+    # admin MFA policy pointing at a group that is about to be deleted.
+    if ($true) {
       Write-Host "`nRemoving $LabGroup from $CaPolicyName..."
       try { Set-CaExclusion -GroupId $groupId -Action 'remove' }
       catch { Write-Warning "  could not update ${CaPolicyName}: $($_.Exception.Message.Split([char]10)[0])"
@@ -263,12 +272,13 @@ foreach ($roleName in $Roles) {
   if (-not $t) { throw "No directory role template named '$roleName'. Check the spelling against the Entra portal." }
   if ($t.id -in $mfaRoleTemplates) {
     $needsCaExclusion = $true
-    Write-Warning "'$roleName' is tenant-wide admin and is covered by $CaPolicyName."
-    if ($NoCaExclusion) {
-      Write-Warning "  -NoCaExclusion was passed, so these accounts will NOT be able to sign in (AADSTS50079)."
+    Write-Warning "'$roleName' is tenant-wide admin: these accounts can change or delete ANY environment in"
+    Write-Warning '  this tenant. Isolated training tenants only.'
+    if ($ExcludeFromAdminMfa) {
+      Write-Warning "  -ExcludeFromAdminMfa: weakening $CaPolicyName so they sign in password-only. That buys"
+      Write-Warning '  PPAC only - Entra, M365 and Exchange admin centers are gated by Microsoft regardless.'
     } else {
-      Write-Warning "  These accounts get it anyway (Lab 01-01 needs it) and are excluded from that policy via $LabGroup."
-      Write-Warning "  They can change or delete ANY environment in this tenant. Isolated training tenants only."
+      Write-Host   '  Attendees enrol MFA at first sign-in; no Conditional Access policy is changed.'
     }
   }
   # A role has no id until it is activated in the tenant; activate on first use.
@@ -303,7 +313,7 @@ if (-not $NoLicense) {
 # The CA-exclusion group is only needed when a requested role is MFA-gated; make it before the accounts so
 # every one of them can be added as it is created.
 $labGroupId = $null
-if ($needsCaExclusion -and -not $NoCaExclusion) { $labGroupId = Get-LabGroupId -CreateIfMissing }
+if ($needsCaExclusion -and $ExcludeFromAdminMfa) { $labGroupId = Get-LabGroupId -CreateIfMissing }
 
 $report = @()
 $provisioned = @()        # upn + object id per account, for the Dataverse role grant
@@ -353,7 +363,7 @@ foreach ($i in 1..$Count) {
 
   # Group membership is what the Conditional Access exclusion actually resolves to, so a failure here
   # means that account cannot sign in. Report it per-account rather than failing the run.
-  if (-not $labGroupId) { $row.group = if ($NoCaExclusion) { 'skipped (-NoCaExclusion)' } else { 'not needed' } }
+  if (-not $labGroupId) { $row.group = 'n/a (MFA enrolment)' }
   else {
     Try-Graph POST "groups/$labGroupId/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
     if (-not $err -or $err -match 'already exist') { $row.group = $LabGroup }
@@ -477,8 +487,10 @@ if ($labGroupId) {
   Write-Host "`nExcluding $LabGroup from $CaPolicyName so these accounts can sign in with a password..."
   Set-CaExclusion -GroupId $labGroupId -Action 'add'
 } elseif ($needsCaExclusion) {
-  Write-Warning "`nNo CA exclusion was made (-NoCaExclusion). These accounts hold an MFA-gated role and will"
-  Write-Warning '  fail to sign in with AADSTS50079 until they are excluded or the role is removed.'
+  Write-Host "`nNo Conditional Access policy was changed. These accounts hold a tenant admin role, so Entra"
+  Write-Host '  will ask each attendee to register MFA on their FIRST sign-in - that is expected and is the'
+  Write-Host '  point: it is what gives them the Entra, M365 and Exchange admin centers the labs use. Tell'
+  Write-Host '  them to bring an authenticator app; it takes about two minutes each.'
 }
 
 # --- Handout ---------------------------------------------------------------------------------------------

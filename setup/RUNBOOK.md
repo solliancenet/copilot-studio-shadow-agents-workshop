@@ -653,26 +653,34 @@ tenant. The run prints a handout table and writes `setup/lab-users-<estate>.loca
 passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone (the
 script cannot read a password back, so it says `(unchanged)` rather than inventing one).
 
-**Attendees get `Power Platform Administrator`, and a Conditional Access exclusion so they can still sign
-in.** Lab 01-01 has them enumerate an environment's connections, and only the tenant-admin endpoints under
-`/scopes/admin/` can do that. Nothing weaker reaches them — verified live 2026-10-13, both the obvious
-alternatives fail:
+**Attendees get `Power Platform Administrator`, and enrol MFA at first sign-in.** Lab 01-01 has them
+enumerate an environment's connections, and only the tenant-admin endpoints under `/scopes/admin/` can do
+that. Nothing weaker reaches them - verified live 2026-10-13:
 
 | Weaker option | Result |
 |---|---|
-| `Global Reader` | **404 `CRMRequestFailed`** where a tenant admin gets `200`. The endpoint hides itself from an unauthorized caller instead of returning `403`, so the attendee sees an empty estate, not an error. |
+| `Global Reader` | **404 `CRMRequestFailed`** where a tenant admin gets `200`. The endpoint hides itself from an unauthorized caller rather than returning `403`, so the attendee sees an empty estate, not an error. |
 | A per-environment role | No help. The maker-facing connections API is caller-scoped: a maker owning 1 of an environment's 2 connections sees exactly that one; members owning none see zero. |
 
-That role is MFA-gated, so the script creates one group per delivery — `Lab-Students-<estate>`, holding
-only this delivery's accounts — and adds it to `CA-Require-MFA-Admins`'s `excludeGroups`. The edit is
-additive: another estate's exclusion is never touched, and `-Destroy` removes only this estate's group id,
-then deletes the group. After the policy write the script re-reads it and warns if the admin-role count
-changed.
+**Tell attendees to bring an authenticator app.** Holding a tenant admin role means Entra asks each of
+them to register MFA on their first sign-in. That is the point, not a snag: it is what gives them the
+Entra, Microsoft 365 and Exchange admin centers the labs use. It costs about two minutes each, once.
 
-Verified end to end on 2026-10-13: sign-in with the handed-out password succeeds (previously `AADSTS50079`),
-`scopes/admin/environments` returns 200 with 5 environments, and the Halcourt-Prod connections call returns
-both connections — including `DV-CRM-Shared`, owned by the disabled `tom.dean`, which is the row the Ex 02
-hunts turn on. `-Destroy` put the policy back to 15 admin roles and no exclusions.
+> {: .important }
+> **Do not try to avoid this with a Conditional Access exclusion.** An earlier design excluded these
+> accounts from `CA-Require-MFA-Admins` so a handed-out password alone would work. It buys **PPAC and
+> nothing else**: Entra, Microsoft 365 and Exchange admin centers enforce MFA for admin portals through
+> *Microsoft's* policy, which tenant Conditional Access cannot exclude. Verified by signing a lab account
+> into each - all three answer *"Let's keep your account secure"*, with no skip offered. Enrolling is
+> strictly better: every portal comes back, and `CA-Require-MFA-Admins` is left intact.
+>
+> `-ExcludeFromAdminMfa` restores the old behaviour for a delivery that genuinely cannot use authenticator
+> apps. Expect PPAC only; the tasks that use the other portals will not work.
+
+> {: .caution }
+> **An attendee account is a tenant-wide Power Platform admin.** It can change or delete any environment in
+> the tenant, including another facilitator's estate. Give a delivery its own tenant where you can, and run
+> `-Destroy` the moment it ends.
 
 **Attendees also get a read-only Dataverse role.** Lab 03-02 and 03-04 send them to read the acting
 identity's *security role* inside an environment. Power Platform Administrator is a **tenant** role and
