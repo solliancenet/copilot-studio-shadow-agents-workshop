@@ -39,3 +39,8 @@ infra/main.json
 
 # Windows build VM overrides (setup/windows-vm/compose.yaml)
 setup/windows-vm/.env
+
+# Attendee credential handouts written by setup/scripts/07_provision_lab_users.ps1.
+# PLAINTEXT passwords - must never be committed. (Also ignored on feat/lab-user-accounts;
+# carried here so this branch is covered before that one merges.)
+**/*.local.csv
