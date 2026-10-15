@@ -317,10 +317,16 @@ foreach ($roleName in $Roles) {
 # the FIRST run recorded. Without this, re-running to fix roles or privileges rewrote the password
 # column as '(unchanged ...)' and destroyed the only copy of a working credential.
 if (-not $CredentialCsv) { $CredentialCsv = Join-Path (Split-Path $PSScriptRoot -Parent) "lab-users-$Estate.local.csv" }
+# The two strings this script itself may have written into the password column. Match them EXACTLY,
+# never by a leading '(' - a password supplied through -InitialPassword is allowed to start with one,
+# and a prefix test would drop it on the next run and replace it with the unknown marker.
+$PwUnchangedMarker = '(unchanged - from the run that created it)'   # written by older versions
+$PwUnknownMarker   = '(unknown - set by an earlier run; reset it or use -Destroy and recreate)'
+$pwMarkers = @($PwUnchangedMarker, $PwUnknownMarker)
 $priorPw = @{}
 if (Test-Path $CredentialCsv) {
   foreach ($r in (Import-Csv $CredentialCsv)) {
-    if ($r.upn -and $r.password -and $r.password -notmatch '^\(') { $priorPw[$r.upn] = $r.password }
+    if ($r.upn -and $r.password -and $pwMarkers -notcontains $r.password) { $priorPw[$r.upn] = $r.password }
   }
   if ($priorPw.Count) { Write-Host "Handout: carrying forward $($priorPw.Count) password(s) already recorded in $(Split-Path $CredentialCsv -Leaf)" }
 }
@@ -374,7 +380,7 @@ foreach ($i in 1..$Count) {
     # -UniquePasswords, so claiming the shared default would put a wrong credential on the handout.
     # But if the previous handout recorded one, carry it forward rather than overwriting it with a
     # placeholder: that placeholder is what a re-run used to leave behind, wiping the real password.
-    $row.password = if ($priorPw.ContainsKey($upn)) { $priorPw[$upn] } else { '(unknown - set by an earlier run; reset it or use -Destroy and recreate)' }
+    $row.password = if ($priorPw.ContainsKey($upn)) { $priorPw[$upn] } else { $PwUnknownMarker }
   } else {
     $body = @{
       accountEnabled    = $true
