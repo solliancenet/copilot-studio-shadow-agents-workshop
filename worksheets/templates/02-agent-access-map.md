@@ -21,20 +21,35 @@ Copy this block per agent.
 
 | Layer | Value |
 |---|---|
-| Acting identity (agent / service / connection / user) |  |
-| User context (delegated? or lost?) |  |
+| Acting credential (end user / maker or connection owner / service account / flow owner / key / token) |  |
+| User context (is the requester's own entitlement checked?) |  |
 | Permission scopes |  |
 | Connector permissions |  |
 | Tool / action authorization |  |
 | Accessible data (what it can actually read/write) |  |
 | Untrusted input paths (chat, grounding, parameters) |  |
 
-**Effective access =** identity **+** permissions **+** connector **+** tool **+** accessible data **+** user input
+**Effective access** is where these overlap: who can invoke the agent, the credential it acts with, what that
+credential is authorized to do, the operations its tools expose, and the data they reach — steered by user
+input and grounding.
 
-**Intended users:** ____________________
-**Can it exceed them?**  ☐ No  ☐ Yes → how: ____________________
+| Who | Value |
+|---|---|
+| Intended users |  |
+| Actual audience (who can chat with it) |  |
+| Representative requester |  |
+| Requester's direct entitlement |  |
+
+**Unknowns** — record a hypothesis here, never as a fact in the tables above:
+
+| Open question | Risk hypothesis (if it resolves broadly) | Evidence to verify |
+|---|---|---|
+|  |  |  |
+
+**Can it exceed its intended users?**  ☐ No  ☐ Yes → how: ____________________
 **Type of gap:**  ☐ Excessive permission  ☐ Confused deputy  ☐ Both  ☐ Other: __________
 
 {: .tip }
-> If the acting identity is a service account or a shared connection, you have almost certainly found a
-> confused-deputy path — the agent exercises authority the requesting user does not personally hold.
+> A confused deputy needs all three: a requester can invoke the path; the acting credential holds authority
+> the requester lacks; and no per-user check blocks the operation. Test each one — a service account or a
+> shared connection is a reason to look, not a verdict.
