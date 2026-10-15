@@ -50,7 +50,7 @@ Safe to re-run: an environment that already exists is reused and its seed re-app
 idempotent). ASCII only.
 #>
 param(
-  [int]$Count         = 1,                       # how many attendee slices
+  [ValidateRange(1,99)][int]$Count = 1,          # how many attendee slices (1..99, see note below)
   [string]$Estate     = $env:HALCOURT_ESTATE,
   [string]$Prefix     = 'Lab',                   # environment name: <Prefix>-<estate>-NN
   [string]$MacroRegion = 'north-america',        # must match the billing policy's region (see Phase 3)
@@ -145,6 +145,9 @@ function Invoke-DvRetry([string]$OrgUrl, [string]$Path, [int]$Tries = 6) {
   }
 }
 
+# ValidateRange(1,99) on -Count is load-bearing, not cosmetic: PowerShell's 1..0 evaluates to @(1,0),
+# so -Count 0 would build TWO slices, one of them named -00, and a negative count would build
+# negative-numbered names that -Destroy's regex does not match and therefore cannot clean up.
 foreach ($n in 1..$Count) {
   $name = Get-SliceName $n
   Write-Host "`n=== $name ==="
@@ -210,7 +213,16 @@ foreach ($n in 1..$Count) {
   $oid = Add-EnvUser $env.name $studentUpn
   if ($oid) {
     try {
-      $su = (Invoke-DvRetry $url ("systemusers?`$select=systemuserid&`$filter=" + [uri]::EscapeDataString("azureactivedirectoryobjectid eq $oid"))).value | Select-Object -First 1
+      # addUser is ASYNCHRONOUS and Invoke-DvRetry retries exceptions, not a successful-but-empty
+      # result, so a single lookup here can silently miss the record and leave the attendee without
+      # System Administrator - which is exactly the grant Module 5 depends on.
+      $su = $null
+      foreach ($try in 1..12) {
+        $su = (Invoke-DvRetry $url ("systemusers?`$select=systemuserid&`$filter=" + [uri]::EscapeDataString("azureactivedirectoryobjectid eq $oid"))).value | Select-Object -First 1
+        if ($su) { break }
+        Start-Sleep -Seconds 5
+      }
+      if (-not $su) { Write-Warning "  $studentUpn has no user record in this environment yet - re-run to finish the grant." }
       $role = (Invoke-DvRetry $url ("roles?`$select=roleid&`$filter=" + [uri]::EscapeDataString("name eq 'System Administrator'"))).value | Select-Object -First 1
       if ($su -and $role) {
         Invoke-Api POST "$url/api/data/v9.2/systemusers($($su.systemuserid))/systemuserroles_association/`$ref" $url @{ '@odata.id' = "$url/api/data/v9.2/roles($($role.roleid))" } | Out-Null

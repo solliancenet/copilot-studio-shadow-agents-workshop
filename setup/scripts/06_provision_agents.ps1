@@ -445,7 +445,17 @@ if (-not $SkipConnections -and $manifest.flows) {
     # where the flow's owner holds no Dataverse role yet, so the read throws 0x80042f09 - report it and
     # carry on to the agents, which are what the slice is for.
     try   { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
-    catch { "{0,-42} -> SKIPPED ({1})" -f $f.name, ($_.Exception.Message.Split([char]10)[0]) | Write-Host }
+    catch {
+      $msg = $_.Exception.Message.Split([char]10)[0]
+      if ($TargetEnvironment) {
+        # Slice build only: the flow owner holds no Dataverse role in a brand-new environment yet.
+        "{0,-42} -> SKIPPED ({1})" -f $f.name, $msg | Write-Host
+      } else {
+        # Ordinary estate build: an agent that needs this flow would be provisioned with its
+        # ${FLOW:...} placeholder unresolved, which fails silently at run time instead of here.
+        throw "Flow '$($f.name)' failed in an ordinary estate build: $msg"
+      }
+    }
   }
 }
 
