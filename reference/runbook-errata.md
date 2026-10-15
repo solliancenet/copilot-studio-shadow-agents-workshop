@@ -730,3 +730,220 @@ system topics still cross-referenced the *original* agent's dialogs (`cr3f5_HRFA
 Push succeeded and publish failed with `InvalidReferenceError` / `NotFound`. Fixed by rewriting the committed
 topic references to the agent's own schema. **When you capture a "copy" agent, grep `topics/*.mcs.yml` for
 stale `<old-schema>.topic.*` references.**
+
+
+### Phase 6 · the default-environment agents are orphans, not absences (diagnosed 2026-10-13)
+
+**Symptom.** `Halcourt (default)` appears to contain no agents. The build admin reads `bots` and gets
+`200` with an empty array. Every persona - including `sam.olsen`, the canonical owner of Expense Helper -
+reads the same empty array. `pac copilot list` as that owner reports *"No Chatbots found"*. Three
+independent reads agree, and all three are wrong.
+
+**What is actually there.** The bot records exist. `pac copilot init` for `cr458_ExpenseHelper` fails with
+the only message that tells the truth:
+
+```
+user with id 0bc88b57-... does not have WriteAccess right(s) for record with id 4cf3a8fe-...
+of entity Agent ... OwnerPrincipal: 48b56557-a6b6-f111-aaab-000d3a32c3db
+```
+
+Resolving that owner gives `fullname = "# Sam Olsen (mgray)"` and
+`domainname = ea559c6438cf4b19bd097c953a2abe15sam.olsen.mgray@...`. The GUID-prefixed UPN and the `#`
+prefix are how Dataverse renames the `systemuser` record of a **deleted** user. Its Entra object id
+(`ea559c64-...`) is not the live `sam.olsen` (`1264def9-...`).
+
+So the agents belong to a sam.olsen from an **earlier build of this same estate**. When Phase 9 removed the
+personas and Phase 2 recreated them, the new accounts got new `systemuser` records; the bots stayed behind,
+owned by the dead one. `bot` is user-owned, so a user-scoped read shows every live account an empty list.
+
+**Why it is worth writing down.** The failure mode is indistinguishable from "the agents were never built"
+unless you ask a tool that reports ownership. It is the same trap Lab 02-01 teaches - *an empty result can
+mean no access, not no agents* - landing on the facilitator rather than the attendee. It also means a
+rebuild cannot proceed: the schema name is taken, and the live owner has no write access to the record
+holding it.
+
+**What it is NOT.** Not another estate's agents, and not a schema-name collision between two estates -
+the usual reading of "the default-env agents are not estate-scoped". The collision here is between two
+builds of the *same* estate, across a teardown.
+
+**The fix needs rights the build admin does not have.** In `Halcourt (default)` the admin holds only
+Environment Maker and Basic User, so it cannot read the records, cannot create a security role
+(`403` on `POST /roles`) and cannot reassign or delete the bots. One of these has to happen first:
+
+- give the admin **System Administrator** in the default environment - PPAC -> the environment ->
+  Settings -> Users + permissions, or `pac admin assign-user --environment <id> --user <admin UPN>
+  --role "System Administrator"` (needs a fresh `pac` sign-in; the device-code flow is interactive); then
+- **reassign** the two bots to the live `sam.olsen` and `tom.dean`, which restores them without a rebuild,
+  **or delete** them and re-run `06_provision_agents.ps1 -Agents expense-helper` and `-Agents
+  onboarding-guide`. Onboarding Guide is owned by `tom.dean`, so it must be built **before** Phase 6.5
+  disables him, or he must be re-enabled for the build and disabled again afterwards.
+
+**Prevention.** Phase 9 should remove the default environment's agents while their owners still exist, or
+the teardown should reassign them to a surviving principal first. Deleting the personas before the agents
+is what strands them.
+
+
+### Phase 8c · agent identities collide across slices (found 2026-10-13)
+
+**Symptom.** Build the same agent into a per-student slice and the tenant gains a second Entra principal
+with the *same* name. Building `claims-copilot` into one slice was enough:
+`Claims Copilot (Microsoft Copilot Studio)` x2. At twenty slices it is twenty-one.
+
+**Why it matters twice over.**
+
+- **Lab 01-02** has attendees match each identity to an agent in `agents-export.csv`. The page already
+  anticipates duplicates and tells them to compare the identity's Object ID with the agent's **Entra Agent
+  ID** in Copilot Studio -> Settings -> Advanced -> Metadata. That works for two candidates. It does not
+  work for twenty-one.
+- **Phase 7's export** dedupes agent identities **newest-per-display-name**. With duplicates it silently
+  keeps whichever slice was built last, so a student's throwaway environment can end up in the committed
+  artifact pack.
+
+**Fix.** `06_provision_agents.ps1 -DisplayNameSuffix <slice>` suffixes the agent's display name, and the
+identity follows it: `Claims Copilot (mgray-01)`. The same idea the manifest already uses for the shared
+default environment (`estateSuffixName`), applied to slices.
+
+**Not a fix for the general case.** Two *estates* in one tenant still collide on the non-default agents,
+because only the default-environment two carry the estate id. That is the separate, known gap.
+
+### Phase 8c · the connection-reference bind warning is pre-existing
+
+A slice build reports `could not bind DV-Claims-Shared as svc-claims: 403 (Forbidden)` and the agent still
+publishes. It is tempting to read that as the slice being broken. It is not: `connectionreferences` in the
+**working** `Claims-Test-<estate>` shows the same three references with `connectionid` empty, exactly as a
+freshly built slice does. The slice is at parity with the estate, and Copilot Studio evidently carries the
+binding in its own agent settings rather than those rows.
+
+Retrying does not clear the 403 - it failed identically on a second run with svc-claims holding the same
+roles in both environments - so it is not the privilege-cache lag that explains several other delays in
+this kit. Whether the scenario actually fires is a functional question: drive the agent and watch, which is
+Module 4 work, not something the build can assert.
+
+
+### Phase 6 · a connection reference binds only when the agent owner owns the connection
+
+Building two agents into the same slice showed the rule the earlier `403` was hiding:
+
+| agent | agent owner | connection owner | bind |
+|---|---|---|---|
+| `onboarding-guide` | tom.dean | tom.dean (`O365-Outlook-Onboarding`) | **bound** |
+| `claims-copilot` | priya.nair | svc-claims (`DV-Claims-Shared`) | `403 Forbidden` |
+
+So the bind is not flaky, not a propagation delay and not slice-specific: it succeeds when one principal
+owns **both** the agent and the connection, and fails when they differ. That matches the rule the Phase 6
+notes already state - the agent owner binds its own agent's references, and a connection reference can
+only be bound by the connection's owner - the two requirements simply cannot both be met when the
+connection belongs to a service account.
+
+The shared estate is in exactly the same state (`connectionreferences` with `connectionid` empty in
+`Claims-Test-<estate>`), so this is long-standing and not a regression. Copilot Studio evidently carries
+the binding in the agent's own settings rather than those rows. Treat the warning as expected for any
+service-account connection, and judge the scenario by driving the agent, not by reading that table.
+
+
+### Phase 8c · Dataverse learns an owner is disabled late, not never
+
+Disable a persona in Entra and Dataverse's `systemuser.isdisabled` does **not** follow immediately.
+Measured 2026-10-13, same account, two environments:
+
+| environment | disabled in Entra | `isdisabled` in Dataverse |
+|---|---|---|
+| `Lab-mgray-01` (slice) | ~15 minutes earlier | **False** |
+| `Halcourt-Prod-<estate>` | weeks earlier | **True** |
+
+So it is a propagation lag, not a permanent divergence - worth knowing before someone reports it as a
+bug, and worth not "fixing" by re-disabling the account.
+
+**It does not affect the exercises.** Lab 02-03's orphan hunt and Lab 03-01's owner cross-check both read
+`account_enabled`, which comes from **Entra** via `users-export.csv`, and Entra is correct immediately. A
+student who queries an environment's `systemusers` table directly on the day a slice was built is the only
+one who would see the stale value.
+
+**Operationally** it joins the other lags in this kit - Conditional Access group membership, and `az`
+settling a token for a brand-new org. Build the slices, and disable `tom.dean`, well before the delivery
+rather than minutes before it. Nothing here is fast-path safe.
+
+
+### Phase 8c · the slice suffix only takes on a FIRST build
+
+`-DisplayNameSuffix` is applied by `pac copilot init`, which runs only when the agent does not yet exist.
+On a rebuild, clone-first finds the agent by schema name and pushes the committed workspace, which carries
+its own display name - so the agent is **not** renamed, and neither is the Entra identity it was born with.
+Verified: rebuilding `claims-copilot` into a slice with `-DisplayNameSuffix mgray-01` republished it as
+plain `Claims Copilot`, and the tenant still held two identities called
+`Claims Copilot (Microsoft Copilot Studio)`.
+
+**So set the suffix on the first build of a slice.** Getting it wrong is not repaired by re-running with
+the right flag; it is repaired by deleting the agent (or the whole slice environment) and building again.
+Because an identity outlives its agent, each correction leaves an orphaned principal behind - which is the
+same trap the default-environment agents fell into, arrived at from the other direction.
+
+Practical consequence for a twenty-slice delivery: build each slice **once**, with the suffix, and treat a
+slice as disposable rather than editable. Deleting the environment removes its agents; the orphaned
+identities that remain are harmless **provided** they were named distinctly in the first place, because
+then they can be told apart from the estate's own.
+
+
+### Phase 8b · attendee accounts can use PPAC and nothing else (found 2026-10-13)
+
+Signing a lab account into each portal the exercises use, in a real browser:
+
+| Portal | Lab account |
+|---|---|
+| Power Platform admin center | **works** |
+| Microsoft Entra admin center | **blocked** - *"Let's keep your account secure"*, MFA registration |
+| Microsoft 365 admin center | **blocked** - same |
+| Exchange admin center | **blocked** - same |
+| Graph Explorer | page loads (queries while signed in untested) |
+
+There is **no skip**: none of *Skip setup*, *Skip for now*, *Ask later*, *Maybe later* or *Not now* is
+offered. This is Microsoft's own mandatory MFA for admin portals, which is enforced independently of
+tenant Conditional Access - so `CA-Require-MFA-Admins`'s exclusion, which is what lets these accounts sign
+in with a handed-out password at all, does not reach it.
+
+**What it blocks.** Every task that sends an attendee anywhere but PPAC:
+
+- 01-01 KT01 step 3, and 02-01 KT01 step 4 - the agent registry in the M365 admin center;
+- 01-01 KT02 step 2, 03-01 KT02 step 3, 03-04 KT01 step 7 - owner checks in the Entra admin center;
+- 01-02 KT01 step 2 - *Entra ID -> Agents -> Agent identities*;
+- 01-01 KT02 step 2, 02-03 hunt 5, 03-01 KT02 step 3 - shared mailboxes in the Exchange admin center.
+
+**The fix is to stop avoiding MFA and enrol it.** Have attendees register MFA on first sign-in, the way
+they would for any corporate lab. That is strictly better than what is built today:
+
+- every portal the exercises use comes back;
+- the **CA exclusion becomes unnecessary**, so `CA-Require-MFA-Admins` no longer has to be weakened for a
+  delivery, and the accounts can hold Power Platform Administrator without that trade;
+- the only cost is each attendee needing an authenticator app and about two minutes at the start.
+
+The accounts still need Power Platform Administrator for Lab 01-01's `/scopes/admin/` calls - that finding
+is unchanged. What changes is that the MFA exclusion built to go with it is the wrong half of the trade.
+
+
+### Phase 8b · RESOLVED - MFA enrolment restores every portal (2026-10-13)
+
+The entry above records that a lab account reached PPAC and nothing else. Enrolling MFA fixes it, and the
+enrolment needs no phone: Entra's wizard offers **"Set up a different authentication app"**, which ends on
+a screen whose **"Can't scan the QR code?"** link prints the base32 secret. Capture it, generate the code
+in software (RFC 6238), finish the wizard.
+
+Measured after enrolling one account:
+
+| Portal | Before | After |
+|---|---|---|
+| Power Platform admin center | works | works |
+| Microsoft Entra admin center | blocked | **works** |
+| Microsoft 365 admin center | blocked | **works** (redirects to `admin.cloud.microsoft`) |
+| Exchange admin center | blocked | **works** |
+
+Two things that cost time and are worth knowing:
+
+- **Exchange asks to register a SECOND method after the code**, and only there is a skip offered - *"Not
+  now"*. Without taking it the sign-in parks on the registration page forever, which looks exactly like
+  the original block.
+- **The secret must be read up to whitespace.** The screen reads `Secret key: <key> Copy key`, and the
+  words that follow are themselves valid base32 letters, so a greedy character class swallows "Copy key"
+  into the key and every generated code is rejected as incorrect.
+
+So the facilitator instruction is simply: tell attendees to bring an authenticator app and register at
+first sign-in. Nothing in the kit has to weaken `CA-Require-MFA-Admins` to make the labs work.

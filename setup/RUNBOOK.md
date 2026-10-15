@@ -116,6 +116,8 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 6. Author the agents           → as each owner, from the committed workspaces
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
+8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
+8c. Per-student slices         → an environment each, so Module 5's control work is hands-on for everyone
 9. Teardown / reseed
 ```
 
@@ -633,6 +635,119 @@ What the export confirms on its own, without driving an agent: every published a
 right owner and environment; each has exactly one Entra identity; DLP is attached to Prod and nowhere
 else; and the accounts are as Phase 2 left them. Reproducing Scenarios A–F still means talking to the
 agents.
+
+### Phase 8b — Lab (attendee) accounts
+
+Per *delivery*, not per estate: attendees sign in to the lab tenant with a native account you hand out, so
+they review the estate from inside the tenant rather than as guests. Run it shortly before the delivery and
+tear it down after.
+
+```bash
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20                      # student01.<estate> .. student20.<estate>
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20 -UniquePasswords     # a distinct password each
+pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
+```
+
+Accounts are estate-scoped (`student01.<estate>@<domain>`), so two facilitators can run deliveries in one
+tenant. The run prints a handout table and writes `setup/lab-users-<estate>.local.csv` — **plaintext
+passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone (the
+script cannot read a password back, so it says `(unchanged)` rather than inventing one).
+
+**Attendees get `Power Platform Administrator`, and enrol MFA at first sign-in.** Lab 01-01 has them
+enumerate an environment's connections, and only the tenant-admin endpoints under `/scopes/admin/` can do
+that. Nothing weaker reaches them - verified live 2026-10-13:
+
+| Weaker option | Result |
+|---|---|
+| `Global Reader` | **404 `CRMRequestFailed`** where a tenant admin gets `200`. The endpoint hides itself from an unauthorized caller rather than returning `403`, so the attendee sees an empty estate, not an error. |
+| A per-environment role | No help. The maker-facing connections API is caller-scoped: a maker owning 1 of an environment's 2 connections sees exactly that one; members owning none see zero. |
+
+**Tell attendees to bring an authenticator app.** Holding a tenant admin role means Entra asks each of
+them to register MFA on their first sign-in. That is the point, not a snag: it is what gives them the
+Entra, Microsoft 365 and Exchange admin centers the labs use. It costs about two minutes each, once.
+
+> {: .important }
+> **Do not try to avoid this with a Conditional Access exclusion.** An earlier design excluded these
+> accounts from `CA-Require-MFA-Admins` so a handed-out password alone would work. It buys **PPAC and
+> nothing else**: Entra, Microsoft 365 and Exchange admin centers enforce MFA for admin portals through
+> *Microsoft's* policy, which tenant Conditional Access cannot exclude. Verified by signing a lab account
+> into each - all three answer *"Let's keep your account secure"*, with no skip offered. Enrolling is
+> strictly better: every portal comes back, and `CA-Require-MFA-Admins` is left intact.
+>
+> `-ExcludeFromAdminMfa` restores the old behaviour for a delivery that genuinely cannot use authenticator
+> apps. Expect PPAC only; the tasks that use the other portals will not work.
+
+> {: .caution }
+> **An attendee account is a tenant-wide Power Platform admin.** It can change or delete any environment in
+> the tenant, including another facilitator's estate. Give a delivery its own tenant where you can, and run
+> `-Destroy` the moment it ends.
+
+**Attendees also get a read-only Dataverse role.** Lab 03-02 and 03-04 send them to read the acting
+identity's *security role* inside an environment. Power Platform Administrator is a **tenant** role and
+grants nothing in Dataverse, so without this the read fails with `0x80042f09` *"has not been assigned any
+roles"*. The script therefore creates **`Lab Reviewer (read-only)`** in each of the estate's three Dataverse
+environments — organization-scope READ on user, role, organization, business unit and connector, and
+nothing else — adds each account to the environment, and assigns it. Verified 2026-10-13: an attendee then
+reads `svc-claims` and its security role in `Claims-Test`, which is the answer Task 03-04 is built around,
+while a write still returns 403. `-NoDataverseRole` skips it.
+
+Two things that bite here, both verified:
+
+- **Create the accounts well before the delivery.** Group membership takes time to reach Conditional
+  Access. An account minutes old can fail its first sign-in with `AADSTS50079` on Dataverse-backed pages,
+  then work fine later.
+- **A re-run cannot reprint passwords.** An account that already exists is left alone, and the handout
+  shows `(unchanged - from the run that created it)` rather than inventing a value. If you lose the
+  handout, destroy and recreate rather than guessing.
+
+> {: .caution }
+> **An attendee account is a tenant-wide Power Platform admin, exempt from the admin MFA policy.** It can
+> change or delete any environment in the tenant, including another facilitator's estate. Give a delivery
+> its own tenant where you can, and run `-Destroy` the moment it ends. `-NoCaExclusion` skips the policy
+> change, but then the accounts cannot sign in at all.
+
+**Licences are best effort and usually fail.** A sandbox has 25 E5 seats, the estate needs eight, and the
+content-pack sample users hold the rest — on the build tenant it was 25/25 consumed, so every attendee came
+out unlicensed. That is fine: Entra reads and the Power Platform admin APIs both work without a seat.
+Assignment is attempted, never fatal, and the end-of-run table reports exactly who got one. To change that,
+free seats in **M365 admin center → Billing → Licenses** first, or pass `-LicenseSku FLOW_FREE` (10,000
+seats) if a licence merely needs to be present.
+
+Why this role and not something weaker:
+[decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
+
+### Phase 8c — Per-student slices (Module 5 hands-on)
+
+Module 5 has attendees *apply* controls — a scoped Dataverse role, row-level security, a DLP policy,
+orphan remediation — and then retest to reach their own **CLOSES IT / DENTS IT / MISSES IT** verdict. Those
+are environment-scoped changes, so on one shared estate the first attendee to enable row-level security
+deletes the "before" state for everyone else. Each attendee needs an environment of their own.
+
+```bash
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20        # accounts first
+pwsh setup/scripts/08_provision_student_slices.ps1 -Count 20   # then a slice each
+pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy    # after the delivery
+```
+
+**Why this is affordable.** Dataverse security roles and row-level security are **per environment**, so the
+one shared `svc-claims` can hold the over-broad role in one attendee's environment and a scoped role in
+another's at the same time. The slices need **no new licences** — which matters, because the tenant has 25
+E5 seats with none free, and that is what rules out giving each attendee a whole estate.
+
+Each slice is one Sandbox environment with Dataverse, linked to the estate's PAYG billing policy, holding
+the Phase 5 seed (Claim and Customer with PII rows, and the over-broad `svc-claims Dataverse Full Access`
+role). The attendee is **System Administrator of their own slice only**. Verified 2026-10-13: an attendee
+creating a scoped role gets `204` in their slice and `403` in the shared estate.
+
+> {: .important }
+> **The slice is not finished.** It still needs the SharePoint grounding site and the two agents, including
+> the orphaned-connection agent owned by the disabled `tom.dean`. Those need a per-environment override in
+> `03_provision_sharepoint.ps1` and `06_provision_agents.ps1`, which is the next piece of work.
+
+Two things learned building it, both verified: a new environment's Dataverse was **Ready in about 30
+seconds**, far faster than Phase 3's wait suggests; and the first calls against a brand-new org can fail
+with *"Interactive authentication is needed"* while `az` settles a token for the new resource — it clears
+on its own, so the script retries rather than failing the slice.
 
 ### Phase 9 — Teardown / reseed
 

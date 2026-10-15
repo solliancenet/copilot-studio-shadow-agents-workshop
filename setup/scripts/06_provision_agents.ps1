@@ -29,6 +29,12 @@ param(
   [string]$DomainSuffix,                               # default: tenant's default verified domain
   [string]$LabPassword = 'Lab-Only-Passw0rd!',
   [string[]]$Agents,                                   # slugs to limit to; default: all with a workspace
+  [string]$TargetEnvironment,                          # build into THIS environment instead of the manifest's
+                                                       # (per-student slices, Phase 8c); use with -Agents
+  [string]$DisplayNameSuffix,                          # slice builds: keeps each slice's agent - and so its
+                                                       # tenant-wide Entra identity - distinguishable.
+                                                       # APPLIES ON FIRST BUILD ONLY: a rebuild pushes the
+                                                       # committed workspace's own name and renames nothing
   [switch]$SkipConnections,
   [switch]$SkipPrereqs,
   [switch]$VerifyOnly
@@ -88,7 +94,12 @@ function Invoke-Bap([string]$Method, [string]$Path, $Body, [string]$Api = '2021-
 Write-Host "Estate '$Estate' on $DomainSuffix - resolving environments..."
 $allEnvs = (Invoke-Bap GET 'scopes/admin/environments').value
 function Resolve-Env([string]$Canonical) {
-  $name = if ($manifest.environments.$Canonical -eq 'shared') { $Canonical } else { Get-EstateName $Canonical $Estate }
+  # -TargetEnvironment redirects EVERY canonical name to one environment. Phase 8c uses it to build an
+  # agent and its connections into a per-student slice; the manifest still says Claims-Test, but the
+  # slice is where it lands. Only sensible together with -Agents.
+  $name = if ($TargetEnvironment) { $TargetEnvironment }
+          elseif ($manifest.environments.$Canonical -eq 'shared') { $Canonical }
+          else { Get-EstateName $Canonical $Estate }
   $e = $allEnvs | Where-Object { $_.properties.displayName -eq $name } | Select-Object -First 1
   if (-not $e) { throw "Environment '$name' not found (canonical '$Canonical')." }
   [pscustomobject]@{ Name = $name; Id = $e.name; Org = $e.properties.linkedEnvironmentMetadata.instanceUrl.TrimEnd('/') }
@@ -274,7 +285,16 @@ function Provision-Agent([object]$A) {
   #   3. make the committed config authoritative - drop the clone's server-state knowledge/tools/conn-refs
   #      and overlay the committed ones (schema-prefixed to match);
   #   4. push. Preserves the agent identity (no delete) and is conflict-free.
-  $display = if ($A.estateSuffixName) { "$($A.display) ($Estate)" } else { $A.display }   # shared default env: estate-suffixed
+  # Agent DISPLAY NAMES are the only thing distinguishing the Entra identities Copilot Studio creates, and
+  # those identities are TENANT-wide. Two builds of the same agent therefore produce two principals called
+  # "<name> (Microsoft Copilot Studio)" - verified: building claims-copilot into one slice already gave the
+  # tenant two. At 20 slices that is 21, which breaks Lab 01-02's identity matching and makes Phase 7's
+  # newest-per-name dedupe pick an arbitrary student's slice. So a slice build suffixes the name.
+  # A slice suffix REPLACES the estate suffix rather than stacking on it - appending produced
+  # "Onboarding Guide (mgray) (mgray-01)", which is just noise in the identity list.
+  $display = if ($DisplayNameSuffix)   { "$($A.display) ($DisplayNameSuffix)" }
+             elseif ($A.estateSuffixName) { "$($A.display) ($Estate)" }        # shared default env
+             else                      { $A.display }
   $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "halcourt-ws/$($A.slug)"
   # Get a synced workspace via clone - pac's OWN existence view (the Dataverse `bots` table can disagree,
   # e.g. a soft-deleted ghost that pac still sees). If clone finds nothing, the agent truly is absent:
@@ -420,7 +440,23 @@ if (-not $SkipConnections) {
 
 if (-not $SkipConnections -and $manifest.flows) {
   Write-Host "`n== Flows =="
-  foreach ($f in $manifest.flows) { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
+  foreach ($f in $manifest.flows) {
+    # One flow must not end the run. A slice build (-TargetEnvironment) targets a brand-new environment
+    # where the flow's owner holds no Dataverse role yet, so the read throws 0x80042f09 - report it and
+    # carry on to the agents, which are what the slice is for.
+    try   { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
+    catch {
+      $msg = $_.Exception.Message.Split([char]10)[0]
+      if ($TargetEnvironment) {
+        # Slice build only: the flow owner holds no Dataverse role in a brand-new environment yet.
+        "{0,-42} -> SKIPPED ({1})" -f $f.name, $msg | Write-Host
+      } else {
+        # Ordinary estate build: an agent that needs this flow would be provisioned with its
+        # ${FLOW:...} placeholder unresolved, which fails silently at run time instead of here.
+        throw "Flow '$($f.name)' failed in an ordinary estate build: $msg"
+      }
+    }
+  }
 }
 
 Write-Host "`n== Agents =="
