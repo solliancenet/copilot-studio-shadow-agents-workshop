@@ -313,6 +313,24 @@ foreach ($roleName in $Roles) {
   Write-Host "Role: $roleName (directoryRole $($role.id))"
 }
 
+# The handout path is resolved up front, not at write time, so a re-run can read back the passwords
+# the FIRST run recorded. Without this, re-running to fix roles or privileges rewrote the password
+# column as '(unchanged ...)' and destroyed the only copy of a working credential.
+if (-not $CredentialCsv) { $CredentialCsv = Join-Path (Split-Path $PSScriptRoot -Parent) "lab-users-$Estate.local.csv" }
+# The two strings this script itself may have written into the password column. Match them EXACTLY,
+# never by a leading '(' - a password supplied through -InitialPassword is allowed to start with one,
+# and a prefix test would drop it on the next run and replace it with the unknown marker.
+$PwUnchangedMarker = '(unchanged - from the run that created it)'   # written by older versions
+$PwUnknownMarker   = '(unknown - set by an earlier run; reset it or use -Destroy and recreate)'
+$pwMarkers = @($PwUnchangedMarker, $PwUnknownMarker)
+$priorPw = @{}
+if (Test-Path $CredentialCsv) {
+  foreach ($r in (Import-Csv $CredentialCsv)) {
+    if ($r.upn -and $r.password -and $pwMarkers -notcontains $r.password) { $priorPw[$r.upn] = $r.password }
+  }
+  if ($priorPw.Count) { Write-Host "Handout: carrying forward $($priorPw.Count) password(s) already recorded in $(Split-Path $CredentialCsv -Leaf)" }
+}
+
 # Seats, up front: this is the number that decides whether licensing is even possible today.
 $skuPlan = @()
 if (-not $NoLicense) {
@@ -358,10 +376,11 @@ foreach ($i in 1..$Count) {
     # Left as it is - including its password, which this script cannot read back.
     Write-Host "Exists:   $upn - leaving it as is."
     $row.created = 'existing'
-    # Never print a password for an account this run did not create. The script cannot read one back, and
-    # the first run may have used -UniquePasswords - claiming the shared default here would put a wrong
-    # credential on the handout.
-    $row.password = '(unchanged - from the run that created it)'
+    # Never INVENT a password for an account this run did not create - the first run may have used
+    # -UniquePasswords, so claiming the shared default would put a wrong credential on the handout.
+    # But if the previous handout recorded one, carry it forward rather than overwriting it with a
+    # placeholder: that placeholder is what a re-run used to leave behind, wiping the real password.
+    $row.password = if ($priorPw.ContainsKey($upn)) { $priorPw[$upn] } else { $PwUnknownMarker }
   } else {
     $body = @{
       accountEnabled    = $true
@@ -446,7 +465,18 @@ if ($report.Count) {
 # organization-scope READ on the few tables the exercise needs - never System Administrator, which would hand
 # attendees write access to the estate they are reviewing.
 $DvRoleName       = 'Lab Reviewer (read-only)'
-$DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector')
+# The first five carry Lab 03-02 and 03-04. The rest are what the PPAC ROLE EDITOR asks for when an
+# attendee opens a role to read its scope - prvReadAttribute and prvReadTeam were named directly in its
+# 403 bodies, the others back the EntityDefinitions and recordfilters calls it makes alongside them.
+#
+# These do nothing on their own. Dataverse treats an account with NO LICENCE as access mode
+# '1 Administrative' and FILTERS the privileges its roles grant: a role holding 18 was applied as 15,
+# and the editor still reported a privilege missing by the exact id that had just been granted. The
+# role editor therefore needs a Dataverse-capable licence (E5 / Power Apps per user) on the lab
+# account, not more privileges. See reference/runbook-errata.md.
+$DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector',
+                      'prvReadAttribute', 'prvReadTeam', 'prvReadEntity', 'prvReadCustomization',
+                      'prvReadRecordFilter', 'prvReadEntityRecordFilter', 'prvReadRelationship')
 
 function Invoke-Dv([string]$OrgUrl, [string]$Method, [string]$Path, $Body) {
   $h = @{ Authorization = "Bearer $(Get-AdminToken $OrgUrl)"; Accept = 'application/json'
@@ -487,20 +517,36 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
       Write-Warning "  $($TargetEnv.Name): could not add $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])"
     }
   }
-  # 2. The role, created once per environment and reused on re-runs.
+  # 2. The role is created once per environment, but its PRIVILEGES are reconciled on EVERY run.
+  #    They used to be granted only in the branch that created the role, so adding a name to
+  #    $DvPrivilegeNames silently did nothing in any environment that already had the role - and the
+  #    script still printed a success line. That is how the live role drifted to 14 privileges while
+  #    this list held 5.
   $esc  = $DvRoleName.Replace("'", "''")
   $role = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$esc'") $null).value | Select-Object -First 1
   if (-not $role) {
     $bu = (Invoke-Dv $TargetEnv.OrgUrl GET 'businessunits?$select=businessunitid&$top=1' $null).value[0].businessunitid
     Invoke-Dv $TargetEnv.OrgUrl POST 'roles' @{ name = $DvRoleName; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
     $role = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$esc'") $null).value | Select-Object -First 1
-    $privs = @(foreach ($p in $DvPrivilegeNames) {
-      $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
-      if ($pv) { @{ PrivilegeId = $pv.privilegeid; Depth = 'Global' } }
-      else     { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped." }
-    })
+    Write-Host "  $($TargetEnv.Name): created '$DvRoleName'"
+  }
+  $held = @{}
+  try {
+    $rp = Invoke-Dv $TargetEnv.OrgUrl GET "RetrieveRolePrivilegesRole(RoleId=$($role.roleid))" $null
+    foreach ($h in $rp.RolePrivileges) { $held["$($h.PrivilegeId)"] = $true }
+  } catch {
+    Write-Warning "  $($TargetEnv.Name): could not read current privileges - $($_.Exception.Message.Split([char]10)[0])"
+  }
+  $privs = @(foreach ($p in $DvPrivilegeNames) {
+    $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
+    if (-not $pv) { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped."; continue }
+    if (-not $held["$($pv.privilegeid)"]) { @{ PrivilegeId = $pv.privilegeid; Depth = 'Global' } }
+  })
+  if ($privs.Count) {
     Invoke-Dv $TargetEnv.OrgUrl POST "roles($($role.roleid))/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = $privs } | Out-Null
-    Write-Host "  $($TargetEnv.Name): created '$DvRoleName' ($($privs.Count) read privileges)"
+    Write-Host "  $($TargetEnv.Name): added $($privs.Count) privilege(s) to '$DvRoleName'"
+  } else {
+    Write-Host "  $($TargetEnv.Name): '$DvRoleName' already holds every listed privilege"
   }
   # 3. Assign it. Dataverse provisions the user record asynchronously, so give it a few seconds to appear.
   $granted = 0
@@ -586,7 +632,6 @@ if ($licensed.Count -lt ($report.Count - $failed.Count)) {
   Write-Host '  Power Platform admin APIs both work without a seat.'
 }
 
-if (-not $CredentialCsv) { $CredentialCsv = Join-Path (Split-Path $PSScriptRoot -Parent) "lab-users-$Estate.local.csv" }
 $report | Export-Csv -Path $CredentialCsv -NoTypeInformation -UseQuotes AsNeeded
 Write-Host "`nHandout written to $CredentialCsv"
 Write-Warning 'That file holds PLAINTEXT passwords. It is gitignored (*.local.csv); delete it after the delivery.'

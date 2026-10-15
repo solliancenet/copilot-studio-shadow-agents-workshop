@@ -947,3 +947,139 @@ Two things that cost time and are worth knowing:
 
 So the facilitator instruction is simply: tell attendees to bring an authenticator app and register at
 first sign-in. Nothing in the kit has to weaken `CA-Require-MFA-Admins` to make the labs work.
+
+
+### Phase 8b · Lab 03-02's role editor needs a LICENCE, not more privileges (2026-10-14)
+
+**Symptom.** An attendee follows Task 03-02 to *"open a role under **Security roles** to see what it grants
+on each table"* and the page renders **"Loading role failed!"**. The roles *list* loads; only the editor
+fails — and the editor is the only place scope (user / business unit / organization) is visible.
+
+**Evidence.** Three Dataverse calls behind the editor return 403, and their bodies name the cause:
+
+```
+EntityDefinitions?$select=Privileges,…   PrivilegeName: prvReadAttribute … User Privileges Count: 15
+roles(roleid = …)?$select=…              is missing prvReadTeam privilege
+recordfilters?…                          is missing prvReadEntityRecordFilter privilege
+```
+
+and each carries:
+
+> `System Administrator unlicensed user with filtered privileges from associated roles. Consider assigning
+> License for the privileges to take affect. … unlicensed administrators get Administrative access mode only`
+
+**Why adding privileges does not fix it.** `Lab Reviewer (read-only)` was granted four more privileges,
+taking it to **18**; Dataverse still applied **15** (`privilegeCount=15`) and still reported
+`prvReadEntityRecordFilter` missing **by the exact id that had just been granted**. An account with no
+licence gets access mode `1 Administrative` and its roles' privileges are filtered. Assigning `FLOW_FREE`
+changed nothing — it is not a Dataverse-capable plan.
+
+**The blocker.** The tenant has no seat to give:
+
+| SKU | Enabled | Consumed | Free |
+|---|---|---|---|
+| `DEVELOPERPACK_V2_E5` | 25 | 25 | **0** |
+| `FLOW_FREE` | 10000 | 1 | 9999 (does not help) |
+
+The 25 E5 seats are held by **14 Microsoft demo sample users** (AdeleV, AlexW, DiegoS, GradyA, HenriettaM,
+IsaiahL, JohannaL, JoniS, LeeG, LidiaH, MeganB, MiriamG, NestorW, PattiF) that have nothing to do with
+Halcourt, the **8 estate personas**, and **3 admin accounts**. So ~14 seats are recoverable, which is also
+the real answer to "how many licensed attendees does this tenant support": about 14, not an arbitrary N.
+
+**Decision required before a delivery** — the two options are not equivalent:
+
+1. **Licence the lab accounts.** Free seats from the demo users and assign E5 in `07_provision_lab_users.ps1`.
+   Task 03-02 then works as written. Note the tenant is shared between estates, so those demo accounts may
+   belong to someone else's build — confirm before stripping them.
+2. **Reword Task 03-02.** Drop "open a role" and have attendees read the roles list, recording role breadth
+   as the **open question** that step 3 of the same task already sanctions ("role breadth unknown from
+   export; verify in tenant"). Pedagogically defensible, but it removes the one place the lab shows scope.
+
+**Also fixed here.** `07_provision_lab_users.ps1` granted privileges only in the branch that *created* the
+role, so adding a name to `$DvPrivilegeNames` silently did nothing in any environment that already had it —
+while still printing a success line. That is how the live role drifted to 14 privileges against a list of 5.
+Privileges are now reconciled on every run by diffing `RetrieveRolePrivilegesRole`.
+
+**Update (2026-10-14, same day): the licence is necessary but not sufficient — Dataverse must RE-SYNC it.**
+
+After freeing seats and assigning `DEVELOPERPACK_V2_E5`, the editor still failed with the same
+"unlicensed user with filtered privileges" message. Entra was correct; Dataverse was not. It keeps its own
+copy of licence state on the `systemuser` record and refreshes it asynchronously:
+
+```
+systemusers(<id>)?$select=islicensed,accessmode,modifiedon
+  islicensed  False          <- Dataverse still thinks the account is unlicensed
+  accessmode  1              <- 'Administrative', the mode that triggers privilege filtering
+  modifiedon  2026-10-14T01:36:41Z   <- PREDATES the licence assignment entirely
+```
+
+**`modifiedon` predating the licence assignment is the tell.** Until it moves, privileges are filtered
+(20 granted, 17 applied) and the error messages blame privileges rather than the sync — which sends you
+chasing privilege names that are already granted. On this build the flip took hours and did not happen
+until a BAP `addUser` nudge:
+
+```
+POST https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/
+     environments/<envId>/addUser?api-version=2021-04-01   { "objectId": "<entra object id>" }
+```
+
+After the flip: `islicensed True`, `accessmode 0` (Read-Write), and the granted privileges apply.
+
+**Facilitator consequence:** licence the attendee accounts the DAY BEFORE a delivery, not the morning of.
+An account licensed an hour before the lab will still fail Task 03-02, and the failure looks like a
+privilege problem, not a timing one. Verify with the `systemusers` query above before you start.
+
+**Also fixed (2026-10-14).** Re-running `07_provision_lab_users.ps1` against existing accounts rewrote the
+handout's password column as `(unchanged - from the run that created it)` — destroying the only copy of a
+working credential, since the script cannot read a password back from Entra. It now resolves the handout
+path up front and carries forward any password already recorded, and says
+`(unknown - set by an earlier run; reset it or use -Destroy and recreate)` only when there is genuinely
+nothing to carry.
+
+### Phase 8b · CORRECTION - the role editor is gated by SYSTEM ADMINISTRATOR, not by a licence (2026-10-14)
+
+The entries above conclude that Task 03-02 needs a Dataverse-capable licence and that attendee accounts
+must be licensed the day before a delivery. **That conclusion was drawn from one account that differed in
+two ways at once, and it is wrong.** A single-variable test says otherwise:
+
+| Account | Entra licence | Dataverse state | Dataverse role | Role editor |
+|---|---|---|---|---|
+| `student01` (morning) | none | `islicensed=False`, `accessmode=1` | Lab Reviewer (read-only) | **FAILS** |
+| `student01` (after E5) | E5 | `islicensed=True`, `accessmode=0` | Lab Reviewer (read-only) | works |
+| `student02` | **none** | `islicensed=False`, `accessmode=1` | **System Administrator** | **works** |
+
+An unlicensed account runs in **Administrative access mode**, which is designed to allow administrative
+work without a seat while withholding business *data*. System Administrator's privileges survive that
+filtering; a hand-built 21-privilege read-only role does not - it was applied as 17, and the ones dropped
+were exactly the metadata privileges the editor needs (`prvReadAttribute`, `prvReadRelationship`,
+`prvReadEntityRecordFilter`).
+
+**What this means for a delivery.** `08_provision_student_slices.ps1` already makes each attendee
+**System Administrator of their own slice**, and that slice already carries the substrate Task 03-02 asks
+about (`svc-claims` holding the over-broad role). So an attendee reading role scope **in their own slice
+needs no licence at all**. It fails only in the shared estate, where they hold just the reviewer role -
+and granting them System Administrator there is not an option, because it would give them write access to
+the shared estate and contradict "a security reviewer observes; they do not change the estate".
+
+So the fix is a ROUTING change, not a procurement one: point Task 03-02's role reading at the attendee's
+own slice.
+
+**The licence-sync trap recorded above is still real and still bidirectional** - it just is not the cause
+of this failure. Measured both ways on this tenant:
+
+| Change | Dataverse caught up after |
+|---|---|
+| E5 assigned | hours, and only after a BAP `addUser` nudge |
+| account created with no licence | ~50 minutes, during which it reported `islicensed=True` |
+
+The optimistic direction is the dangerous one: a freshly created unlicensed account reports as **licensed**
+for a while, so a rehearsal can pass and the delivery fail. Check
+`systemusers(<id>)?$select=islicensed,accessmode,modifiedon` and distrust it until `modifiedon` moves past
+your change.
+
+**Still unverified:** whether an unlicensed System Administrator can **create** a role (Module 5's ask, as
+opposed to reading one). The PPAC "New role" command renders **enabled** and its click produced **zero**
+4xx responses, so there is no evidence of a permission block - but the editor did not open under headless
+automation, so this is untested rather than proven. Also unverified: Module 5 retests that require reading
+Claim/Customer rows **as the attendee**, which Administrative access mode would block; retests performed by
+chatting with the agent run as `svc-claims` and are unaffected.
