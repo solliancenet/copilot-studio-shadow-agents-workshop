@@ -83,7 +83,18 @@ $ErrorActionPreference = 'Stop'
 $Estate = Resolve-Estate $Estate
 
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) { throw 'This script needs the Azure CLI (az) - see scripts/env.sh.' }
-if (-not $TenantId)     { $TenantId     = az account show --query tenantId -o tsv }
+
+# -TenantId names the tenant this run is FOR; every token below comes from az's active sign-in. If the
+# two disagree we would provision - and, with -Destroy, permanently delete - in the signed-in tenant
+# while printing the requested one. Refuse rather than act on the wrong tenant.
+$activeTenant = az account show --query tenantId -o tsv
+if (-not $activeTenant) { throw 'az is not signed in - run "az login" in a shell that sources scripts/env.sh.' }
+if ($TenantId -and $TenantId -ne $activeTenant) {
+  throw ("-TenantId is $TenantId but az is signed in to $activeTenant. This script uses az's sign-in for " +
+         'every call, so it would act on the signed-in tenant. Run "az login --tenant ' + $TenantId +
+         '" first, or re-run without -TenantId to use the active one.')
+}
+if (-not $TenantId)     { $TenantId     = $activeTenant }
 if (-not $DomainSuffix) { $DomainSuffix = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv }
 if (-not $DomainSuffix) { throw 'Could not read the tenant domain from Graph - is az signed in to the lab tenant?' }
 
@@ -158,6 +169,16 @@ function Remove-NullKeys($o) {
   if ($o -is [object[]]) { return @($o | ForEach-Object { Remove-NullKeys $_ }) }
   return $o
 }
+function Test-CaExclusion([string]$GroupId) {
+  # Is this estate's group currently excluded from the MFA policy? Used by the DEFAULT path to spot an
+  # exclusion left behind by an earlier -ExcludeFromAdminMfa run, which would otherwise keep attendees
+  # on password-only sign-in while this run reports that they must enrol MFA.
+  $policy = @((Graph GET $CaUri).value) |
+            Where-Object { $_.displayName -eq $CaPolicyName } | Select-Object -First 1
+  if (-not $policy) { return $false }
+  return ($GroupId -in @($policy.conditions.users.excludeGroups | Where-Object { $_ }))
+}
+
 function Set-CaExclusion([string]$GroupId, [string]$Action) {   # Action: 'add' | 'remove'
   $policy = @((Graph GET $CaUri).value) |
             Where-Object { $_.displayName -eq $CaPolicyName } | Select-Object -First 1
@@ -295,7 +316,14 @@ foreach ($roleName in $Roles) {
 # Seats, up front: this is the number that decides whether licensing is even possible today.
 $skuPlan = @()
 if (-not $NoLicense) {
-  $subscribed = (Graph GET 'subscribedSkus?$select=skuId,skuPartNumber,prepaidUnits,consumedUnits').value
+  # Best effort: a licensing endpoint that is unavailable must not stop accounts being created. The
+  # accounts still do every task that needs only Entra read and the admin APIs.
+  $subscribed = @()
+  try { $subscribed = (Graph GET 'subscribedSkus?$select=skuId,skuPartNumber,prepaidUnits,consumedUnits').value }
+  catch {
+    Write-Warning "  could not read tenant SKUs ($($_.Exception.Message.Split([char]10)[0])) - continuing without licensing."
+    $subscribed = @()
+  }
   foreach ($part in $LicenseSku) {
     $s = $subscribed | Where-Object { $_.skuPartNumber -eq $part } | Select-Object -First 1
     if (-not $s) { Write-Warning "SKU '$part' is not in this tenant - skipping it."; continue }
@@ -374,16 +402,41 @@ foreach ($i in 1..$Count) {
   if ($NoLicense)            { $row.license = 'skipped (-NoLicense)' }
   elseif (-not $skuPlan)     { $row.license = 'skipped (no matching SKU)' }
   else {
-    $target = $skuPlan | Where-Object { $_.Free -gt 0 } | Select-Object -First 1
-    if (-not $target) { $row.license = "none free ($(($skuPlan.Part) -join '/'))" }
-    else {
-      Try-Graph POST "users/$($u.id)/assignLicense" @{ addLicenses = @(@{ skuId = $target.SkuId; disabledPlans = @() }); removeLicenses = @() } ([ref]$err) | Out-Null
-      if ($err) { $row.license = "FAILED: $err" ; Write-Warning "  $upn - license '$($target.Part)': $err" }
-      else      { $row.license = $target.Part; $target.Free -= 1 }
+    # An account that already holds one of the requested SKUs needs nothing: re-assigning it would
+    # report a seat spent that the tenant never released, and on a re-run that miscount can starve a
+    # later NEW account of the seat it actually needs.
+    $held = @()
+    try { $held = @((Graph GET "users/$($u.id)?`$select=assignedLicenses").assignedLicenses.skuId) } catch { $held = @() }
+    $already = $skuPlan | Where-Object { $held -contains $_.SkuId } | Select-Object -First 1
+    if ($already) {
+      $row.license = "$($already.Part) (already held)"
+    } else {
+      $target = $skuPlan | Where-Object { $_.Free -gt 0 } | Select-Object -First 1
+      if (-not $target) { $row.license = "none free ($(($skuPlan.Part) -join '/'))" }
+      else {
+        Try-Graph POST "users/$($u.id)/assignLicense" @{ addLicenses = @(@{ skuId = $target.SkuId; disabledPlans = @() }); removeLicenses = @() } ([ref]$err) | Out-Null
+        if ($err) { $row.license = "FAILED: $err" ; Write-Warning "  $upn - license '$($target.Part)': $err" }
+        else      { $row.license = $target.Part; $target.Free -= 1 }
+      }
     }
   }
   $provisioned += [pscustomobject]@{ Upn = $upn; Id = $u.id }
   $report += [pscustomobject]$row
+}
+
+# Save the credentials NOW, before anything fallible runs. With -UniquePasswords these passwords exist
+# only in memory and cannot be read back from Entra, so a throw in the Dataverse grants below used to
+# lose them for good and leave accounts nobody could sign in to. The handout is written again at the
+# end once the role results are known; this first write is the safety net.
+if ($report.Count) {
+  try {
+    $report | Export-Csv -Path $CredentialCsv -NoTypeInformation -UseQuotes AsNeeded
+    Write-Host "`nCredentials saved to $CredentialCsv before the Dataverse grants."
+  } catch {
+    Write-Warning "Could not write the handout to ${CredentialCsv}: $($_.Exception.Message.Split([char]10)[0])"
+    Write-Warning '  The passwords below are the only copy - record them before continuing.'
+    $report | Format-Table -AutoSize -Property upn, password | Out-String -Width 200 | Write-Host
+  }
 }
 
 # --- Dataverse read-only role -------------------------------------------------------------------------------
@@ -478,7 +531,12 @@ if (-not $NoDataverseRole -and $provisioned.Count) {
   Write-Host "`nGranting '$DvRoleName' in the estate's Dataverse environments (Lab 03-02 and 03-04 need it)..."
   $dvEnvs = @(Get-EstateDataverseEnvironments)
   if (-not $dvEnvs) { Write-Warning '  no estate environments with Dataverse found - skipping.' }
-  foreach ($e in $dvEnvs) { Grant-DvReader $e $provisioned }
+  foreach ($e in $dvEnvs) {
+    # Per environment, never fatal: the build admin may hold no Dataverse role in one of them (see
+    # 06_provision_agents.ps1 on Maker-Sandbox), and that must not cost the whole run.
+    try { Grant-DvReader $e $provisioned }
+    catch { Write-Warning "  $($e.Name): role grant skipped - $($_.Exception.Message.Split([char]10)[0])" }
+  }
 }
 
 # --- Conditional Access exclusion -------------------------------------------------------------------------
@@ -487,7 +545,27 @@ if ($labGroupId) {
   Write-Host "`nExcluding $LabGroup from $CaPolicyName so these accounts can sign in with a password..."
   Set-CaExclusion -GroupId $labGroupId -Action 'add'
 } elseif ($needsCaExclusion) {
-  Write-Host "`nNo Conditional Access policy was changed. These accounts hold a tenant admin role, so Entra"
+  # A PREVIOUS run with -ExcludeFromAdminMfa leaves the group and the policy exclusion in place. The
+  # default path used to ignore that and still announce that attendees will be asked to register MFA -
+  # so a delivery could run password-only without anyone noticing. Reconcile it instead of asserting it.
+  $staleGroupId = Get-LabGroupId
+  $staleExcluded = $false
+  if ($staleGroupId) {
+    try { $staleExcluded = Test-CaExclusion -GroupId $staleGroupId } catch { $staleExcluded = $false }
+  }
+  if ($staleExcluded) {
+    Write-Warning "`n$LabGroup is STILL excluded from $CaPolicyName, left by an earlier run with -ExcludeFromAdminMfa."
+    Write-Warning '  These accounts can sign in password-only, which is NOT what this run configured.'
+    Write-Host   "  Removing the exclusion so the default (attendees enrol MFA) actually holds..."
+    try {
+      Set-CaExclusion -GroupId $staleGroupId -Action 'remove'
+      Write-Host "  $LabGroup is no longer excluded from $CaPolicyName."
+    } catch {
+      Write-Warning "  Could not remove it: $($_.Exception.Message.Split([char]10)[0])"
+      Write-Warning "  Remove $LabGroup from $CaPolicyName by hand before the delivery."
+    }
+  }
+  Write-Host "`nNo Conditional Access policy was weakened. These accounts hold a tenant admin role, so Entra"
   Write-Host '  will ask each attendee to register MFA on their FIRST sign-in - that is expected and is the'
   Write-Host '  point: it is what gives them the Entra, M365 and Exchange admin centers the labs use. Tell'
   Write-Host '  them to bring an authenticator app; it takes about two minutes each.'
