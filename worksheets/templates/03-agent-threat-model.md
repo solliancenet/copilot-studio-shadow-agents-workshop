@@ -9,7 +9,7 @@ search_exclude: true
 # Agent Threat Model
 
 **Deliverable for Module 4 (BREAK).** One row per scenario you run. Record what you actually observed,
-not what you expected.
+not what you expected. After you write each row, compare it with the suggested row in that task's reveal.
 
 | Scenario | Attack | Asset | Trust boundary crossed | Impact | Existing control (if any) |
 |---|---|---|---|---|---|
@@ -22,7 +22,8 @@ not what you expected.
 
 ## For each scenario, capture the two hard questions
 
-- **D (confused deputy):** *Who authorized the action? Whose identity actually performed it?*
+- **D (confused deputy):** *Who requested the action? Which credential did the call carry, and which system
+  authorized it? Did anything check the requester's entitlement? Whose identity was recorded as the actor?*
   → ____________________
 - **E (boundary):** *What auth exists? What authorization? What inputs cross? What comes back?*
   → ____________________

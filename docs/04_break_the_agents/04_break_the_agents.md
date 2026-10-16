@@ -35,7 +35,7 @@ Each scenario is one task page. For each, you will:
 2. **Observe** the failure — either in the live tenant, or by reasoning it out from the exported artifact
    pack. Both paths are always provided.
 3. **Record** exactly one row in your **Agent Threat Model**: *Attack → Asset → Trust boundary → Impact →
-   Existing control.*
+   Existing control.* Then compare it with the suggested row in that task's reveal.
 
 You record what actually happened, not what you expected. You do **not** decide yet whether a control
 "closes" or "misses" the failure — that verdict is Module 5's job. Here you are only building the row.
@@ -43,7 +43,7 @@ You record what actually happened, not what you expected. You do **not** decide 
 ```mermaid
 flowchart LR
   U["Chat user<br/>(e.g. Jordan Blake, low-priv)"] -->|asks a question| A["Copilot Studio agent"]
-  subgraph reach["What the AGENT can reach — not necessarily what the USER can"]
+  subgraph reach["What the agent could reach — its configured reach, not necessarily the user's"]
     direction TB
     G["Grounding sources<br/>SharePoint / Dataverse"]
     C["Connectors<br/>Dataverse rows, mail"]
@@ -56,8 +56,9 @@ flowchart LR
   A --> P
 ```
 
-Everything inside that box is reachable through the agent, whether or not the user could reach it
-directly. That gap is the whole subject of this module.
+Everything inside that box is the agent's configured reach. Whether a given user can actually get it
+depends on who can invoke the agent, the credential each call carries, what the downstream system
+authorizes, and what you observe. That gap is the whole subject of this module.
 
 ### The six scenarios
 
@@ -85,8 +86,8 @@ After this exercise you will be able to:
   agent follows.
 - **Show data exfiltration** as an access problem: the agent relays data it can read but the user cannot.
 - **Quantify excessive connector and tool permissions** as a blast-radius multiplier (need X, granted X+Y+Z).
-- **Name the confused deputy precisely** — answer, for a given action, *who authorized it* and *whose
-  identity actually performed it*.
+- **Name the confused deputy precisely** — answer, for a given action, *who requested it*, *which
+  credential the call carried*, and *whether anything checked the requester's entitlement*.
 - **Interrogate an HTTP / MCP / tool boundary** with four questions: what authentication, what
   authorization, what inputs cross, what comes back — including credentials exposed in configuration.
 - **Trace a lifecycle failure** — an orphaned owner or a test-became-production agent whose permissions and
