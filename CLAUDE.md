@@ -128,7 +128,9 @@ hasn't been captured yet.
 ## Key Patterns
 
 - **Single source of truth:** every fact about the estate lives in `AGENTS.md`. Lab pages send attendees
-  to *discover* facts; they never restate the answer key.
+  to *discover* facts and keep answers out of the visible text. A guided task may give a suggested answer
+  inside a collapsible block whose summary says it's a reveal (for example, "Reveal the suggested Scenario
+  A row").
 - **Spoiler discipline:** the strings `ANSWER KEY`, `PLANTED PROBLEM`, `FACILITATOR-ONLY`, `SPOILER`
   appear **only** in excluded files. CI (`.github/workflows/jekyll-gh-pages.yml`) fails the build if they
   (or a rendered `AGENTS/PLANNING/CLAUDE` page) reach `_site/`. Do not use these strings in `docs/`.
