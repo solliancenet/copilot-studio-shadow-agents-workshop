@@ -81,6 +81,7 @@ $DvCompanionRoles = @('Bot Viewer')
 # and names the steps that lose their LIVE path without it; every such step has an artifact-pack fallback.
 $TenantCapabilities = @(
   @{ Name = 'Purview sensitivity label Confidential-PII + SSN sensitive info type'; Protects = '05-06 and the Scenario B verdict'; Fallback = 'none - no phase creates them; AGENTS.md lists them as estate components' }
+  @{ Name = 'Teams-capable seat per attendee (E5)';           Protects = '04-01, 04-02, 04-04 chat: the agents authenticate with Microsoft, Teams is the only working channel (the M365 Copilot option is greyed out), and Teams refuses an unlicensed account outright - verified 2026-10-17'; Fallback = 'the reveal blocks and the artifact pack' }
   @{ Name = 'Dataverse-capable licence per attendee';        Protects = 'the access model in the SHARED estate: 03-02 role editor, Copilot Studio agent pages (01-01 s2-3, 01-02, 02-01..03, 04-01/03/05/06). Unlicensed = Administrative mode, which filters the custom role'; Fallback = 'own slice (System Administrator survives filtering) or the artifact pack' }
 )
 

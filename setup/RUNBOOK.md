@@ -742,6 +742,17 @@ Two things that bite here, both verified:
   reset the password or destroy and recreate rather than guessing.
 
 
+**Exercise 04 chat needs a seat, and each agent needs its Teams channel added.** Attendees drive Benefits
+Buddy, Claims Copilot and Expense Helper with their own account. The agents authenticate with Microsoft,
+so the only channel is **Microsoft 365 and Microsoft Teams** (the *Make agent available in Microsoft 365
+Copilot* option is greyed out on this tenant) - and Teams refuses an unlicensed account outright (*"You
+don't have the required permissions to access this org"*, verified 2026-10-17). Phase 6 publishes the
+agents but does **not** add that channel, so until someone does, nobody but the maker can reach them. As
+each agent's owner: Copilot Studio → the agent → **Channels** → *Microsoft 365 and Microsoft Teams* →
+**Add channel** → **Availability options** → **Copy link**. That link is the one Exercise 04 says the
+facilitator hands out; it works for users the agent is shared with, which 07 arranges by adding attendees
+to `All-Employees-<estate>`. Done by hand for Benefits Buddy on 2026-10-17; not yet scripted.
+
 **Licences are best effort, but the access model needs one.** Verified 2026-10-17 with three accounts holding
 the identical access model: the one with an E5 seat (`accessmode=0`) opened the PPAC role editor and the
 Copilot Studio agent pages; the two without (`accessmode=1`, Administrative) got *"You don't have

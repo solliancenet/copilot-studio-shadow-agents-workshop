@@ -57,12 +57,12 @@ function Http-Status($err) { try { [int]$err.Exception.Response.StatusCode } cat
 $skus = @()
 try { $skus = (Get-Json 'https://graph.microsoft.com/v1.0/subscribedSkus' 'https://graph.microsoft.com').value } catch { }
 
-Check 'E5 seats for attendee accounts' 'the access model in the SHARED estate: 03-02 role editor; Copilot Studio agent pages in 01, 02, 04' {
+Check 'E5 seats for attendee accounts' 'Teams chat with the agents (04-01, 04-02, 04-04); the access model in the shared estate (03-02 role editor, agent pages in 01, 02, 04)' {
   $e5 = $skus | Where-Object skuPartNumber -eq 'DEVELOPERPACK_V2_E5' | Select-Object -First 1
   if (-not $e5) { return Result 'WARN' 'no DEVELOPERPACK_V2_E5 SKU in this tenant' }
   $free = $e5.prepaidUnits.enabled - $e5.consumedUnits
   if ($free -ge $Attendees) { Result 'PASS' "$free free of $($e5.prepaidUnits.enabled) (need $Attendees). Assign the DAY BEFORE: Dataverse re-reads licence state hours later, not minutes." }
-  else { Result 'WARN' "$free free of $($e5.prepaidUnits.enabled), $Attendees attendee(s). Unlicensed attendees cannot open roles or agent pages in the shared estate - only in their own slice, else the artifact pack." }
+  else { Result 'WARN' "$free free of $($e5.prepaidUnits.enabled), $Attendees attendee(s). Unlicensed attendees cannot use Teams (no chat with the agents) and cannot open roles or agent pages in the shared estate." }
 }
 
 Check 'Agent 365 in the M365 admin center' '01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1' {
