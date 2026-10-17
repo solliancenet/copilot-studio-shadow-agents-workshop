@@ -92,8 +92,6 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
   estate, change only your own. You gather the estate's data into blank CSVs from the
   [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
 - Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
-- The lab tenant may not include the Microsoft 365 agent registry; the three steps that use it say so and
-  fall back to the artifact pack.
 - Optional: a Copilot-enabled editor for the analysis tasks — see
   [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
   in the workshop repo.
