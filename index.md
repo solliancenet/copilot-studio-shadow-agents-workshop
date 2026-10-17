@@ -88,10 +88,12 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 - For the preferred, hands-on path: the lab account (username and password) the facilitator hands out at
   the start of Module 0, along with the lab tenant's domain and your estate id, and the
   [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"} for the few
-  facts only an API returns. The account can inspect the whole estate. Treat the estate as read-only:
-  look, but don't change anything. You gather the estate's data into blank CSVs from the
+  facts only an API returns. The account can inspect the whole estate and administer **your own lab environment**: observe the shared
+  estate, change only your own. You gather the estate's data into blank CSVs from the
   [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
 - Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
+- The lab tenant may not include the Microsoft 365 agent registry; the three steps that use it say so and
+  fall back to the artifact pack.
 - Optional: a Copilot-enabled editor for the analysis tasks — see
   [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
   in the workshop repo.

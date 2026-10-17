@@ -13,8 +13,8 @@ You spent Module 4 breaking things. Every scenario ended the same way: you repro
 down what worked, and moved on. That was the point — you now hold a list of concrete, demonstrated ways
 the Halcourt Mutual estate misbehaves.
 
-This module returns to that list. For each failure you take a Microsoft control, **configure it against
-the real estate**, then **re-run the exact same attack** and see what changed. You are not here to admire
+This module returns to that list. For each failure you take a Microsoft control, **configure it in your own lab environment**, then
+**re-run the exact same attack** and see what changed. You are not here to admire
 a feature list. You are here to answer one honest question per cell: after this control is on, does the
 attack still work?
 
@@ -30,7 +30,7 @@ The rhythm of the whole module is **Attack → Control → Retest**:
 
 ```mermaid
 flowchart LR
-  A["Attack<br/>a Module 4 failure<br/>you reproduced"] --> C["Control<br/>configure it<br/>against the estate"]
+  A["Attack<br/>a Module 4 failure<br/>you reproduced"] --> C["Control<br/>configure it in<br/>your own lab environment"]
   C --> R["Retest<br/>re-run the<br/>same attack"]
   R --> V{"Honest<br/>verdict"}
   V -->|CLOSES IT| Rec["Record verdict +<br/>remaining risk<br/>in the matrix"]
@@ -46,7 +46,7 @@ flowchart LR
 > boundary sits. Recording an honest *DENTS IT* or *MISSES IT* is worth more than a hopeful *CLOSES IT*.
 
 Each task in this exercise takes one control family, explains what it actually governs (and where its
-boundary lies), walks you through configuring it against the Halcourt Mutual estate, and sends you back to
+boundary lies), walks you through configuring it in your own lab environment, and sends you back to
 the specific Module 4 scenario to retest. You will not be told the verdict — you have to reach it. You
 *will* be told what to look for and where the control stops being able to help.
 
@@ -55,6 +55,14 @@ tenant is slow or unavailable, you can reason each verdict from your CSVs — th
 the tenant, or the filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack) if you are
 working without it — because they already tell you which environment carries which DLP policy, which
 connection runs as a service account, and which identity actually authenticates.
+
+{: .important }
+> **Where you apply a control.** Configure controls in **your own lab environment**. It carries a copy of
+> the vulnerable set-up — the shared service account, the over-broad role, the seeded `Claim` and
+> `Customer` rows, the agents — and you are its administrator, so you can change it and retest without
+> touching anyone else's work. The shared estate is where you *observe*. Some controls are tenant-wide and
+> shared by everyone in the room — a Conditional Access policy, a sensitivity label, anything in the
+> default environment — so **specify** those rather than apply them, unless the facilitator says otherwise.
 
 ## Objectives
 
