@@ -63,6 +63,7 @@ $DvCompanionRoles = @('Bot Viewer')
 # Tenant capabilities the exercises assume, that no script can provision. The preflight checks each one
 # and names the steps that lose their LIVE path without it; every such step has an artifact-pack fallback.
 $TenantCapabilities = @(
+  @{ Name = 'Purview sensitivity label Confidential-PII + SSN sensitive info type'; Protects = '05-06 and the Scenario B verdict'; Fallback = 'none - no phase creates them; AGENTS.md lists them as estate components' }
   @{ Name = 'M365 agent registry (Agent 365) service plan'; Protects = '01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1'; Fallback = 'agents-export.csv, inline in each step' }
   @{ Name = 'Dataverse-capable licence per attendee';        Protects = 'the access model in the SHARED estate: 03-02 role editor, Copilot Studio agent pages (01-01 s2-3, 01-02, 02-01..03, 04-01/03/05/06). Unlicensed = Administrative mode, which filters the custom role'; Fallback = 'own slice (System Administrator survives filtering) or the artifact pack' }
 )

@@ -103,6 +103,22 @@ Check 'Connections SP-HR-Benefits and DV-CRM-Shared (Halcourt-Prod)' '04-01 KT01
   else { Result 'PASS' 'both Connected' }
 }
 
+Check 'Connection DV-Claims-Shared (Claims-Test)' '04-03, 04-04 confused deputy; 05-03; 05-07 attribution (acts as svc-claims)' {
+  $ct = $envs | Where-Object { $_.properties.displayName -eq (Get-EstateName 'Claims-Test' $Estate) } | Select-Object -First 1
+  if (-not $ct) { return Result 'FAIL' 'no Claims-Test environment' }
+  $c = (Get-Json "https://api.powerapps.com/providers/Microsoft.PowerApps/scopes/admin/environments/$($ct.name)/connections?api-version=2020-06-01" 'https://service.powerapps.com/').value |
+       Where-Object { $_.properties.displayName -eq 'DV-Claims-Shared' } | Select-Object -First 1
+  if (-not $c) { return Result 'FAIL' 'missing (Phase 6)' }
+  $st = ($c.properties.statuses | Select-Object -First 1).status
+  if ($st -eq 'Connected') { Result 'PASS' "Connected, owner $($c.properties.createdBy.userPrincipalName)" } else { Result 'FAIL' "status $st - re-consent in Phase 6" }
+}
+
+Check 'Purview label Confidential-PII + SSN info type' '05-06 (label the comp file, verify Copilot withholds it); Scenario B verdict' {
+  # No phase in this kit creates them, and az's Graph token cannot read labels. AGENTS.md lists both as
+  # estate components. Until a phase provisions them, this is a manual check.
+  Result 'WARN' 'NOT PROVISIONED BY THE KIT - confirm in purview.microsoft.com > Information Protection > Sensitivity labels, or create it, before Module 5'
+}
+
 Check "SharePoint site HR-Benefits-$Estate" '04-01 and 04-02 grounding; 05-03; 05-06' {
   $t = Tok "https://$spHost"
   if (-not $t) { return Result 'WARN' "no SharePoint token from az for $spHost - check the site by hand" }
