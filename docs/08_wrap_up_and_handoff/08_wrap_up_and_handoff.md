@@ -39,17 +39,17 @@ you can run it again against a real one.
 
 ```mermaid
 flowchart LR
-  D["DISCOVER<br/>Module 2"] --> M["MAP<br/>Module 3"]
-  M --> B["BREAK<br/>Module 4"]
-  B --> C["CONTROL<br/>Module 5"]
-  C --> R["RETEST<br/>Module 5"]
-  R --> O["OPERATIONALIZE<br/>Modules 6–7"]
+  D["DISCOVER<br/>Exercise 02"] --> M["MAP<br/>Exercise 03"]
+  M --> B["BREAK<br/>Exercise 04"]
+  B --> C["CONTROL<br/>Exercise 05"]
+  C --> R["RETEST<br/>Exercise 05"]
+  R --> O["OPERATIONALIZE<br/>Exercises 06–07"]
   O -. "next estate" .-> D
 ```
 
 Each phase left a page in your binder. Follow the deliverable links to your own filled-in work:
 
-| Phase | Module | Deliverable |
+| Phase | Exercise | Deliverable |
 |---|---|---|
 | DISCOVER | [Discover & inventory]({% link docs/02_discover_and_inventory/02_discover_and_inventory.md %}) | [Agent Estate Inventory]({% link worksheets/templates/01-agent-estate-inventory.md %}) |
 | MAP | [Identity & effective access]({% link docs/03_identity_and_effective_access/03_identity_and_effective_access.md %}) | [Agent Access Map]({% link worksheets/templates/02-agent-access-map.md %}) |

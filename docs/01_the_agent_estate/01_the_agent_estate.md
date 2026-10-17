@@ -50,8 +50,8 @@ After this exercise you will be able to:
 There is no formal Estate Binder artifact for this exercise. Instead you produce a rough **trust-boundary
 sketch** — for one or two agents, the hops and the boundaries each request crosses. Keep it; it seeds two
 later deliverables directly: the [Agent Estate Inventory]({% link worksheets/templates/01-agent-estate-inventory.md %})
-in Module 2 and the [Agent Threat Model]({% link worksheets/templates/03-agent-threat-model.md %}) in
-Module 4. The vocabulary you build here — *identity, credential, grounding, boundary* — is the vocabulary
+in Exercise 02 and the [Agent Threat Model]({% link worksheets/templates/03-agent-threat-model.md %}) in
+Exercise 04. The vocabulary you build here — *identity, credential, grounding, boundary* — is the vocabulary
 you use for the rest of the day.
 
 {: .note }

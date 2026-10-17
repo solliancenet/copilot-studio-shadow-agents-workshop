@@ -8,7 +8,7 @@ search_exclude: true
 
 # Agent Threat Model
 
-**Deliverable for Module 4 (BREAK).** One row per scenario you run. Record what you actually observed,
+**Deliverable for Exercise 04 (BREAK).** One row per scenario you run. Record what you actually observed,
 not what you expected. After you write each row, compare it with the suggested row in that task's reveal.
 
 | Scenario | Attack | Asset | Trust boundary crossed | Impact | Existing control (if any) |
@@ -33,5 +33,5 @@ not what you expected. After you write each row, compare it with the suggested r
   |  |  |  |  |  |
 
 {: .note }
-> This table is your rudimentary threat model. In Module 5 you return to every row and test whether a
+> This table is your rudimentary threat model. In Exercise 05 you return to every row and test whether a
 > control **CLOSES IT / DENTS IT / MISSES IT**.

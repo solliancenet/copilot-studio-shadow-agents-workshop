@@ -48,7 +48,7 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 
 ## Agenda
 
-| # | Module | Focus | Est. |
+| # | Exercise | Focus | Est. |
 |---|--------|-------|------|
 | 0 | [Lab environment]({% link docs/00_lab_environment/00_lab_environment.md %}) | Access the estate + orient | — |
 | 1 | [The agent estate you didn't know you had]({% link docs/01_the_agent_estate/01_the_agent_estate.md %}) | The security model & trust boundaries | 20 min |
@@ -63,8 +63,8 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 | 8 | [Wrap-up & hand-off]({% link docs/08_wrap_up_and_handoff/08_wrap_up_and_handoff.md %}) | Resources & next steps | — |
 
 {: .note }
-> The exercises (Modules 1–7) total ~270 minutes (~4.5 hours). Another ~90 minutes goes to the opening
-> and Module 0 orientation, short lecture segments between modules, and the wrap-up — six hours of
+> The exercises (Exercises 01–07) total ~270 minutes (~4.5 hours). Another ~90 minutes goes to the opening
+> and Exercise 00 orientation, short lecture segments between exercises, and the wrap-up — six hours of
 > instruction in all. The two breaks (45 minutes) come on top, so plan on about 6¾ hours start to finish.
 
 ## Your Estate Binder (deliverables)
@@ -86,7 +86,7 @@ Templates are in the [Estate Binder]({% link worksheets/index.md %}).
 
 - A modern browser.
 - For the preferred, hands-on path: the lab account (username and password) the facilitator hands out at
-  the start of Module 0, along with the lab tenant's domain and your estate id, and the
+  the start of Exercise 00, along with the lab tenant's domain and your estate id, and the
   [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"} for the few
   facts only an API returns. The account can inspect the whole estate. Treat the estate as read-only:
   look, but don't change anything. You gather the estate's data into blank CSVs from the

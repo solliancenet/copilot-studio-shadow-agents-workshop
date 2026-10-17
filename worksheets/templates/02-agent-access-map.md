@@ -8,7 +8,7 @@ search_exclude: true
 
 # Agent Access Map
 
-**Deliverable for Module 3 (MAP).** Pick several agents and work the chain that determines *effective
+**Deliverable for Exercise 03 (MAP).** Pick several agents and work the chain that determines *effective
 access*. The question you must answer for each:
 
 > **Can this agent access something its intended users shouldn't be able to obtain or cause to happen?**

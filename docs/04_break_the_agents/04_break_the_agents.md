@@ -9,14 +9,14 @@ has_children: true
 
 ## Scenario
 
-You have inventoried the estate (Module 2) and mapped effective access (Module 3). You already know, on
-paper, that some of these agents can reach more than the people who talk to them. This module makes that
+You have inventoried the estate (Exercise 02) and mapped effective access (Exercise 03). You already know, on
+paper, that some of these agents can reach more than the people who talk to them. This exercise makes that
 concrete. Instead of a slide deck about "prompt injection" and "the confused deputy," you drive six
 Halcourt Mutual agents into six distinct failure modes and watch each one happen.
 
 Every scenario returns to the same two questions: **whose authority is this agent exercising, and what
 can it reach when it does?** You are not here to build attack tools. You are here to observe controlled
-failures on a training estate and write down what you saw, so that in Module 5 you can test whether any
+failures on a training estate and write down what you saw, so that in Exercise 05 you can test whether any
 Microsoft control actually removes each one.
 
 > **This is a deliberately-broken TRAINING estate.** Every agent, connection, key, and grounded document
@@ -27,7 +27,7 @@ Microsoft control actually removes each one.
 > data you are not explicitly authorized to test.** Observe and record; do not weaponize.
 {: .warning }
 
-### How this module works
+### How this exercise works
 
 Each scenario is one task page. For each, you will:
 
@@ -38,7 +38,7 @@ Each scenario is one task page. For each, you will:
    Existing control.* Then compare it with the suggested row in that task's reveal.
 
 You record what actually happened, not what you expected. You do **not** decide yet whether a control
-"closes" or "misses" the failure — that verdict is Module 5's job. Here you are only building the row.
+"closes" or "misses" the failure — that verdict is Exercise 05's job. Here you are only building the row.
 
 ```mermaid
 flowchart LR
@@ -58,7 +58,7 @@ flowchart LR
 
 Everything inside that box is the agent's configured reach. Whether a given user can actually get it
 depends on who can invoke the agent, the credential each call carries, what the downstream system
-authorizes, and what you observe. That gap is the whole subject of this module.
+authorizes, and what you observe. That gap is the whole subject of this exercise.
 
 ### The six scenarios
 
@@ -92,13 +92,13 @@ After this exercise you will be able to:
   authorization, what inputs cross, what comes back — including credentials exposed in configuration.
 - **Trace a lifecycle failure** — an orphaned owner or a test-became-production agent whose permissions and
   connections outlived the assumptions that created them.
-- **Populate the Agent Threat Model** with one defensible row per scenario, ready to test in Module 5.
+- **Populate the Agent Threat Model** with one defensible row per scenario, ready to test in Exercise 05.
 
 ## Duration
 
 **Estimated time:** 60 minutes.
 
-This is the centerpiece of the day and the most likely module to over-run. Roughly 15 minutes per
+This is the centerpiece of the day and the most likely exercise to over-run. Roughly 15 minutes per
 scenario. If the room is tight, run A and D hands-on and take B, C, E, and F as guided walk-throughs in the
 live tenant, or from the artifact pack if you can't reach it — the recorded rows are what matter.
 
@@ -109,5 +109,5 @@ Existing control*, plus the two "hard questions" for Scenarios D and E.
 
 Use the template: [03 — Agent Threat Model]({% link worksheets/templates/03-agent-threat-model.md %}).
 
-You will carry every row of this table into [Module 5]({% link docs/05_test_the_controls/05_test_the_controls.md %}),
+You will carry every row of this table into [Exercise 05]({% link docs/05_test_the_controls/05_test_the_controls.md %}),
 where you test whether each control **CLOSES IT / DENTS IT / MISSES IT**.

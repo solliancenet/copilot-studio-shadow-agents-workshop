@@ -9,7 +9,7 @@ has_children: true
 
 ## Scenario
 
-Module 2 gave you a census: which agents exist, in which environments, and who nominally owns them. That
+Exercise 02 gave you a census: which agents exist, in which environments, and who nominally owns them. That
 answers *what is out there*. It does not answer the question a security reviewer has to answer before
 signing off on an agent: **whose authority is this agent exercising, and what can it reach when it does?**
 

@@ -21,7 +21,7 @@ one between the **sanctioned inventory** (the agents IT believes exist) and the 
 cannot see are agents you cannot govern. Before you assess a single control, you build the map.
 
 In this exercise you work in the live Halcourt Mutual tenant. You start from the five CSVs you filled in
-from it in Modules 0 and 1, and go back to the admin portals and Copilot Studio for what a CSV can't hold,
+from it in Exercises 00 and 01, and go back to the admin portals and Copilot Studio for what a CSV can't hold,
 such as what an agent grounds on and whose credentials its tools use. You join the CSVs into a single
 inventory, one row per agent, across **all four environments**: `Halcourt (default)`, `Halcourt-Prod`,
 `Claims-Test`, and `Maker-Sandbox`. Then you start flagging the conditions that will drive the rest of the

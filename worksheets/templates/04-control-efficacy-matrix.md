@@ -8,7 +8,7 @@ search_exclude: true
 
 # Control Efficacy Matrix
 
-**Deliverable for Module 5 (CONTROL / RETEST).** Return to every failure from Module 4. Configure the
+**Deliverable for Exercise 05 (CONTROL / RETEST).** Return to every failure from Exercise 04. Configure the
 control, **re-run the attack**, and record the honest verdict.
 
 **The verdicts:**

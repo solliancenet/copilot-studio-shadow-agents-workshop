@@ -8,7 +8,7 @@ search_exclude: true
 
 # Own-Estate Assessment
 
-**Take-home deliverable for Module 7.** This one is about *your* organization, not the lab. Fill it for
+**Take-home deliverable for Exercise 07.** This one is about *your* organization, not the lab. Fill it for
 your tenant, then commit to three actions.
 
 ## The seven questions

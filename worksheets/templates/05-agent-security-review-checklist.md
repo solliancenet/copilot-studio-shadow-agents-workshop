@@ -8,7 +8,7 @@ search_exclude: true
 
 # Agent Security Review Checklist
 
-**Deliverable for Module 6 (OPERATIONALIZE).** The operating model:
+**Deliverable for Exercise 06 (OPERATIONALIZE).** The operating model:
 **KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT.** Use this as the gate an agent must pass before
 it is promoted to production.
 
