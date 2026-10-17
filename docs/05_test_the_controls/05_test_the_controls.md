@@ -41,34 +41,34 @@ flowchart LR
 
 {: .important }
 > **The gaps are the point.** A column of all-green *CLOSES IT* is not a win — it is a sign you stopped
-> testing too early. Some failures (indirect prompt injection, the confused-deputy pattern) do not fully
-> close with any single platform toggle, and the workshop is built to make you feel exactly where that
-> boundary sits. Recording an honest *DENTS IT* or *MISSES IT* is worth more than a hopeful *CLOSES IT*.
+> testing too early. Recording an honest *DENTS IT* or *MISSES IT* is worth more than a hopeful
+> *CLOSES IT*.
 
 Each task in this exercise takes one control family, explains what it actually governs (and where its
 boundary lies), walks you through configuring it against the Halcourt Mutual estate, and sends you back to
-the specific Module 4 scenario to retest. You will not be told the verdict — you have to reach it. You
-*will* be told what to look for and where the control stops being able to help.
+the specific Module 4 scenario to retest. Decide each verdict yourself first; then reveal the suggested
+verdict to compare. You *will* be told what to look for and where the control stops being able to help.
 
 Work each task in the live tenant, the preferred path. Every task also has an **offline path**: if the
 tenant is slow or unavailable, you can reason each verdict from your CSVs — the copies you filled in from
 the tenant, or the filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack) if you are
-working without it — because they already tell you which environment carries which DLP policy, which
-connection runs as a service account, and which identity actually authenticates.
+working without it — because they already tell you which environment carries which DLP policy and which
+credential each connection carries. Label those offline verdicts as reasoned conclusions, not retest
+results.
 
 ## Objectives
 
 After this exercise you will be able to:
 
-- Configure the core Microsoft controls — DLP, environment strategy, Dataverse least privilege,
-  Conditional Access, Agent 365 / CoE governance, Purview, and Defender / audit — against a live
-  Copilot Studio estate.
+- Configure (or, where unavailable, evaluate) the core Microsoft controls — DLP, environment strategy,
+  Dataverse least privilege, Conditional Access, Agent 365 / CoE governance, Purview, and Defender /
+  audit — against a live Copilot Studio estate.
 - Re-run a reproduced attack against a configured control and reach a defensible **CLOSES IT / DENTS IT /
   MISSES IT** verdict rather than assuming the control worked.
 - Name the *boundary* of each control — the trust boundary or processing stage it structurally cannot
   reach — so you can predict, before testing, which failures it will miss.
-- Explain why over-permission and lifecycle failures are closable while indirect injection and
-  confused-deputy are, at best, dented by platform settings.
+- Explain why some failures close with a platform control while others are only dented, using your own
+  retest evidence.
 - Complete the Control Efficacy Matrix: a verdict and a remaining-risk note for every failure you tested.
 
 ## Duration

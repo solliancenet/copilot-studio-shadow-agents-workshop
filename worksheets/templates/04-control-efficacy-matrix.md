@@ -17,6 +17,8 @@ control, **re-run the attack**, and record the honest verdict.
 - **DENTS IT** — harder or lower-impact, but a real gap remains.
 - **MISSES IT** — the control does not address this failure at all.
 
+Decide each verdict before you open a task's reveal.
+
 ## Matrix
 
 Fill a verdict in each cell you test (leave blank if not applicable / not tested).
@@ -41,5 +43,4 @@ Copy per test.
 **Remaining risk:** ______________________
 
 {: .important }
-> The gaps are the point. A wall of CLOSES IT is a sign you're not testing hard enough — indirect
-> injection and confused-deputy rarely fully close with a platform toggle.
+> The gaps are the point. A wall of CLOSES IT is a sign you're not testing hard enough.
