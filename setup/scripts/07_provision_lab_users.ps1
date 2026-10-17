@@ -64,7 +64,11 @@ param(
   [string]$DomainSuffix,                               # default: the tenant's default verified domain
   [string]$InitialPassword   = 'Lab-Only-Passw0rd!',   # one shared password; rotate per delivery
   [switch]$UniquePasswords,                            # instead: a distinct typed-by-hand password each
-  [string[]]$Roles           = @('Power Platform Administrator'),  # see the header: needed for Lab 01-01
+  [string[]]$Roles           = @('Power Platform Administrator', 'AI Reader'),
+                                                       # PPA: the /scopes/admin/ connection reads of Lab 01-01.
+                                                       # AI Reader: read-only; opens M365 admin center > Agents
+                                                       # (Agent 365) for 01-01 s3, 02-01 s4, 04-06 s1. Without it
+                                                       # that page is simply absent - verified 2026-10-17.
   [string]$LabGroup,                                   # CA-exclusion group; default Lab-Students-<estate>
   [switch]$ExcludeFromAdminMfa,                        # FALLBACK ONLY: weaken CA-Require-MFA-Admins so these
                                                        # accounts sign in password-only. Buys PPAC and nothing
@@ -304,7 +308,7 @@ foreach ($roleName in $Roles) {
     Write-Warning '  this tenant. Isolated training tenants only.'
     if ($ExcludeFromAdminMfa) {
       Write-Warning "  -ExcludeFromAdminMfa: weakening $CaPolicyName so they sign in password-only. That buys"
-      Write-Warning '  PPAC only - Entra, M365 and Exchange admin centers are gated by Microsoft regardless.'
+      Write-Warning '  the PPAC shell only - its data calls, Copilot Studio, Entra, M365 and Exchange still demand MFA (AADSTS50076).'
     } else {
       Write-Host   '  Attendees enrol MFA at first sign-in; no Conditional Access policy is changed.'
     }

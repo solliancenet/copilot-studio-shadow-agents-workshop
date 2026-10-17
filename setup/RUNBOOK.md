@@ -84,7 +84,7 @@ pwsh setup/scripts/00b_preflight.ps1 -Attendees 20
 
 | Capability | Without it | Fallback |
 |---|---|---|
-| **Microsoft 365 agent registry** (an Agent 365 service plan) | 01-01 KT01 s3, 02-01 KT01 s4 and 04-06 KT01 s1 lose their live path: the M365 admin center shows no **Agents → All agents → Registry**. The build tenant's `DEVELOPERPACK_V2_E5` does not include it. | each step falls back to `agents-export.csv`, inline |
+| **Agent 365** (M365 admin center → Agents) | 01-01 KT01 s3, 02-01 KT01 s4 and 04-06 KT01 s1 read the agent registry there. Present in the build tenant on `DEVELOPERPACK_V2_E5`, but the page appears only for an admin role that can read it: attendees get **AI Reader** (Phase 8b) - without it the Agents page is simply missing from the nav, which looks exactly like a tenant without Agent 365. | each step falls back to `agents-export.csv`, inline |
 | **A Dataverse-capable licence per attendee** (E5) | The access model in the *shared* estate. Unlicensed accounts run in Administrative mode, which filters the custom role: the PPAC role editor (03-02) and the Copilot Studio agent pages (01-01 s2-3, 01-02, 02-01..03, 04-01/03/05/06) refuse them. | the attendee's own slice, where System Administrator survives the filter; otherwise the artifact pack |
 | **Container Apps endpoints** (Policy API, Underwriting MCP) | 04-03, 04-05 and the 05-01 retests have nothing to call. | none - Phase 1 |
 | **SharePoint site** `HR-Benefits-<estate>` | 04-01 / 04-02 grounding, 05-03, 05-06. | none - Phase 4 |

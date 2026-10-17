@@ -26,6 +26,14 @@
 #   Tested one combination at a time: role alone fails, `Bot Viewer` alone fails, together they work.
 
 $DvRoleName   = 'Lab Reviewer (read-only)'
+# Entra directory roles every attendee holds (07 -Roles defaults to these).
+#   Power Platform Administrator - the /scopes/admin/ connection reads (01-01); tenant-wide, MFA-gated.
+#   AI Reader - read-only; M365 admin center > Agents (Agent 365): All agents, Agent map, Tools, Settings,
+#               for 01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1. Without it the Agents page is ABSENT from the
+#               nav, which looks exactly like a tenant that lacks Agent 365 (it was misreported as such until
+#               2026-10-17). Agent 365 itself needs no service plan in the SKU list: the tenant shows the
+#               'Agent 365' service principal and the page renders for AI Reader on DEVELOPERPACK_V2_E5.
+$DirectoryRoles = @('Power Platform Administrator', 'AI Reader')
 # The Conditional Access policy attendees enrol MFA against (00_conditional_access_baseline.ps1 creates it).
 $CaPolicyName = 'CA-Require-MFA-Admins'
 
@@ -64,7 +72,6 @@ $DvCompanionRoles = @('Bot Viewer')
 # and names the steps that lose their LIVE path without it; every such step has an artifact-pack fallback.
 $TenantCapabilities = @(
   @{ Name = 'Purview sensitivity label Confidential-PII + SSN sensitive info type'; Protects = '05-06 and the Scenario B verdict'; Fallback = 'none - no phase creates them; AGENTS.md lists them as estate components' }
-  @{ Name = 'M365 agent registry (Agent 365) service plan'; Protects = '01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1'; Fallback = 'agents-export.csv, inline in each step' }
   @{ Name = 'Dataverse-capable licence per attendee';        Protects = 'the access model in the SHARED estate: 03-02 role editor, Copilot Studio agent pages (01-01 s2-3, 01-02, 02-01..03, 04-01/03/05/06). Unlicensed = Administrative mode, which filters the custom role'; Fallback = 'own slice (System Administrator survives filtering) or the artifact pack' }
 )
 

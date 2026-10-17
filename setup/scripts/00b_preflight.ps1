@@ -65,11 +65,23 @@ Check 'E5 seats for attendee accounts' 'the access model in the SHARED estate: 0
   else { Result 'WARN' "$free free of $($e5.prepaidUnits.enabled), $Attendees attendee(s). Unlicensed attendees cannot open roles or agent pages in the shared estate - only in their own slice, else the artifact pack." }
 }
 
-Check 'M365 agent registry (Agent 365) service plan' '01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1 - LIVE path only; each step falls back to agents-export.csv inline' {
-  $plans = $skus | ForEach-Object { $_.servicePlans } | ForEach-Object { $_.servicePlanName } | Sort-Object -Unique
-  $hit = @($plans | Where-Object { $_ -match 'AGENT' -and $_ -notmatch 'VIRTUAL_AGENTS' })
-  if ($hit.Count) { Result 'PASS' ($hit -join ', ') }
-  else { Result 'WARN' 'none - the M365 admin center shows no Agents > All agents > Registry in this tenant' }
+Check 'Agent 365 in the M365 admin center' '01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1' {
+  $sp = (Get-Json "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=displayName eq 'Agent 365'&`$select=appId" 'https://graph.microsoft.com').value
+  if (-not $sp) { return Result 'WARN' "no 'Agent 365' service principal - the three registry steps fall back to agents-export.csv" }
+  Result 'PASS' "present - attendees need the AI Reader role to see M365 admin center > Agents (checked below)"
+}
+
+Check "Attendees hold the directory roles ($($DirectoryRoles -join ', '))" 'Power Platform Administrator: 01-01 connection reads. AI Reader: the Agent 365 pages' {
+  $who = (Get-Json ("https://graph.microsoft.com/v1.0/users?`$select=id,userPrincipalName&`$filter=" + [uri]::EscapeDataString("startswith(userPrincipalName,'$StudentPrefix')")) 'https://graph.microsoft.com').value |
+         Where-Object { $_.userPrincipalName -like "$StudentPrefix*.$Estate@*" }
+  if (-not $who) { return Result 'WARN' "no $StudentPrefix*.$Estate accounts yet - run 07" }
+  $short = @()
+  foreach ($u in $who) {
+    $have = (Get-Json "https://graph.microsoft.com/v1.0/users/$($u.id)/transitiveMemberOf/microsoft.graph.directoryRole?`$select=displayName" 'https://graph.microsoft.com').value | ForEach-Object { $_.displayName }
+    $lack = @($DirectoryRoles | Where-Object { $_ -notin $have })
+    if ($lack.Count) { $short += "$($u.userPrincipalName.Split('@')[0]) lacks $($lack -join '+')" }
+  }
+  if ($short.Count) { Result 'FAIL' (($short -join '; ') + ' - re-run 07') } else { Result 'PASS' "$(@($who).Count) account(s) hold all of them" }
 }
 
 # --- 2. tenant baseline --------------------------------------------------------------------------------------
