@@ -236,6 +236,9 @@ before delivery and update `AGENTS.md` if reality differs:
 8. **AGENTS.md least-privilege × C:** its reasoning ('scoped role + RLS: only assigned…') assumes a shared
    service account can see each adjuster's own claims; 05_03 now says a shared identity has one fixed
    security context. Update AGENTS.md's C row and the 'least privilege, RLS… actually fix them' summary line.
+9. **AGENTS.md Conditional Access × E:** it says DENTS IT [verify] ('only if the API trusts Entra'); 05_04's
+   reveal says MISSES IT as built — Microsoft Learn (Oct 2026) says MCP servers and REST API tools add no
+   permissions to the Agent ID, and the static key never involves Entra. Update AGENTS.md's E row.
 
 ## Delivery risks
 
