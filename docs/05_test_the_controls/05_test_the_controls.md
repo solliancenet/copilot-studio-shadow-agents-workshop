@@ -40,9 +40,9 @@ flowchart LR
 ```
 
 {: .important }
-> **The gaps are the point.** A column of all-green *CLOSES IT* is not a win — it is a sign you stopped
-> testing too early. Recording an honest *DENTS IT* or *MISSES IT* is worth more than a hopeful
-> *CLOSES IT*.
+> **The gaps are the point.** Some of this estate's failures will close with a single control; some won't.
+> If every cell in your matrix reads *CLOSES IT*, re-check your retests before you trust them. An honest
+> *DENTS IT* or *MISSES IT* is worth more than a hopeful *CLOSES IT*.
 
 Each task in this exercise takes one control family, explains what it actually governs (and where its
 boundary lies), walks you through configuring it against the Halcourt Mutual estate, and sends you back to

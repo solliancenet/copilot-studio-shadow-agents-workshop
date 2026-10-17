@@ -43,4 +43,4 @@ Copy per test.
 **Remaining risk:** ______________________
 
 {: .important }
-> The gaps are the point. A wall of CLOSES IT is a sign you're not testing hard enough.
+> The gaps are the point. If every cell reads CLOSES IT, re-check your retests before you trust them.
