@@ -85,7 +85,7 @@ pwsh setup/scripts/00b_preflight.ps1 -Attendees 20
 | Capability | Without it | Fallback |
 |---|---|---|
 | **Microsoft 365 agent registry** (an Agent 365 service plan) | 01-01 KT01 s3, 02-01 KT01 s4 and 04-06 KT01 s1 lose their live path: the M365 admin center shows no **Agents → All agents → Registry**. The build tenant's `DEVELOPERPACK_V2_E5` does not include it. | each step falls back to `agents-export.csv`, inline |
-| **A Dataverse-capable licence per attendee** (E5) | Module 5 writes in the *shared* estate. Not needed for Exercises 00-04, nor for Module 5 in an attendee's own slice, where they are System Administrator. | per-attendee slices (Phase 8c) |
+| **A Dataverse-capable licence per attendee** (E5) | The access model in the *shared* estate. Unlicensed accounts run in Administrative mode, which filters the custom role: the PPAC role editor (03-02) and the Copilot Studio agent pages (01-01 s2-3, 01-02, 02-01..03, 04-01/03/05/06) refuse them. | the attendee's own slice, where System Administrator survives the filter; otherwise the artifact pack |
 | **Container Apps endpoints** (Policy API, Underwriting MCP) | 04-03, 04-05 and the 05-01 retests have nothing to call. | none - Phase 1 |
 | **SharePoint site** `HR-Benefits-<estate>` | 04-01 / 04-02 grounding, 05-03, 05-06. | none - Phase 4 |
 
@@ -138,7 +138,8 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
 8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
-8c. Per-student slices         → an environment each, so Module 5's control work is hands-on for everyone
+8c. Per-student slices         → an environment each, BEFORE Exercise 03: attendees read roles there (03-02/03-04)
+                                 and apply every Module 5 control there
 9. Teardown / reseed
 ```
 
@@ -763,12 +764,18 @@ admins and 14 unused Microsoft sample users; the sample users' seats were releas
 Why this role and not something weaker:
 [decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
 
-### Phase 8c — Per-student slices (Module 5 hands-on)
+### Phase 8c — Per-student slices (needed from Exercise 03)
 
 Module 5 has attendees *apply* controls — a scoped Dataverse role, row-level security, a DLP policy,
 orphan remediation — and then retest to reach their own **CLOSES IT / DENTS IT / MISSES IT** verdict. Those
 are environment-scoped changes, so on one shared estate the first attendee to enable row-level security
 deletes the "before" state for everyone else. Each attendee needs an environment of their own.
+
+**Build the slices before the delivery starts, not before Module 5.** Exercise 03 sends attendees into
+their slice too: 03-02 and 03-04 read a security role's scope there, because the PPAC role editor opens for
+a System Administrator whatever their licence, and for a reviewer holding the custom role only if they
+have a seat (see Phase 8b). Exercise 00 introduces the slice by name (`Lab-<estate>-NN`), so the number on
+each attendee's handout must match the slice built for them: `studentNN` gets `Lab-<estate>-NN`.
 
 ```bash
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20        # accounts first
@@ -778,8 +785,8 @@ pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy    # after the deliv
 
 **Why this is affordable.** Dataverse security roles and row-level security are **per environment**, so the
 one shared `svc-claims` can hold the over-broad role in one attendee's environment and a scoped role in
-another's at the same time. The slices need **no new licences** — which matters, because the tenant has 25
-E5 seats with none free, and that is what rules out giving each attendee a whole estate.
+another's at the same time. The slices need **no new licences** — which matters, because a sandbox tenant has 25 E5 seats and the
+estate itself holds eight, and that is what rules out giving each attendee a whole estate.
 
 Each slice is one Sandbox environment with Dataverse, linked to the estate's PAYG billing policy, holding
 the Phase 5 seed (Claim and Customer with PII rows, and the over-broad `svc-claims Dataverse Full Access`
