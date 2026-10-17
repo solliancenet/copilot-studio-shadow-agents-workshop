@@ -71,6 +71,27 @@ Windows any more.
 automatically in a VS Code terminal on this repo and in the dev container; in any other shell run
 `source scripts/env.sh` first, or the scripts won't see your login.
 
+### Tenant capabilities the exercises assume
+
+Some things the exercises reach for cannot be provisioned by any script in this kit: the tenant either has
+them or it does not. `setup/scripts/00b_preflight.ps1` checks every one of them, plus the estate itself and
+the attendee access model, and names the exercise steps each check protects. **Run it the day before a
+delivery**, with the attendee count:
+
+```bash
+pwsh setup/scripts/00b_preflight.ps1 -Attendees 20
+```
+
+| Capability | Without it | Fallback |
+|---|---|---|
+| **Microsoft 365 agent registry** (an Agent 365 service plan) | 01-01 KT01 s3, 02-01 KT01 s4 and 04-06 KT01 s1 lose their live path: the M365 admin center shows no **Agents → All agents → Registry**. The build tenant's `DEVELOPERPACK_V2_E5` does not include it. | each step falls back to `agents-export.csv`, inline |
+| **A Dataverse-capable licence per attendee** (E5) | Module 5 writes in the *shared* estate. Not needed for Exercises 00-04, nor for Module 5 in an attendee's own slice, where they are System Administrator. | per-attendee slices (Phase 8c) |
+| **Container Apps endpoints** (Policy API, Underwriting MCP) | 04-03, 04-05 and the 05-01 retests have nothing to call. | none - Phase 1 |
+| **SharePoint site** `HR-Benefits-<estate>` | 04-01 / 04-02 grounding, 05-03, 05-06. | none - Phase 4 |
+
+The access model itself - every Dataverse privilege an attendee holds and the exercise step it serves - is
+`setup/scripts/_access_model.ps1`. Phase 8b enforces it; the preflight verifies it.
+
 ### Windows build VM (optional)
 
 Only needed if you want a desktop browser for interactive sign-in and MFA — every script itself runs on
@@ -643,6 +664,7 @@ they review the estate from inside the tenant rather than as guests. Run it shor
 tear it down after.
 
 ```bash
+pwsh setup/scripts/00b_preflight.ps1 -Attendees 20                           # the day before: seats, service plans, endpoints, the access model
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20                      # student01.<estate> .. student20.<estate>
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20 -UniquePasswords     # a distinct password each
 pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
@@ -650,8 +672,8 @@ pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # d
 
 Accounts are estate-scoped (`student01.<estate>@<domain>`), so two facilitators can run deliveries in one
 tenant. The run prints a handout table and writes `setup/lab-users-<estate>.local.csv` — **plaintext
-passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone (the
-script cannot read a password back, so it says `(unchanged)` rather than inventing one).
+passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone and their passwords are carried forward from the
+previous handout (the script cannot read one back from Entra).
 
 **Attendees get `Power Platform Administrator`, and enrol MFA at first sign-in.** Lab 01-01 has them
 enumerate an environment's connections, and only the tenant-admin endpoints under `/scopes/admin/` can do
@@ -675,43 +697,68 @@ Entra, Microsoft 365 and Exchange admin centers the labs use. It costs about two
 > strictly better: every portal comes back, and `CA-Require-MFA-Admins` is left intact.
 >
 > `-ExcludeFromAdminMfa` restores the old behaviour for a delivery that genuinely cannot use authenticator
-> apps. Expect PPAC only; the tasks that use the other portals will not work.
+> apps - and as of 2026-10-17 it buys **the PPAC shell and nothing more**: every data call then fails with
+> *"Sign in required - AADSTS50076: you must use multi-factor authentication"* (the Power Platform API), and
+> Copilot Studio fails the same way. Microsoft requires MFA for the admin APIs as well as the portals, and
+> tenant Conditional Access cannot exclude it. Treat the switch as inoperative; attendees enrol.
 
 > {: .caution }
 > **An attendee account is a tenant-wide Power Platform admin.** It can change or delete any environment in
 > the tenant, including another facilitator's estate. Give a delivery its own tenant where you can, and run
 > `-Destroy` the moment it ends.
 
-**Attendees also get a read-only Dataverse role.** Lab 03-02 and 03-04 send them to read the acting
-identity's *security role* inside an environment. Power Platform Administrator is a **tenant** role and
-grants nothing in Dataverse, so without this the read fails with `0x80042f09` *"has not been assigned any
-roles"*. The script therefore creates **`Lab Reviewer (read-only)`** in each of the estate's three Dataverse
-environments — organization-scope READ on user, role, organization, business unit and connector, and
-nothing else — adds each account to the environment, and assigns it. Verified 2026-10-13: an attendee then
-reads `svc-claims` and its security role in `Claims-Test`, which is the answer Task 03-04 is built around,
-while a write still returns 403. `-NoDataverseRole` skips it.
+**Attendees also get Dataverse access inside each estate environment, defined by an access model.**
+Power Platform Administrator is a **tenant** role and grants nothing inside a Dataverse environment, and
+most of the day's tasks read something that lives there: a security role's scope (03-02, 03-04), an
+agent's Knowledge, Topics, Tools and Connection Settings in Copilot Studio (01-01, 01-02, 02-01..03, all of
+Exercise 04). So the script assigns two roles in each of the estate's three Dataverse environments:
+
+- **`Lab Reviewer (read-only)`**, a custom role it creates and **reconciles on every run to exactly the
+  privileges listed in `setup/scripts/_access_model.ps1`** - every one of them `prvRead*`, every one tied to
+  the exercise step that needs it. Anything on the role that the model does not list is removed (Dataverse's
+  own unremovable baseline is recognised and reported, not treated as drift). `-KeepExtraPrivileges` reports
+  instead of removing.
+- **`Bot Viewer`**, Microsoft's built-in role, assigned alongside. The two are needed together: Copilot
+  Studio needs bot reads at *Global* depth (the agents belong to the personas, not the attendee), which the
+  custom role carries, **and** reads of connection references, AI plugins, workflows and solutions at the
+  depths Copilot Studio expects, which `Bot Viewer` carries. Either alone fails - verified one at a time.
+
+Never System Administrator, which would hand every attendee write access to the estate they are reviewing.
+The reviewer stance - observe the shared estate, change nothing - holds; attendees change only their own
+slice (Phase 8c), where they *are* System Administrator. `-NoDataverseRole` skips all of it.
+
+Extend the model from an exercise's requirement, never from a failing probe. Three modules in a row (03-02,
+03-04, Exercise 04) had their live path blocked because the role had been sized for 01-02 and grown
+reactively; the preflight now fails before a delivery if an environment's role has drifted from the model.
 
 Two things that bite here, both verified:
 
 - **Create the accounts well before the delivery.** Group membership takes time to reach Conditional
   Access. An account minutes old can fail its first sign-in with `AADSTS50079` on Dataverse-backed pages,
   then work fine later.
-- **A re-run cannot reprint passwords.** An account that already exists is left alone, and the handout
-  shows `(unchanged - from the run that created it)` rather than inventing a value. If you lose the
-  handout, destroy and recreate rather than guessing.
+- **A re-run carries passwords forward, but cannot invent one.** An account that already exists is left
+  alone and its password is read back from the previous handout. If that file is gone, the row says so -
+  reset the password or destroy and recreate rather than guessing.
 
-> {: .caution }
-> **An attendee account is a tenant-wide Power Platform admin, exempt from the admin MFA policy.** It can
-> change or delete any environment in the tenant, including another facilitator's estate. Give a delivery
-> its own tenant where you can, and run `-Destroy` the moment it ends. `-NoCaExclusion` skips the policy
-> change, but then the accounts cannot sign in at all.
 
-**Licences are best effort and usually fail.** A sandbox has 25 E5 seats, the estate needs eight, and the
-content-pack sample users hold the rest — on the build tenant it was 25/25 consumed, so every attendee came
-out unlicensed. That is fine: Entra reads and the Power Platform admin APIs both work without a seat.
-Assignment is attempted, never fatal, and the end-of-run table reports exactly who got one. To change that,
-free seats in **M365 admin center → Billing → Licenses** first, or pass `-LicenseSku FLOW_FREE` (10,000
-seats) if a licence merely needs to be present.
+**Licences are best effort, but the access model needs one.** Verified 2026-10-17 with three accounts holding
+the identical access model: the one with an E5 seat (`accessmode=0`) opened the PPAC role editor and the
+Copilot Studio agent pages; the two without (`accessmode=1`, Administrative) got *"You don't have
+permission to view these items."* Administrative access mode **filters** a custom role's privileges. What
+survives filtering is System Administrator - so an unlicensed attendee can do those steps only in **their
+own slice** (Phase 8c), never in the shared estate. Without seats, the steps that read a role or an agent's
+configuration in the shared estate fall back to the artifact pack: 01-01 KT01 s2-3, 01-02, 02-01..03 (the
+Copilot Studio parts) and 04-01/03/05/06's configuration reads. 03-02 and 03-04 already route to the slice.
+Entra reads, PPAC lists and the admin APIs work either way.
+
+Assignment is attempted, never fatal, and the end-of-run table reports who got one. If you licence
+attendees, **do it the day before**: Dataverse keeps its own copy of licence state and re-reads it hours
+later, in both directions - an account licensed that morning still reports unlicensed, and one created
+unlicensed reports *licensed* for about an hour, so a rehearsal can pass and the delivery fail. The
+preflight checks `accessmode` per attendee. The build tenant's 25 E5 seats were held by estate personas,
+admins and 14 unused Microsoft sample users; the sample users' seats were released
+(`setup/licence-restore-2026-10-14.local.json` is the undo), so up to 14 attendees can be licensed.
+`FLOW_FREE` does nothing for Dataverse.
 
 Why this role and not something weaker:
 [decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).

@@ -469,27 +469,71 @@ its `mailNickname`, so the next delivery could not recreate it, and the Conditio
 be left pointing at a group nobody can see. `-Destroy` removes the exclusion first, then deletes and purges
 the group, in that order.
 
-### Why attendees need a Dataverse role as well, and which one
+### Why attendees need Dataverse access, and why it is an access model rather than a role
 
 Power Platform Administrator is a **tenant** role. It reaches the admin APIs and PPAC, and it grants
-nothing at all inside a Dataverse environment: reading `systemusers` or `roles` there fails with
-`0x80042f09` *"has not been assigned any roles"* (verified 2026-10-13). Lab 03-02 and 03-04 both depend on
-that read — it is where an attendee sizes the acting identity's grant — so the account needs an
-in-environment role too.
+nothing inside a Dataverse environment: reading `systemusers` or `roles` there fails with `0x80042f09`
+*"has not been assigned any roles"* (verified 2026-10-13). Most of the day's tasks read something that
+lives inside an environment, so the account needs in-environment access too. **Not System Administrator**,
+the obvious shortcut, which would hand every attendee write access to the estate they are reviewing on top
+of the tenant-wide admin role they already hold.
 
-`Lab Reviewer (read-only)` is created per environment with organization-scope READ on five tables only:
-user, role, organization, business unit, connector. **Not System Administrator**, which is the obvious
-shortcut and would hand every attendee write access to the estate they are reviewing, on top of the
-tenant-wide admin role they already hold.
+The first version was a hand-built read-only role with five privileges, sized for what Exercises 01-02
+needed. It then failed three modules in a row, each time in a different way, each time diagnosed from a
+403 body and patched by adding what that body named:
 
-Three findings came out of building it, none of them obvious:
+| Module | What failed | What it needed |
+|---|---|---|
+| 03-02, 03-04 | the PPAC role editor: *"Loading role failed!"* | six metadata reads the editor's `EntityDefinitions` and `recordfilters` calls make |
+| 01-01 s2-3, 02-01..03, all of 04 | opening an agent in Copilot Studio: *"You need additional access"* | eight Copilot read privileges at Global depth **plus** the built-in `Bot Viewer` |
 
-- **The usual licensing rule does not apply on this path.** Dataverse normally refuses unlicensed users
-  (`userNotLicensed`), and this tenant has zero free seats. The BAP admin `addUser` endpoint adds an
-  unlicensed account to an environment anyway, and a role assigned afterwards works.
+That pattern - the role was a side effect of whichever probe last failed - is why it became a declared
+**access model** (`setup/scripts/_access_model.ps1`): one row per privilege with the exercise step that
+needs it, enforced by Phase 8b on every run and verified by the preflight. Extend it from an exercise's
+requirement. A privilege nobody can tie to a step does not belong in it.
+
+**Why `Bot Viewer` as well, and why neither alone works** (verified 2026-10-16, one combination at a time):
+
+- Copilot Studio reads the agent's `bot` and `botcomponent` rows. The estate's agents belong to the
+  personas, so the attendee needs those reads at **Global** depth. `Bot Viewer` grants them at **Basic**
+  depth - own records only - so on its own it reads nothing.
+- The agent page also reads connection references, AI plugins, workflows, solutions, publishers and
+  environment variables, at the depths Copilot Studio expects. `Bot Viewer` carries those; the custom role
+  does not try to, because Microsoft maintains that set as the product changes.
+- So the custom role carries the Global-depth bot reads and the `Copilot*` set, `Bot Viewer` carries the
+  rest, and the attendee page opens with every privilege still `prvRead*`.
+
+**Why the role is reconciled, not just extended.** The live role had drifted: 22 privileges in one
+environment, 14 in another, against a list of 5, and one of them (`prvReadbot`) was the only reason the
+agent *list* worked at all. A greenfield build would not have had it. Phase 8b now adds what the model
+lists and removes what it does not, so the estate you tested is the estate you deliver. Dataverse stamps a
+baseline onto every custom role (`prvReadSdkMessage*`, `prvReadPluginAssembly`, the SharePoint trio) and
+refuses with 400 to remove it; the model names that baseline so it is reported once, not mistaken for
+drift. **The SharePoint write privileges on a role named "read-only" are that baseline, not a grant** - they
+cannot be removed, and the name stays accurate about everything the kit chose to grant.
+
+**Licensing is a gate too - for the custom role.** An unlicensed account runs in Administrative access
+mode, which *filters* a custom role's privileges (a role holding 18 applied as 15) and lets System
+Administrator through. The single-variable tests, both directions:
+
+| Account | Licence | Role | Role editor / agent page |
+|---|---|---|---|
+| student01 | none | custom (old) | fails |
+| student01 | E5 | custom | **works** |
+| student02 | none | System Administrator | **works** |
+| student03 | none | custom (complete model) + Bot Viewer | fails - "You don't have permission" (2026-10-17) |
+
+So the access model is necessary and, with a seat, sufficient. Without one, the only role that survives is
+System Administrator, which attendees hold only in their own slice. That is why 03-02 and 03-04 route
+there, and why the Copilot Studio configuration reads in 01, 02 and 04 either need a seat per attendee or
+agents built into each slice (08 lists that as not yet wired in).
+
+Three findings from the first build still stand:
+
+- **The usual licensing rule does not apply to `addUser`.** Dataverse normally refuses unlicensed users
+  (`userNotLicensed`); the BAP admin `addUser` endpoint adds one anyway, and a role assigned afterwards works.
 - **Match the account by Entra object id, never by UPN.** A destroy/recreate cycle leaves the previous
-  account's `systemuser` record behind under the *same* UPN. Granting the role to that one reports success
-  while the live account still gets `0x80042f09` — which is exactly what happened on the first attempt.
-- **A Developer environment can refuse `addUser` with 400.** Its owner is its only System Administrator
-  (the same rule Phase 7 hit), so Maker-Sandbox may need a re-run or a manual add. Ex 03 does not depend on
-  it; Claims-Test and Halcourt-Prod carry the agents the exercise maps.
+  account's `systemuser` record behind under the *same* UPN; granting the role to that one reports success
+  while the live account still gets `0x80042f09`.
+- **A Developer environment can refuse `addUser` with 400.** Its owner is its only System Administrator, so
+  Maker-Sandbox may need a re-run or a manual add.
