@@ -198,20 +198,28 @@ unconfirmed for the Dev Program subscription) or whether it bills straight throu
   `azd env set AZURE_SUBSCRIPTION_ID <sub-guid>` and `azd env set AZURE_LOCATION <region>`.
 - `SERVICE_*_IMAGE_NAME` / `SERVICE_*_RESOURCE_EXISTS` values linger in the env's `.env` after `azd down`; they are stale/cosmetic — ignore them.
 
-### Phase 1 · `azd up` fails once on the Foundry account — retry it
+### Phase 1 · `azd up` failed on the Foundry account — a race in the template, now fixed (2026-10-17)
 
-**Expect this on every rebuild** (reproduced on both the 2026-09-22 rebuilds). Every Container App deploys,
-then the run ends with:
+Every rebuild used to end, after every Container App had deployed, with:
 
 ```text
 RequestConflict: Another operation is in progress on the resource
   .../Microsoft.CognitiveServices/accounts/aif-<token>
 ```
 
-It is transient — the account is still settling from the teardown. **Re-run `azd up` and it completes.**
-Two things make this look worse than it is: `azd` exits 0 despite the failure, so check the output rather
-than the exit code, and the deployment outputs (`POLICY_API_FQDN`, `UNDERWRITING_MCP_FQDN`) are **not**
-written to the azd env until the run succeeds — so Phase 6, which reads them, must wait for a clean `azd up`.
+The old note here called it transient — "the account is still settling from the teardown" — and said to
+re-run `azd up`. **That was the wrong cause.** It reproduced on 2026-10-17 on a never-used environment
+name, with no teardown before it. The real cause was in `infra/foundry.bicep`: the Foundry **project** and
+the **model deployment** are both children of the account, nothing ordered them, ARM created both at once,
+and the account accepts one operation at a time. A re-run only appeared to fix it because the deployment
+had already finished the first time.
+
+`foundryProject` now has `dependsOn: [ modelDeployment ]`. Verified the same day on a fresh environment:
+provisioned **first time** in 3m50s, the five-check endpoint smoke test passed, and `azd down --purge
+--force` left no resource group and nothing in soft-delete (teardown takes ~17 minutes).
+
+Two corrections to the old note: on azd 1.32 the failed run exits **1**, not 0. And the deployment outputs
+(`POLICY_API_FQDN`, `UNDERWRITING_MCP_FQDN`) are still only written by a clean run — Phase 6 needs them.
 
 ### Phase 1 · Foundry project soft-delete (AmlRp) — the re-provision trap
 

@@ -71,6 +71,13 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-0
     displayName: 'Claims Triage'
     description: 'Foundry project for the Halcourt Mutual Claims Triage demo agent.'
   }
+  // The project and the model deployment are both children of foundryAccount, and the account accepts one
+  // operation at a time. Without an order between them ARM creates both at once, and whichever loses fails
+  // with "RequestConflict: Another operation is in progress on ... aif-<token>". Reproduced 2026-10-17 on a
+  // brand-new env (no prior teardown); a re-run only 'worked' because the deployment had already finished.
+  dependsOn: [
+    modelDeployment
+  ]
 }
 
 // Chat model deployment on the account. GlobalStandard SKU with param capacity.
