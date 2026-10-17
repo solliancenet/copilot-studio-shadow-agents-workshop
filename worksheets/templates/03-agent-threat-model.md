@@ -25,8 +25,12 @@ not what you expected. After you write each row, compare it with the suggested r
 - **D (confused deputy):** *Who requested the action? Which credential did the call carry, and which system
   authorized it? Did anything check the requester's entitlement? Whose identity was recorded as the actor?*
   → ____________________
-- **E (boundary):** *What auth exists? What authorization? What inputs cross? What comes back?*
-  → ____________________
+- **E (boundary):** answer the four questions for each outbound integration.
+
+  | Integration | Authentication | Authorization | Inputs that cross | Outputs that return |
+  |---|---|---|---|---|
+  |  |  |  |  |  |
+  |  |  |  |  |  |
 
 {: .note }
 > This table is your rudimentary threat model. In Module 5 you return to every row and test whether a
