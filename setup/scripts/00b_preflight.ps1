@@ -187,6 +187,18 @@ Check "Estate agents present ($($agents.Count) in manifest)" '01-01 count; 02-01
   if ($missing.Count) { Result 'FAIL' "missing: $($missing -join '; ') (Phase 6)" } else { Result 'PASS' 'all present' }
 }
 
+Check "Attendees are in the agents' chat audience ($($AudienceGroups -join ', '))" '04-01, 04-02, 04-04: drive the published agents with your own lab account' {
+  $short = @()
+  foreach ($a in $AudienceGroups) {
+    $gn = Get-EstateName $a $Estate
+    $g = (Get-Json "https://graph.microsoft.com/v1.0/groups?`$filter=displayName eq '$gn'&`$select=id" 'https://graph.microsoft.com').value | Select-Object -First 1
+    if (-not $g) { $short += "$gn missing"; continue }
+    $m = @((Get-Json "https://graph.microsoft.com/v1.0/groups/$($g.id)/members?`$select=userPrincipalName&`$top=999" 'https://graph.microsoft.com').value | ForEach-Object { $_.userPrincipalName } | Where-Object { $_ -like "$StudentPrefix*.$Estate@*" })
+    if (-not $m.Count) { $short += "no attendees in $gn" } else { $short += "$($m.Count) in $gn" }
+  }
+  if ($short -match 'missing|no attendees') { Result 'FAIL' (($short -join '; ') + ' - re-run 07') } else { Result 'PASS' ($short -join '; ') }
+}
+
 # --- 4. attendee access, per environment: the access model, enforced? ------------------------------------
 foreach ($en in $wantEnvs) {
   $e = $envs | Where-Object { $_.properties.displayName -eq $en } | Select-Object -First 1

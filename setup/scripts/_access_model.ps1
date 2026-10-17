@@ -34,6 +34,15 @@ $DvRoleName   = 'Lab Reviewer (read-only)'
 #               2026-10-17). Agent 365 itself needs no service plan in the SKU list: the tenant shows the
 #               'Agent 365' service principal and the page renders for AI Reader on DEVELOPERPACK_V2_E5.
 $DirectoryRoles = @('Power Platform Administrator', 'AI Reader')
+
+# Estate groups every attendee joins (plain names; 07 adds the estate suffix). Membership is what lets a
+# lab account CHAT with the published agents: 06 restricts chat on each agent to one security group
+# (accesscontrolpolicy 2), and Exercise 04 has attendees drive Benefits Buddy, Claims Copilot and Expense
+# Helper with their own account (04-01, 04-02, 04-04). All-Employees also makes the attendee an ordinary
+# employee on the HR-Benefits site - the same reach as the Jordan Blake persona, which is the point of
+# Scenario B: the agent reaches Leadership/, the attendee cannot.
+#   NOT Halcourt-Makers: it carries maker rights, so Underwriting Assistant and Sales Nudge stay out of chat.
+$AudienceGroups = @('All-Employees')
 # The Conditional Access policy attendees enrol MFA against (00_conditional_access_baseline.ps1 creates it).
 $CaPolicyName = 'CA-Require-MFA-Admins'
 

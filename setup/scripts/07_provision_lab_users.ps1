@@ -372,6 +372,14 @@ if (-not $NoLicense) {
 $labGroupId = $null
 if ($needsCaExclusion -and $ExcludeFromAdminMfa) { $labGroupId = Get-LabGroupId -CreateIfMissing }
 
+# Resolve the agents' chat-audience groups once. They are estate groups built in Phase 2; missing ones are
+# reported, not created - an audience group this script made would not be the one the agents point at.
+$audienceGroupIds = @(foreach ($a in $AudienceGroups) {
+  $gn = Get-EstateName $a $Estate
+  $g  = @((Graph GET "groups?`$filter=displayName eq '$gn'&`$select=id").value) | Select-Object -First 1
+  if ($g) { [pscustomobject]@{ Name = $gn; Id = $g.id } } else { Write-Warning "Audience group $gn not found (Phase 2) - attendees will not be able to chat with the agents." }
+})
+
 $report = @()
 $provisioned = @()        # upn + object id per account, for the Dataverse role grant
 foreach ($i in 1..$Count) {
@@ -421,12 +429,20 @@ foreach ($i in 1..$Count) {
 
   # Group membership is what the Conditional Access exclusion actually resolves to, so a failure here
   # means that account cannot sign in. Report it per-account rather than failing the run.
-  if (-not $labGroupId) { $row.group = 'n/a (MFA enrolment)' }
-  else {
+  $joined = @()
+  if ($labGroupId) {
     Try-Graph POST "groups/$labGroupId/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
-    if (-not $err -or $err -match 'already exist') { $row.group = $LabGroup }
-    else { $row.group = 'FAILED'; Write-Warning "  $upn - could not join $LabGroup (sign-in will fail): $err" }
+    if (-not $err -or $err -match 'already exist') { $joined += $LabGroup }
+    else { $joined += "$LabGroup FAILED"; Write-Warning "  $upn - could not join $LabGroup (sign-in will fail): $err" }
   }
+  # The agents' chat audience (see $AudienceGroups in _access_model.ps1): without it every attendee is
+  # refused by the agents Exercise 04 asks them to drive.
+  foreach ($ag in $audienceGroupIds) {
+    Try-Graph POST "groups/$($ag.Id)/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
+    if (-not $err -or $err -match 'already exist') { $joined += $ag.Name }
+    else { $joined += "$($ag.Name) FAILED"; Write-Warning "  $upn - could not join $($ag.Name) (cannot chat with the agents): $err" }
+  }
+  $row.group = if ($joined.Count) { $joined -join '; ' } else { 'none' }
 
   # Licensing: attempt, record, never stop the run. This is the column Jim asked for.
   if ($NoLicense)            { $row.license = 'skipped (-NoLicense)' }
