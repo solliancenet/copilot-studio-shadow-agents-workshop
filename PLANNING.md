@@ -233,6 +233,9 @@ before delivery and update `AGENTS.md` if reality differs:
 7. **Agent deletion vs Agent ID:** Microsoft Learn (govern-agents-identities-overview, Oct 2026) says
    deleting an agent removes its Agent ID; 02_01, the 04_06 reveal and 05_05 say identities are left
    behind (observed across lab rebuilds). Confirm in the delivery tenant and align those pages.
+8. **AGENTS.md least-privilege × C:** its reasoning ('scoped role + RLS: only assigned…') assumes a shared
+   service account can see each adjuster's own claims; 05_03 now says a shared identity has one fixed
+   security context. Update AGENTS.md's C row and the 'least privilege, RLS… actually fix them' summary line.
 
 ## Delivery risks
 
