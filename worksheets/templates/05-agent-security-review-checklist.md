@@ -31,9 +31,12 @@ it is promoted to production.
 - [ ] Acting credential is recorded for every knowledge source, connector, tool, flow, HTTP and MCP
       integration.
 - [ ] Permissions are least-privilege (scoped Dataverse role + narrowed record-level access).
-- [ ] Connectors limited to what the job needs; no shared/service-account connections without review.
+- [ ] Connectors, tools and MCP operations limited to what the purpose needs; no shared/service-account
+      connections without review.
 - [ ] Grounding scoped to the minimum necessary content.
-- [ ] HTTP/MCP integrations authenticate per-user where possible; **no secrets in configuration**.
+- [ ] HTTP/MCP integrations authenticate per-user where possible, validate input, and hold **no secrets in
+      configuration**.
+- [ ] The agent's data reach is bounded by its intended users' reach.
 
 ## CONTROL IT — environment, DLP, identity, authorization, data controls
 - [ ] Lives in an environment with appropriate DLP.

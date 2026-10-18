@@ -49,7 +49,21 @@ hold up. As an operating rule, OWN IT means three things. A **business owner**, 
 **security accountability** are named when the agent is registered. The maker who built the agent is
 *not* the security-accountable party by default. And a disabled owner, or an unreviewed shared-mailbox or
 service-account owner, of the agent **or of any connection it uses** is an automatic fail until a live,
-named person is accountable. The tasks below start at SCOPE IT.
+named person is accountable.
+
+SCOPE IT has no task of its own either: it is the access mapping you did in Exercise 03 and the
+least-privilege and grounding retests you ran in Exercise 05. As an operating rule, SCOPE IT means six
+things. The **acting credential** is recorded for every knowledge source, connector, tool, flow, HTTP and
+MCP integration. Dataverse access uses a scoped security role with narrowed record-level access, not a
+broad customizer or admin role. Connectors, tools and MCP operations are limited to what the purpose needs.
+Grounding is narrowed to the minimum content. HTTP and MCP integrations authenticate **per-user where
+possible**, validate their input, and hold **no secrets in configuration**. And the agent's data reach is
+bounded by its intended users' reach. The tasks below start at CONTROL IT.
+
+{: .note }
+> A shared service identity has one fixed security context: scoping it shrinks the blast radius, but
+> requester-specific access needs on-behalf-of authorization. And what an MCP server advertises, what the
+> agent calls, and what the token can invoke are three different lists — scope is set by the widest.
 
 {: .note }
 > This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Halcourt-specific by the end:
@@ -72,11 +86,11 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 15 minutes
+**Estimated time:** 10 minutes
 
 ## Deliverable
 
 The [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %})
 — completed as your operating model and framed as the gate an agent must clear before production. Your
-Exercise 02–03 inventory fills its KNOW IT and OWN IT sections; each task in this exercise builds and
-sharpens one of the other sections, and the final task turns the whole checklist into the promotion gate.
+Exercise 02–03 inventory and Access Map fill its KNOW IT, OWN IT and SCOPE IT sections, with your
+Exercise 05 retests; each task in this exercise builds and sharpens one of the other sections, and the final task turns the whole checklist into the promotion gate.
