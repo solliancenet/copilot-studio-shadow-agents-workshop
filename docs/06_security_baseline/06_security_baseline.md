@@ -5,13 +5,13 @@ nav_order: 8
 has_children: true
 ---
 
-# Build an Agent Security Baseline
+# Exercise 06: Build an Agent Security Baseline
+
+## Scenario
 
 You spent the morning finding out what Halcourt Mutual's agents can actually do. Now turn that into
 something you can hand to a colleague on Monday: an operating model that any agent must pass through
 before it earns production trust.
-
-## Scenario
 
 By this point you have an inventory, an access map, a threat model, and an honest control-efficacy
 matrix. That is a snapshot of *one* estate on *one* day. It is not yet an operating model. When the next
@@ -49,10 +49,11 @@ After this exercise you will be able to:
   baseline** organized as KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT.
 - State, for each stage, the concrete criterion an agent must meet and how to verify it in the live admin
   surfaces, or from a tenant export when you can't reach them.
-- Distinguish the failures that a control genuinely **CLOSES IT** from the ones a platform toggle only
-  **DENTS IT**, and reflect that honesty in the baseline.
-- Define a **production promotion gate** — the hard pass/fail conditions that must be true before any
-  agent is trusted with production data and authority.
+- Carry your Exercise 05 verdicts into the baseline: where a control closed a failure, require it; where
+  it only dented one, require a documented residual-risk decision.
+- Define a **production promotion gate** in three categories — required controls, accepted residual
+  risk, and formal time-limited exceptions — that must be settled before any agent is trusted with
+  production data and authority.
 - Finalize the **Agent Security Review Checklist** as the artifact that enforces the gate.
 
 ## Duration
