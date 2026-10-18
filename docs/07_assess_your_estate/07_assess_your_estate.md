@@ -56,6 +56,7 @@ yours to keep and act on.
 > lab notes. Never paste real secrets or customer data into workshop materials.
 
 {: .note }
-> Since March 2026 every new Copilot Studio agent gets an Entra identity automatically,
-> and Agent 365 went GA in May 2026. The governance surface arrived faster than the
-> governance did — which is exactly why this exercise exists.
+> Every agent created since May 2026 has an Entra Agent ID. Older agents may still use a
+> legacy app registration until Microsoft migrates them. Agent 365 went GA on May 1, 2026.
+> The governance surface arrived faster than the governance did — which is exactly why
+> this exercise exists.
