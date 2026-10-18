@@ -73,11 +73,36 @@ sandbox doing production work needs production DLP, or the agent moves to a mana
 environment. Authorization is enforced against the **requesting user**, not a shared identity, for any
 agent that can change state or read PII. Data protection is verified, not assumed: the label applied,
 whether it encrypts, who holds VIEW and EXTRACT, and any DLP policy keyed on the label. And Conditional
-Access applicability is recorded per path. The tasks below start at WATCH IT.
+Access applicability is recorded per path.
 
 {: .note }
 > Neither DLP nor Conditional Access changes whose credential acts. And Conditional Access on an agent's
 > Agent ID is enforced only when the agent runs in Teams, and requires Microsoft Agent 365 (or E7).
+
+WATCH IT has no task of its own either: it is the audit and Defender work you did in Exercise 05 (Task
+05-07) and the owner and connection-owner lookups from Exercise 02, run on a schedule. As an operating
+rule, WATCH IT means three things:
+
+- **Logging.** Agent actions are logged and attributable. Any agent whose attribution — the
+  `CopilotInteraction` event correlated with the downstream event — is partial or unavailable is flagged
+  for the requesting-user authorization fix under CONTROL IT.
+- **Detection and protection.** Detection and Defender real-time protection are specified per sensitivity
+  class: a PII-handling agent warrants both; a public-FAQ agent does not. "Anomalous" means unusual
+  volumes of records read, access to a sensitive store the agent rarely touches, a new connector
+  appearing, or an action far outside normal hours or patterns. Defender for Cloud Apps, Purview audit and
+  Power Platform activity logs are the surfaces that watch for them.
+- **Reviews.** A lifecycle and permission review runs on a schedule, with a named owner and frequency.
+  Owner departure triggers orphan detection immediately: reassign the business, technical and security
+  roles; review, then replace, reassign or retire connections backed by the departed owner's credentials;
+  and confirm the Agent ID is gone when the agent is retired or deleted, because the Agent ID follows the
+  agent, not the owner. The permission review re-runs the SCOPE IT checks on the same cadence.
+
+{: .note }
+> Most of the estate's worst findings are lifecycle failures a calendar would have caught; orphan
+> detection is the same lookup, run on a schedule.
+
+The one task in this exercise applies all five stages:
+[the production promotion gate]({% link docs/06_security_baseline/06_01.md %}).
 
 {: .note }
 > This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Halcourt-specific by the end:
@@ -87,8 +112,9 @@ Access applicability is recorded per path. The tasks below start at WATCH IT.
 
 After this exercise you will be able to:
 
-- Convert an ad-hoc inventory, access map, and control assessment into a repeatable **agent security
-  baseline** organized as KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT.
+- Convert the inventory, access map, and control assessment from earlier exercises into a repeatable
+  **agent security baseline** organized as KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT, with all
+  five checklist sections filled.
 - State, for each stage, the concrete criterion an agent must meet and how to verify it in the live admin
   surfaces, or from a tenant export when you can't reach them.
 - Carry your Exercise 05 verdicts into the baseline: where a control closed a failure, require it; where
@@ -96,17 +122,17 @@ After this exercise you will be able to:
 - Define a **production promotion gate** in three categories — required controls, accepted residual
   risk, and formal time-limited exceptions — that must be settled before any agent is trusted with
   production data and authority.
-- Finalize the **Agent Security Review Checklist** as the artifact that enforces the gate.
+- Apply the filled **Agent Security Review Checklist** as the gate, and run a Halcourt agent through it.
 
 ## Duration
 
-**Estimated time:** 5 minutes
+**Estimated time:** 10 minutes
 
 ## Deliverable
 
 The [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %})
-— completed as your operating model and framed as the gate an agent must clear before production. Your
-Exercise 02–03 inventory and Access Map fill its KNOW IT, OWN IT and SCOPE IT sections, and your
-Exercise 04 Scenario D evidence and Exercise 05 retests fill SCOPE IT and CONTROL IT. The first task in
-this exercise builds the WATCH IT section, and the second turns the whole checklist into the promotion
-gate.
+— completed as your operating model and framed as the gate an agent must clear before production. The
+earlier exercises fill all five of its sections: your Exercise 02–03 inventory and Access Map fill KNOW
+IT, OWN IT and SCOPE IT; your Exercise 04 Scenario D evidence and Exercise 05 retests fill SCOPE IT and
+CONTROL IT; and your Exercise 05 audit work and Exercise 02 owner lookups fill WATCH IT. The task in this
+exercise applies them as the promotion gate.

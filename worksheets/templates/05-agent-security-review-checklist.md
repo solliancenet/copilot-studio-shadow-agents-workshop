@@ -51,11 +51,21 @@ it is promoted to production.
       applicable policy).
 
 ## WATCH IT — logging, detection, lifecycle
-- [ ] Actions are logged; attribution tested and recorded (complete / cross-log only / partial /
-      unavailable).
-- [ ] Detection exists for anomalous behavior / exfiltration.
-- [ ] Scheduled lifecycle + permission review; owner departure triggers role reassignment and connection
-      review; the agent's identity is retired with the agent.
+- [ ] Actions are logged; attribution (the `CopilotInteraction` event correlated with the downstream
+      event) tested and recorded as complete / cross-log only / partial / unavailable.
+- [ ] Partial or unavailable attribution is flagged for the requesting-user authorization fix under
+      CONTROL IT.
+- [ ] Detection and Defender real-time protection are specified for this agent's sensitivity class (a
+      PII-handling agent gets both; a public-FAQ agent does not).
+- [ ] Detection covers unusual record volumes, access to a rarely touched sensitive store, a new
+      connector, and actions far outside normal hours or patterns.
+- [ ] A lifecycle and permission review is scheduled. Review owner: ____________  Frequency: ________
+- [ ] The permission review re-runs the SCOPE IT checks on the same cadence.
+- [ ] Owner departure triggers orphan detection immediately: business, technical and security roles
+      reassigned; connections backed by the departed owner's credentials reviewed, then replaced,
+      reassigned or retired.
+- [ ] When the agent is retired or deleted, its Agent ID is confirmed gone (it follows the agent, not the
+      owner).
 
 ## Production promotion gate
 
