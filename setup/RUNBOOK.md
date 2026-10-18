@@ -133,6 +133,7 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 3. Environments + DLP          → 4 environments, prod DLP, PAYG billing plan
 4. SharePoint seed             → HR-Benefits + Claims-Knowledge, PLANT the poisoned doc
 4b. Maker OneDrive             → provision + seed dev.kim's OneDrive (Meeting Notes grounding)
+4c. Purview                    → Confidential-PII label + labelled comp copy (05-06); DAYS before delivery
 5. Dataverse seed              → Claim + Customer tables, PII rows, the over-broad role
 6. Author the agents           → as each owner, from the committed workspaces
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
@@ -484,6 +485,32 @@ https://<tenant>-my.sharepoint.com/personal/dev_kim_<estate>_<tenant>_onmicrosof
 
 Why the maker does this rather than the admin:
 [decisions → Phase 4b](../reference/runbook-decisions.md#why-the-maker-provisions-their-own-onedrive).
+
+### Phase 4c — Purview: the label and the labelled comp copy (Lab 05-06)
+
+Run it **days before the delivery**: a new label reaches SharePoint late, and SharePoint search has to
+index the labelled copy before 05-06 can be retested. It needs Phase 4's `HR-Benefits-<estate>` site.
+
+```bash
+pwsh setup/scripts/03c_provision_purview.ps1          # rerun until it prints "copy labelled: True"
+```
+
+It creates `HR-Leadership-<estate>` (Marcus), the **encrypting** label `Confidential-PII-<estate>` (VIEW +
+EXTRACT for that group only), the label policy `Halcourt-Labels-<estate>`, and
+`Leadership/2026-comp-bands-labeled.xlsx` - the comp bands plus a `LABELLED-COPY-<estate>` marker row - then
+labels that copy. The original `2026-comp-bands.xlsx` stays **unlabelled**: Exercise 04 needs it.
+
+Its step 0 creates what it signs in as, once per tenant (idempotent - a rerun finds them):
+
+| What | Why |
+|---|---|
+| App registration `halcourt-lab-compliance` with a certificate in `setup/lab-compliance-app.local.{json,pfx}` (gitignored) | Security & Compliance PowerShell refuses the az token, and `Connect-IPPSSession -Certificate` fails on Linux; the script mints the app-only token itself |
+| That app: **Compliance Administrator**, `Exchange.ManageAsApp`, Graph `Files.ReadWrite.All`, SharePoint `Sites.FullControl.All` | label + policy; copy + label assignment; the tenant's label integration |
+| A `Microsoft.GraphServices/accounts` resource linking the app to the subscription (`rg-halcourt-graph-billing`) | `assignSensitivityLabel` is a metered Graph API |
+
+Expect two lags, both handled by rerunning: the new group isn't an Exchange recipient for a while (the policy
+publishes to Marcus until it is), and the label assignment says `labelNotFound` until the label replicates.
+Details: [errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18).
 
 ### Phase 5 — Dataverse seed
 

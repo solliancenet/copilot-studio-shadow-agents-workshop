@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "connectionParameters": {
+      "api_key": {
+        "type": "securestring",
+        "uiDefinition": {
+          "displayName": "API key",
+          "description": "The Underwriting MCP server's shared bearer, as 'Bearer <token>'.",
+          "tooltip": "Static shared bearer - the Scenario E finding.",
+          "constraints": { "tabIndex": 2, "clearText": false, "required": "true" }
+        }
+      }
+    },
+    "iconBrandColor": "#007ee5",
+    "capabilities": [],
+    "publisher": "Halcourt lab",
+    "stackOwner": "Halcourt lab"
+  }
+}

@@ -1,0 +1,243 @@
+<#
+FACILITATOR-ONLY. Phase 4c - Purview for Lab 05-06 (issue #12).
+
+Creates what 05-06 inspects and retests, and seeds it early enough for SharePoint search to index it:
+  1. HR-Leadership-<estate>: a mail-enabled group (encryption rights need an address) holding Marcus Webb.
+  2. Sensitivity label Confidential-PII-<estate>: ENCRYPTING, VIEW + EXTRACT for HR-Leadership-<estate> only.
+     Copilot Studio can't ground on a file under an encrypting label, even for users who can open it -
+     the behaviour 05-06 relies on.
+  3. Label policy Halcourt-Labels-<estate>, publishing it to HR-Leadership-<estate>.
+  4. SharePoint's sensitivity-label integration (EnableAIPIntegration), so SharePoint applies and honours it.
+  5. Leadership/2026-comp-bands-labeled.xlsx in HR-Benefits-<estate>: the comp bands plus a marker row
+     (LABELLED-COPY-<estate>) so a retest can tell which copy answered, labelled Confidential-PII-<estate>.
+     The original Leadership/2026-comp-bands.xlsx is left UNLABELLED - Exercise 04 needs it reachable.
+  6. Checks: the SSN sensitive information type exists; the copy carries the label; search sees the marker.
+
+Auth, all non-interactive, one app: halcourt-lab-compliance (certificate in setup/lab-compliance-app.local.*,
+gitignored), holding Compliance Administrator + Exchange.ManageAsApp (Security & Compliance PowerShell),
+Graph Files.ReadWrite.All (copy + label assignment) and SharePoint Sites.FullControl.All (tenant setting).
+assignSensitivityLabel is a METERED Graph API: the app is linked to a Microsoft.GraphServices/accounts
+billing resource (rg-halcourt-graph-billing). Group creation uses the az admin sign-in, like 01.
+Why not the az token for Purview: Security & Compliance PowerShell refuses it (UnAuthorized), and
+Connect-IPPSSession -Certificate fails inside the module on Linux (NewEXOModule null reference), so this
+script mints the app-only token itself and passes -AccessToken. Measured 2026-10-18.
+
+ASCII only.
+#>
+param(
+  [string]$Estate       = $env:HALCOURT_ESTATE,
+  [string]$AppConfig    = (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.json'),
+  [string]$Pfx          = (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.pfx'),
+  [switch]$SkipSearchCheck
+)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_estate.ps1')
+if (-not $Estate) { throw 'Pass -Estate or set HALCOURT_ESTATE.' }
+
+# ---- 0. the compliance app (tenant-wide, made once; idempotent) -----------------------------------------
+# Everything this script signs in as is created here, so a fresh tenant needs nothing done by hand.
+function Ensure-ComplianceApp {
+  $name = 'halcourt-lab-compliance'
+  $app  = az ad app list --display-name $name --query '[0].appId' -o tsv
+  $haveCfg = (Test-Path $AppConfig) -and (Test-Path $Pfx)
+  if ($app -and $haveCfg) { return }
+  if (-not $app) { $app = az ad app create --display-name $name --query appId -o tsv; Write-Host "0. created app $name ($app)" }
+  if (-not $haveCfg) {
+    # A fresh certificate; the private half stays in setup/*.local.pfx (gitignored), the public half on the app.
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) "cmp-$([guid]::NewGuid().ToString('N'))"; New-Item -ItemType Directory $tmp | Out-Null
+    $pw = -join ((48..57) + (97..102) | Get-Random -Count 24 | ForEach-Object { [char]$_ })
+    & openssl req -x509 -newkey rsa:2048 -nodes -keyout "$tmp/k.pem" -out "$tmp/c.crt" -days 365 -subj "/CN=$name" 2>$null
+    & openssl pkcs12 -export -out $Pfx -inkey "$tmp/k.pem" -in "$tmp/c.crt" -passout "pass:$pw"
+    az ad app credential reset --id $app --cert "@$tmp/c.crt" --append --only-show-errors | Out-Null
+    $org = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isInitial].name | [0]" -o tsv
+    @{ appId = $app; pfxPassword = $pw; organization = $org } | ConvertTo-Json | Set-Content $AppConfig
+    Remove-Item $tmp -Recurse -Force
+    Write-Host "0. certificate -> $Pfx (gitignored)"
+  }
+  $sp = az ad sp list --filter "appId eq '$app'" --query '[0].id' -o tsv
+  if (-not $sp) { $sp = az ad sp create --id $app --query id -o tsv }
+  # Application permissions, admin-consented by assigning the app roles directly.
+  foreach ($grant in @(@('00000002-0000-0ff1-ce00-000000000000', 'Exchange.ManageAsApp'),   # Security & Compliance PowerShell
+                       @('00000003-0000-0000-c000-000000000000', 'Files.ReadWrite.All'),    # copy + assignSensitivityLabel
+                       @('00000003-0000-0ff1-ce00-000000000000', 'Sites.FullControl.All'))) { # SPO tenant setting
+    $res  = az ad sp list --filter "appId eq '$($grant[0])'" --query '[0].id' -o tsv
+    $role = az ad sp show --id $grant[0] --query "appRoles[?value=='$($grant[1])'].id | [0]" -o tsv
+    $have = az rest --method GET --url "https://graph.microsoft.com/v1.0/servicePrincipals/$sp/appRoleAssignments" --query "value[?appRoleId=='$role'] | length(@)" -o tsv
+    if ($have -eq '0') {
+      az ad app permission add --id $app --api $grant[0] --api-permissions "$role=Role" --only-show-errors 2>$null | Out-Null
+      $b = @{ principalId = $sp; resourceId = $res; appRoleId = $role } | ConvertTo-Json -Compress; $f = New-TemporaryFile; Set-Content $f $b
+      az rest --method POST --url "https://graph.microsoft.com/v1.0/servicePrincipals/$sp/appRoleAssignments" --body "@$f" | Out-Null; Remove-Item $f
+      Write-Host "0. granted $($grant[1])"
+    }
+  }
+  $tpl = az rest --method GET --url 'https://graph.microsoft.com/v1.0/directoryRoleTemplates' --query "value[?displayName=='Compliance Administrator'].id | [0]" -o tsv
+  $hasRole = az rest --method GET --url "https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments?`$filter=principalId eq '$sp' and roleDefinitionId eq '$tpl'" --query 'value | length(@)' -o tsv
+  if ($hasRole -eq '0') {
+    $b = @{ principalId = $sp; roleDefinitionId = $tpl; directoryScopeId = '/' } | ConvertTo-Json -Compress; $f = New-TemporaryFile; Set-Content $f $b
+    az rest --method POST --url 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments' --body "@$f" | Out-Null; Remove-Item $f
+    Write-Host '0. Compliance Administrator assigned'
+  }
+  # assignSensitivityLabel is metered: link the app to this subscription for billing.
+  az provider register -n Microsoft.GraphServices --wait --only-show-errors | Out-Null
+  $rg = 'rg-halcourt-graph-billing'
+  if ((az group exists -n $rg) -ne 'true') { az group create -n $rg -l eastus2 --only-show-errors | Out-Null }
+  if (-not (az resource list -g $rg --resource-type Microsoft.GraphServices/accounts --query "[?properties.appId=='$app'].id | [0]" -o tsv)) {
+    az resource create -g $rg -n "$name-billing" --resource-type Microsoft.GraphServices/accounts --properties "{`"appId`":`"$app`"}" --location global --only-show-errors | Out-Null
+    Write-Host '0. Graph metered-API billing linked'
+  }
+  Write-Host '0. (new app: allow a few minutes for its role and permissions to take effect)'
+}
+Ensure-ComplianceApp
+
+$cfg      = Get-Content $AppConfig -Raw | ConvertFrom-Json
+$domain   = $cfg.organization
+$tenantId = az account show --query tenantId -o tsv
+$tenant   = $domain.Split('.')[0]
+
+$groupName = Get-EstateName 'HR-Leadership' $Estate
+$labelName = Get-EstateName 'Confidential-PII' $Estate
+$labelDisp = Get-EstateDisplayName 'Confidential-PII' $Estate
+$policy    = Get-EstateName 'Halcourt-Labels' $Estate
+$siteAlias = Get-EstateName 'HR-Benefits' $Estate
+$marker    = "LABELLED-COPY-$Estate"
+$copyName  = '2026-comp-bands-labeled.xlsx'
+
+# ---- app-only tokens: a certificate client assertion, signed here (no MSAL dependency) ---------------
+function Get-AppToken([string]$Resource) {
+  $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Pfx, $cfg.pfxPassword,
+          [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
+  $b64 = { param([byte[]]$b) [Convert]::ToBase64String($b).TrimEnd('=').Replace('+', '-').Replace('/', '_') }
+  $aud = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
+  $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+  $h = & $b64 ([Text.Encoding]::UTF8.GetBytes((@{ alg = 'RS256'; typ = 'JWT'; x5t = (& $b64 $cert.GetCertHash()) } | ConvertTo-Json -Compress)))
+  $p = & $b64 ([Text.Encoding]::UTF8.GetBytes((@{ aud = $aud; iss = $cfg.appId; sub = $cfg.appId; jti = [guid]::NewGuid().ToString(); nbf = $now; exp = $now + 600 } | ConvertTo-Json -Compress)))
+  $rsa = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($cert)
+  $sig = & $b64 ($rsa.SignData([Text.Encoding]::UTF8.GetBytes("$h.$p"), [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+                               [System.Security.Cryptography.RSASignaturePadding]::Pkcs1))
+  $body = @{ client_id = $cfg.appId; grant_type = 'client_credentials'; scope = "$($Resource.TrimEnd('/'))/.default"
+             client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'; client_assertion = "$h.$p.$sig" }
+  (Invoke-RestMethod -Method POST -Uri $aud -Body $body).access_token
+}
+function Graph([string]$Method, [string]$Path, $Body, [string]$ContentType = 'application/json') {
+  $h = @{ Authorization = "Bearer $script:graphToken" }
+  $uri = if ($Path -like 'https://*') { $Path } else { "https://graph.microsoft.com/v1.0/$Path" }
+  if ($null -eq $Body) { return Invoke-RestMethod -Method $Method -Uri $uri -Headers $h }
+  if ($Body -is [byte[]]) { return Invoke-RestMethod -Method $Method -Uri $uri -Headers $h -Body $Body -ContentType $ContentType }
+  Invoke-RestMethod -Method $Method -Uri $uri -Headers $h -Body ($Body | ConvertTo-Json -Depth 8) -ContentType $ContentType
+}
+
+# ---- 1. the group -------------------------------------------------------------------------------------
+Write-Host "1. Group $groupName"
+$marcus = az ad user show --id "$(Get-EstateAlias 'marcus.webb' $Estate)@$domain" --query id -o tsv
+$g = az rest --method get --url "https://graph.microsoft.com/v1.0/groups?`$filter=displayName eq '$groupName'&`$select=id,mail" --query 'value[0]' -o json | ConvertFrom-Json
+if (-not $g) {
+  $body = @{ displayName = $groupName; mailNickname = $groupName; mailEnabled = $true; securityEnabled = $true
+             groupTypes = @('Unified'); visibility = 'Private'
+             description = "Halcourt lab (estate $Estate): HR leadership - the only principals $labelName grants VIEW/EXTRACT."
+             'members@odata.bind' = @("https://graph.microsoft.com/v1.0/users/$marcus")
+             'owners@odata.bind'  = @("https://graph.microsoft.com/v1.0/users/$marcus") } | ConvertTo-Json -Compress
+  $tmp = New-TemporaryFile; Set-Content $tmp $body
+  $g = az rest --method post --url 'https://graph.microsoft.com/v1.0/groups' --body "@$tmp" --query '{id:id,mail:mail}' -o json | ConvertFrom-Json
+  Remove-Item $tmp; Write-Host "   created ($($g.mail))"
+} else { Write-Host "   exists ($($g.mail))" }
+
+# ---- 2-3. label and policy (Security & Compliance PowerShell, app-only) ------------------------------------
+Import-Module ExchangeOnlineManagement
+Connect-IPPSSession -AccessToken (Get-AppToken 'https://ps.compliance.protection.outlook.com') -Organization $domain -ShowBanner:$false
+Write-Host "2. Label $labelName"
+$label = Get-Label -Identity $labelName -ErrorAction SilentlyContinue
+if (-not $label) {
+  $label = New-Label -Name $labelName -DisplayName $labelDisp -ContentType 'File, Email' `
+    -Tooltip 'Halcourt PII and compensation. Encrypted: HR leadership may view and extract; nobody else can open it.' `
+    -EncryptionEnabled $true -EncryptionProtectionType Template `
+    -EncryptionRightsDefinitions "$($g.mail):VIEW,EXTRACT" -EncryptionContentExpiredOnDateInDaysOrNever Never
+  Write-Host "   created ($($label.ImmutableId))"
+} else { Write-Host "   exists ($($label.ImmutableId))" }
+Write-Host "3. Label policy $policy"
+if (-not (Get-LabelPolicy -Identity $policy -ErrorAction SilentlyContinue)) {
+  # A brand-new Microsoft 365 group isn't an Exchange recipient for a while ("couldn't be found"), so fall
+  # back to its one member; a later run adds the group. Encryption rights already name the group either way.
+  try   { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation $g.mail -ErrorAction Stop | Out-Null; Write-Host '   created (group)' }
+  catch { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation "$(Get-EstateAlias 'marcus.webb' $Estate)@$domain" | Out-Null
+          Write-Host '   created (Marcus only - group not yet an Exchange recipient; rerun to add it)' }
+} else {
+  $pol = Get-LabelPolicy -Identity $policy
+  if (@($pol.ExchangeLocation.Name) -notcontains $g.mail) {
+    try { Set-LabelPolicy -Identity $policy -AddExchangeLocation $g.mail -ErrorAction Stop | Out-Null; Write-Host '   exists; group added' }
+    catch { Write-Host '   exists (group still not an Exchange recipient)' }
+  } else { Write-Host '   exists' }
+}
+$ssn = Get-DlpSensitiveInformationType | Where-Object Name -match '^U\.S\. Social Security Number' | Select-Object -First 1
+Write-Host "   SSN sensitive information type: $(if ($ssn) { $ssn.Name } else { 'MISSING' })"
+
+# ---- 4. SharePoint honours labels -------------------------------------------------------------------
+Write-Host '4. SharePoint sensitivity-label integration'
+$spAdmin = "https://$tenant-admin.sharepoint.com"
+$spTok = Get-AppToken $spAdmin
+$cur = Invoke-RestMethod -Uri "$spAdmin/_api/SPO.Tenant?`$select=EnableAIPIntegration" -Headers @{ Authorization = "Bearer $spTok"; Accept = 'application/json' }
+if (-not $cur.EnableAIPIntegration) {
+  Invoke-RestMethod -Method POST -Uri "$spAdmin/_api/SPO.Tenant" -ContentType 'application/json' -Body '{"EnableAIPIntegration":true}' `
+    -Headers @{ Authorization = "Bearer $spTok"; Accept = 'application/json'; 'X-HTTP-Method' = 'MERGE'; 'IF-MATCH' = '*' } | Out-Null
+  Write-Host '   enabled'
+} else { Write-Host '   already on' }
+
+# ---- 5. the labelled copy ------------------------------------------------------------------------------
+Write-Host "5. $copyName"
+$script:graphToken = Get-AppToken 'https://graph.microsoft.com'
+$site  = Graph GET "sites/$tenant.sharepoint.com:/sites/$($siteAlias)"
+$drive = Graph GET "sites/$($site.id)/drive"
+$item  = $null
+try { $item = Graph GET "drives/$($drive.id)/root:/Leadership/$($copyName)" } catch { }
+if (-not $item) {
+  # The same generator 03 uses for the original, loaded from 03 itself so the two can't drift.
+  $ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot '03_provision_sharepoint.ps1'), [ref]$null, [ref]$null)
+  $fn  = $ast.Find({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $args[0].Name -eq 'New-MinimalXlsxFromCsv' }, $true)
+  . ([scriptblock]::Create($fn.Extent.Text))
+  $work = Join-Path ([IO.Path]::GetTempPath()) "purview-$Estate"; New-Item -ItemType Directory -Force $work | Out-Null
+  $csv  = Join-Path $work 'labeled.csv'
+  $rows = @(Import-Csv (Join-Path (Split-Path -Parent $PSScriptRoot) 'data/leadership-comp.csv'))
+  $marked = $rows[0].psobject.Copy(); foreach ($p in $marked.psobject.Properties) { $p.Value = '' }
+  $marked.psobject.Properties | Select-Object -First 1 | ForEach-Object { $_.Value = "$marker (labelled copy - not the original)" }
+  ($rows + $marked) | Export-Csv $csv -NoTypeInformation -Encoding UTF8
+  New-MinimalXlsxFromCsv -CsvPath $csv -OutPath (Join-Path $work $copyName) -SheetName '2026 Comp Bands'
+  $item = Graph PUT "drives/$($drive.id)/root:/Leadership/$($copyName):/content" ([IO.File]::ReadAllBytes((Join-Path $work $copyName))) `
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  Write-Host "   uploaded ($($item.id))"
+} else { Write-Host "   exists ($($item.id))" }
+$have = (Graph POST "drives/$($drive.id)/items/$($item.id)/extractSensitivityLabels" @{}).labels
+if (-not ($have | Where-Object sensitivityLabelId -eq $label.ImmutableId)) {
+  try {
+    Graph POST "drives/$($drive.id)/items/$($item.id)/assignSensitivityLabel" @{
+      sensitivityLabelId = "$($label.ImmutableId)"; assignmentMethod = 'privileged'
+      justificationText  = 'Halcourt lab seed for Lab 05-06 (issue #12)' } | Out-Null
+    Write-Host "   label assignment requested (async)"
+  } catch {
+    # A new label (and its policy) reaches SharePoint late - often about an hour, up to 24. Until then the
+    # assignment says labelNotFound. Everything above is idempotent: rerun this script later.
+    if ("$_" -match 'labelNotFound') {
+      Write-Host "   label not yet replicated to SharePoint (labelNotFound) - rerun later; the delivery needs it indexed"
+      Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null; return
+    }
+    throw
+  }
+} else { Write-Host '   already labelled' }
+
+# ---- 6. checks ------------------------------------------------------------------------------------
+Write-Host '6. Checks'
+for ($i = 0; $i -lt 12; $i++) {
+  $have = (Graph POST "drives/$($drive.id)/items/$($item.id)/extractSensitivityLabels" @{}).labels
+  if ($have | Where-Object sensitivityLabelId -eq $label.ImmutableId) { break }
+  Start-Sleep 10
+}
+Write-Host "   copy labelled: $([bool]($have | Where-Object sensitivityLabelId -eq $label.ImmutableId))"
+try {
+  $orig = Graph GET "drives/$($drive.id)/root:/Leadership/2026-comp-bands.xlsx"
+  $ol = (Graph POST "drives/$($drive.id)/items/$($orig.id)/extractSensitivityLabels" @{}).labels
+  Write-Host "   original unlabelled: $(-not $ol)"
+} catch { Write-Host '   original: NOT FOUND (run 03 first)' }
+if (-not $SkipSearchCheck) {
+  $q = @{ requests = @(@{ entityTypes = @('driveItem'); query = @{ queryString = "`"$marker`"" }; region = 'NAM' }) }
+  $hits = (Graph POST 'search/query' $q).value[0].hitsContainers[0].total
+  Write-Host "   search sees the marker: $([bool]$hits) ($hits hit(s)) - indexing can take hours; rerun with nothing to create to recheck"
+}
+Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null

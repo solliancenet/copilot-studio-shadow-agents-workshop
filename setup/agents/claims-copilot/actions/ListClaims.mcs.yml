@@ -5,6 +5,12 @@ kind: TaskDialog
 modelDisplayName: List claims
 modelDescription: "List claim rows from the claims database. Runs on the shared claims service-account connection."
 inputs:
+  # "List rows from selected environment". The current-environment op (ListRecords) returns HTTP 400 from a
+  # Copilot Studio tool - there is no environment context to resolve - so name the environment explicitly.
+  - kind: ManualTaskInput
+    propertyName: organization
+    value: ${ENV_ORG_URL}
+
   - kind: ManualTaskInput
     propertyName: entityName
     value: mm_claims
@@ -15,6 +21,6 @@ action:
   connectionProperties:
     mode: Maker
 
-  operationId: ListRecords
+  operationId: ListRecordsWithOrganization
 
 outputMode: All

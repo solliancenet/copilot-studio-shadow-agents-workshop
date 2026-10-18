@@ -116,6 +116,29 @@ function Get-Prefix([object]$E) {
 }
 
 # ---- Dataverse (as admin, or as a persona) ------------------------------------------------------------
+function Invoke-BindWithTempRole([object]$E, [string]$Owner, [string]$CrefId, [string]$ConnId) {
+  # Privileges the connection reference PATCH checks on the caller (each named, in turn, by its 403).
+  $need = 'prvReadconnectionreference', 'prvWriteconnectionreference', 'prvReadAsyncOperation'
+  $bu   = (Dv $E GET 'businessunits?$select=businessunitid&$filter=parentbusinessunitid eq null').value[0].businessunitid
+  $name = "Lab-Bind-Temp-$([guid]::NewGuid().ToString('N').Substring(0,6))"
+  Dv $E POST 'roles' @{ name = $name; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
+  $rid  = (Dv $E GET "roles?`$select=roleid&`$filter=name eq '$name'").value[0].roleid
+  $su   = $null
+  try {
+    $privs = foreach ($n in $need) { @{ PrivilegeId = (Dv $E GET "privileges?`$select=privilegeid&`$filter=name eq '$n'").value[0].privilegeid; Depth = 'Global' } }
+    Dv $E POST "roles($rid)/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = @($privs) } | Out-Null
+    $su = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$(Get-Upn $Owner)'").value[0].systemuserid
+    Dv $E POST "systemusers($su)/systemuserroles_association/`$ref" @{ '@odata.id' = "$($E.Org)/api/data/v9.2/roles($rid)" } | Out-Null
+    for ($i = 0; $i -lt 6; $i++) {
+      Start-Sleep 20
+      try { DvAs $E $Owner PATCH "connectionreferences($CrefId)" @{ connectionid = $ConnId } | Out-Null; return $true } catch { }
+    }
+    return $false
+  } finally {
+    if ($su) { try { Dv $E DELETE "systemusers($su)/systemuserroles_association($rid)/`$ref" | Out-Null } catch { } }
+    try { Dv $E DELETE "roles($rid)" | Out-Null } catch { Write-Host "    (remove the temporary role '$name' by hand)" }
+  }
+}
 function Dv([object]$E, [string]$Method, [string]$Path, $Body) {
   Invoke-Json $Method "$($E.Org)/api/data/v9.2/$Path" (Get-AdminToken $E.Org) $Body
 }
@@ -178,17 +201,55 @@ function Pa([string]$Alias, [string]$Method, [string]$Path, $Body, [string]$EnvI
   if ($EnvId) { $q += "&`$filter=environment eq '$EnvId'" }
   Invoke-Json $Method "$PA/$Path$q" (Get-PersonaToken $Alias 'https://service.powerapps.com/') $Body
 }
+# ---- custom connectors (the Underwriting MCP server as a Copilot Studio MCP tool) ---------------------
+# Copilot Studio caps a connector's display name at 30 characters and silently truncates; do the same, so a
+# rerun finds the connector it made (Halcourt-Underwriting-MCP-<estate> -> ...-mgra for estate mgray).
+function Get-CustomConnectorDisplay([object]$Def) { $n = Get-EstateName $Def.customConnector.name $Estate; if ($n.Length -gt 30) { $n.Substring(0, 30) } else { $n } }
+$script:CustomConnectors = @{}
+function Find-CustomConnector([object]$Def) {
+  $E = Env $Def.environment; $want = Get-CustomConnectorDisplay $Def
+  $all = (Invoke-Json GET "$PA/apis?api-version=2016-11-01&`$filter=environment eq '$($E.Id)' and IsCustomApi eq 'True'" (Get-PersonaToken $Def.owner 'https://service.powerapps.com/') $null).value
+  ($all | Where-Object { $_.properties.displayName -eq $want } | Select-Object -First 1).name
+}
+function Ensure-CustomConnector([string]$Name, [object]$Def) {
+  if ($script:CustomConnectors[$Name]) { return $script:CustomConnectors[$Name] }
+  $id = Find-CustomConnector $Def
+  if (-not $id -and -not $VerifyOnly) {
+    # The MCP wizard's own output, committed (setup/agents/<ws>/mcp-connector): one POST operation marked
+    # x-ms-agentic-protocol mcp-streamable-1.0, API-key auth in the Authorization header. Created as the
+    # connection's owner with pac, so the connector, its connection and the agent all belong to one maker.
+    $src = Join-Path $AgentsDir $Def.customConnector.workspace
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) "halcourt-connector/$Name"; New-Item -ItemType Directory -Force $tmp | Out-Null
+    $host_ = ([Uri]$AzdValues['UNDERWRITING_MCP_FQDN']).Host
+    (Get-Content (Join-Path $src 'apiDefinition.swagger.json') -Raw).Replace('${UNDERWRITING_MCP_HOST}', $host_).Replace('${MCP_CONNECTOR_NAME}', (Get-CustomConnectorDisplay $Def)) |
+      Set-Content (Join-Path $tmp 'apiDefinition.swagger.json') -NoNewline
+    Copy-Item (Join-Path $src 'apiProperties.json') $tmp -Force
+    $E = Env $Def.environment
+    $env:XDG_DATA_HOME = Get-PacHome $Def.owner
+    & $realPac auth clear 2>&1 | Out-Null
+    & $realPac auth create --name $Def.owner --username (Get-Upn $Def.owner) --password $LabPassword --environment $E.Org 2>&1 | Out-Null
+    $out = & $realPac connector create --api-definition-file (Join-Path $tmp 'apiDefinition.swagger.json') --api-properties-file (Join-Path $tmp 'apiProperties.json') --environment $E.Org 2>&1
+    for ($i = 0; $i -lt 6 -and -not $id; $i++) { Start-Sleep 10; $id = Find-CustomConnector $Def }
+    if (-not $id) { throw "custom connector for $Name not created: $(($out | Select-Object -Last 2) -join ' ')" }
+  }
+  $script:CustomConnectors[$Name] = $id; $id
+}
+function Get-ConnectorId([string]$Name) {   # the shared_* id, or the generated id of a custom connector
+  $def = $manifest.connections.$Name
+  if ($def.connector -eq 'custom') { Ensure-CustomConnector $Name $def } else { $def.connector }
+}
+
 $script:ConnIds = @{}
 function Get-ConnId([string]$Name) {
   if ($script:ConnIds[$Name]) { return $script:ConnIds[$Name] }
   $def = $manifest.connections.$Name; $E = Env $def.environment
-  $c = (Pa $def.owner GET "apis/$($def.connector)/connections" $null $E.Id).value |
+  $c = (Pa $def.owner GET "apis/$(Get-ConnectorId $Name)/connections" $null $E.Id).value |
     Where-Object { $_.properties.displayName -eq $Name -and $_.properties.createdBy.userPrincipalName -eq (Get-Upn $def.owner) } | Select-Object -First 1
   if ($c) { $script:ConnIds[$Name] = $c.name }
   $script:ConnIds[$Name]
 }
 function Ensure-Connection([string]$Name, [object]$Def) {
-  $E = Env $Def.environment; $alias = $Def.owner; $connector = $Def.connector
+  $E = Env $Def.environment; $alias = $Def.owner; $connector = Get-ConnectorId $Name
   $upn = Get-Upn $alias
   $mine = @((Pa $alias GET "apis/$connector/connections" $null $E.Id).value | Where-Object {
     $_.properties.createdBy.userPrincipalName -eq $upn -and $_.properties.displayName -eq $Name })
@@ -198,7 +259,14 @@ function Ensure-Connection([string]$Name, [object]$Def) {
   $c = if ($mine) { $mine[0] } else {
     $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name }
     if ($Def.params) { $props.connectionParameters = $Def.params }
+    if ($Def.apiKeyFrom) { $props.connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
     Pa $alias PUT "apis/$connector/connections/$([guid]::NewGuid().ToString('N'))" @{ properties = $props } $E.Id
+  }
+  if ($Def.apiKeyFrom) {
+    # An API-key connection has no OAuth consent: it is Connected (or not) as soon as it exists.
+    $st = @((Pa $alias GET "apis/$connector/connections/$($c.name)" $null $E.Id).properties.statuses.status)
+    if ($st -contains 'Error') { throw "connection $Name is in Error: $($st -join ',')" }
+    $script:ConnIds[$Name] = $c.name; return "created ($($c.name), API key)"
   }
   $link = (Pa $alias POST "apis/$connector/connections/$($c.name)/getConsentLink" @{ redirectUrl = 'https://global.consent.azure-apim.net/redirect' } $E.Id).consentLink
   $out = python3 (Join-Path $PSScriptRoot 'lib/consent_browser.py') --upn $upn --password $LabPassword --consent-url $link 2>&1
@@ -336,12 +404,35 @@ function Provision-Agent([object]$A) {
   Get-ChildItem $wsdir -Recurse -Include *.mcs.yml | ForEach-Object {
     $c = Get-Content $_.FullName -Raw; $changed = $false
     foreach ($k in $AzdValues.Keys) { $tok = '${' + $k + '}'; if ($c.Contains($tok)) { $c = $c.Replace($tok, $AzdValues[$k]); $changed = $true } }
+    # The agent's own environment URL, for Dataverse tools that must name it (claims-copilot's List rows).
+    if ($c.Contains('${ENV_ORG_URL}')) { $c = $c.Replace('${ENV_ORG_URL}', $E.Org); $changed = $true }
+    # A custom connector's generated id, and its display name (the MCP tool's name in Copilot Studio).
+    foreach ($x in [regex]::Matches($c, '\$\{CONNECTOR:([^}]+)\}')) { $c = $c.Replace($x.Value, (Get-ConnectorId $x.Groups[1].Value)); $changed = $true }
+    if ($c.Contains('${MCP_CONNECTOR_NAME}')) {
+      $mcpDef = $manifest.connections.PSObject.Properties | Where-Object { $_.Value.connector -eq 'custom' } | Select-Object -First 1
+      $c = $c.Replace('${MCP_CONNECTOR_NAME}', (Get-CustomConnectorDisplay $mcpDef.Value)); $changed = $true
+    }
     foreach ($x in [regex]::Matches($c, '\$\{FLOW:([^}]+)\}')) {
       $fn = $x.Groups[1].Value
       $fid = (DvAs $E $alias GET ("workflows?`$select=workflowid&`$filter=name eq '" + $fn.Replace("'","''") + "' and category eq 5")).value | Select-Object -First 1
       if ($fid) { $c = $c.Replace($x.Value, $fid.workflowid); $changed = $true } else { Write-Host "    (flow '$fn' not found - run the flow-creation step first)" }
     }
     if ($changed) { Set-Content $_.FullName -Value $c -NoNewline }
+  }
+  # `pac copilot push` only POINTS at connection references - one the workspace declares but Dataverse lacks
+  # fails the push ("A record with the specified key values does not exist in connectionreference entity").
+  # Every reference before the MCP tool predated the push workflow, so this never showed. Create any that
+  # are missing, as the owner, before pushing.
+  $crFile = Join-Path $wsdir 'connectionreferences.mcs.yml'
+  if (Test-Path $crFile) {
+    foreach ($m in [regex]::Matches((Get-Content $crFile -Raw), 'connectionReferenceLogicalName:\s*(\S+)\s+connectorId:\s*(\S+)')) {
+      $ln = $m.Groups[1].Value; $cid = $m.Groups[2].Value
+      $have = (DvAuto $E $alias GET "connectionreferences?`$select=connectionreferenceid&`$filter=connectionreferencelogicalname eq '$ln'").value
+      if (-not $have) {
+        DvAs $E $alias POST 'connectionreferences' @{ connectionreferencelogicalname = $ln; connectionreferencedisplayname = $ln.Split('.')[-1]; connectorid = $cid } | Out-Null
+        Write-Host "    created connection reference $ln"
+      }
+    }
   }
   $push = & $realPac copilot push --project-dir $wsdir 2>&1
   if ($LASTEXITCODE -ne 0) { return "PUSH FAILED: " + (($push | Select-Object -Last 1) -join ' ') }
@@ -370,13 +461,37 @@ function Provision-Agent([object]$A) {
     $cid = Get-ConnId $cn
     if (-not $cid) { Write-Host "    (no live connection for $cn)"; continue }
     $connOwner = $manifest.connections.$cn.owner       # the connection's owner can bind it; the agent owner may not
-    $connector = $manifest.connections.$cn.connector
+    $connector = Get-ConnectorId $cn
     $cref = (DvAuto $E $alias GET "connectionreferences?`$select=connectionreferenceid,connectionid,connectorid&`$filter=startswith(connectionreferencelogicalname,'$schema')").value |
       Where-Object { $_.connectorid -like "*/$connector" } | Select-Object -First 1
     if ($cref -and $cref.connectionid -ne $cid) {
       try { DvAs $E $connOwner PATCH "connectionreferences($($cref.connectionreferenceid))" @{ connectionid = $cid } | Out-Null; Write-Host "    bound $cn -> $cid" }
-      catch { Write-Host "    (could not bind $cn as $connOwner`: $($_.Exception.Message.Split([char]10)[0]))" }
+      catch {
+        # Only the connection's owner may bind it (a Dataverse OAuth connection can't be shared), but a
+        # service-account owner holds just its scenario role, which lacks the reads the bind checks
+        # (claims-copilot: svc-claims). Lend it a throwaway role for the PATCH, then take it away again so
+        # the scenario role attendees inspect is unchanged. Measured 2026-10-18.
+        Write-Host "    (bind as $connOwner refused - retrying with a temporary role)"
+        $bound = $false; $tmp = $null
+        try { $bound = Invoke-BindWithTempRole $E $connOwner $cref.connectionreferenceid $cid }
+        catch { Write-Host "    (could not bind $cn as $connOwner`: $($_.Exception.Message.Split([char]10)[0]))" }
+        if ($bound) { Write-Host "    bound $cn -> $cid (via temporary role, now removed)" }
+      }
     }
+  }
+
+  # Co-owners: Copilot Studio's own editor share needs the sharer to hold prvAssignRole, which a maker doesn't,
+  # so add them to the agent's owning team (<botid>_1) directly - which is all an editor share does.
+  foreach ($co in @($A.coOwners)) {
+    if (-not $co) { continue }
+    try {
+      $team = (Dv $E GET "teams?`$select=teamid&`$filter=name eq '$($bot.botid.Replace('-',''))_1'").value | Select-Object -First 1
+      $su = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$(Get-Upn $co)'").value | Select-Object -First 1
+      if ($team -and $su) {
+        Dv $E POST "teams($($team.teamid))/Microsoft.Dynamics.CRM.AddMembersTeam" @{ Members = @(@{ '@odata.type' = 'Microsoft.Dynamics.CRM.systemuser'; systemuserid = $su.systemuserid }) } | Out-Null
+        Write-Host "    co-owner $co"
+      } else { Write-Host "    (co-owner ${co}: team or user not found)" }
+    } catch { Write-Host "    (co-owner ${co} not added: $($_.Exception.Message.Split([char]10)[0]))" }
   }
 
   # publishing right after create can be too soon; retry and confirm success.

@@ -1083,3 +1083,130 @@ opposed to reading one). The PPAC "New role" command renders **enabled** and its
 automation, so this is untested rather than proven. Also unverified: Module 5 retests that require reading
 Claim/Customer rows **as the attendee**, which Administrative access mode would block; retests performed by
 chatting with the agent run as `svc-claims` and are unaffected.
+
+### Phase 8b · PPAC's environment Users list needs prvReadPosition (2026-10-17)
+
+**Symptom.** As an attendee (Lab Reviewer + Bot Viewer, licensed), **Environments → `Claims-Test-<estate>` →
+Settings → Users + permissions → Users** shows *"It looks like something went wrong"* before any search.
+Lab 03-02 KT01 s2, 03-04 KT01 s3 and 04-04 KT01 s1 all start there.
+
+**Evidence.** The page's own query, `GET systemusers?$select=...`, returns 403 naming the gap: *"is missing
+prvReadPosition privilege ... on OTC=50"*. A second call on the same page,
+`settingdefinitions?$filter=uniquename eq 'msdyn_EnableTeamsChat'`, returns 403 for `prvReadSettingDefinition`.
+
+**Fix.** Both added to `$DvAccessModel` in `_access_model.ps1` and to the live `Lab Reviewer (read-only)`
+role in Halcourt-Prod, Maker-Sandbox and Claims-Test (31 privileges each: 22 modelled + 9 baseline). The
+list then loads, an account opens, and its summary shows **Direct Assigned Roles**; **Security roles → a
+role** opens the per-table grid with access levels.
+
+**Two things the task text doesn't say.** PPAC shows Dataverse display names with a `# ` prefix
+(`# Lab Student 03 (<estate>)`), so a search on the display name finds nothing; search by username. And
+for this account there is no separate **Manage security roles** command: the roles are listed in the
+user's summary panel.
+
+### Phase 8b · the default environment was outside the access model (2026-10-17)
+
+**Symptom.** In Copilot Studio, an attendee's agent list for `Halcourt (default)` is empty: *"Agents 0
+items"*. Expense Helper and Onboarding Guide live there, and Lab 04-04 KT02 s5 and 04-06 KT02 open them.
+
+**Cause.** `Get-EstateDataverseEnvironments` in `07_provision_lab_users.ps1` listed only the three estate
+environments. The role dates from Lab 03, which never touched the default environment.
+
+**Fix.** The function now includes the tenant's default environment (`properties.isDefault`). A
+`-Count 5 -NoLicense` run created `Lab Reviewer (read-only)` there and gave all five accounts it plus Bot
+Viewer; both agents were listed at once.
+
+### Phase 8b · another owner's flow needs prvReadWorkflow at Global (2026-10-17)
+
+**Symptom.** **PPAC → Halcourt (default) → Resources → Flows** says *"No flows found for this
+environment"*, while Inventory lists *Submit and auto-approve expense under $500* there as a Cloud flow
+(`statecode` 1, on). Lab 03-01 KT01 s2 and 04-04 KT02 s5 open that flow's **Details**.
+
+**Cause.** Bot Viewer grants workflow read at **Basic** depth only (the attendee's own flows).
+
+**Fix.** `prvReadWorkflow` at Global added to `$DvAccessModel` and to the live role in all four
+environments; the Flows list then shows the flow. **Not fixed by any role:** the Copilot Studio topic
+canvas still marks Expense Helper's flow node *"Flow not found or is turned off"* for the attendee. That
+check goes through Power Automate's own sharing, which only sharing the flow would satisfy - not done, since
+it would make attendees co-owners of Sam's flow. The task's PPAC route is the one that works.
+
+### Phase 6 · CORRECTION - Claims Copilot never worked: unbound reference, then the wrong Dataverse op (2026-10-18)
+
+The two Phase 6/8c entries above concluded that an empty `connectionid` on Claims Copilot's connection
+reference was harmless because "Copilot Studio evidently carries the binding in its own agent settings".
+**It does not.** Driven through the Test pane as its owner, every question failed:
+
+1. `ConnectionNotFound - The connection of connection reference … DVClaimsShared was not found`. The tool
+   editor showed **Connection: Not connected**. Priya can't select svc-claims' connection: a Dataverse OAuth
+   connection **can't be shared** (`ConnectionSharingNotAllowed`), so only svc-claims can bind it - and its
+   PATCH was refused for want of `prvReadconnectionreference`, `prvWriteconnectionreference` and
+   `prvReadAsyncOperation` (each named in turn by its 403). Fixed by lending svc-claims a throwaway role with
+   exactly those three, binding as svc-claims, then removing and deleting the role. 06 now does this
+   (`Invoke-BindWithTempRole`) whenever the owner's bind is refused.
+2. Then `ConnectorRequestFailure - Microsoft Dataverse returned HTTP 400` on every call, even unfiltered,
+   even as svc-claims. The tools used **ListRecords** (List rows, *current environment*), which has no
+   environment to resolve inside a Copilot Studio tool. **ListRecordsWithOrganization** with
+   `organization = <the environment URL>` works at once: "List the claims" returns all five, and "status of
+   CLM-9002" returns *Under review*. Both action YAMLs now use it, with a `${ENV_ORG_URL}` token 06 fills.
+
+To make the change live without a rebuild, svc-claims also had to open and re-save the tools and publish:
+it was made a **co-owner** of the agent (added to the agent's `<botid>_1` team; Priya's own editor share
+fails without `prvAssignRole`) and lent Bot Author + Basic User + Environment Maker for the edit, all three
+removed afterwards. Its only remaining role is `svc-claims Dataverse Full Access`.
+
+Until this, Scenarios C and D - and Claims Copilot's half of B - could not fire for anyone.
+
+### Phase 4c · Purview: the label arrives late, and the token is app-only (2026-10-18)
+
+Building issue #12 (`03c_provision_purview.ps1`) hit four things worth knowing before the next build:
+
+1. **Security & Compliance PowerShell refuses every az token** (`UnAuthorized` for the
+   `ps.compliance.protection.outlook.com` and `outlook.office365.com` resources alike), unlike Exchange
+   (`Connect-LabExchange`). App-only works - but `Connect-IPPSSession -Certificate` /
+   `-CertificateFilePath` dies inside the module on Linux (`NewEXOModule`: object reference not set). The
+   script signs its own client assertion and passes `-AccessToken`.
+2. **A new Microsoft 365 group isn't an Exchange recipient for a while**: `New-LabelPolicy -ExchangeLocation
+   <group mail>` says it "couldn't be found". The policy publishes to Marcus first; a rerun adds the group.
+3. **`assignSensitivityLabel` says `labelNotFound`** for a label created minutes earlier - SharePoint hasn't
+   received it. Typically about an hour, documented up to 24. It is also **metered**: the app needs a
+   `Microsoft.GraphServices/accounts` billing link, and only `privileged`/app-only assignment is allowed.
+4. `extractSensitivityLabels` is a **POST** (a GET says `itemNotFound`), and a loose
+   `'Social Security Number'` match finds *Austria Social Security Number* first - match
+   `'^U\.S\. Social Security Number'`.
+
+### Phase 6 · Underwriting Assistant's MCP calls never ran - rebuilt as a real MCP tool (2026-10-18)
+
+**Symptom.** Driven through the Test pane as Priya, every Underwriting Assistant topic that called the MCP
+server answered *"Action of type 'InvokeMcpTool' is not supported"* (`ActionTypeNotSupported`), and the
+attendee's canvas showed *"Your topic … can't be shown on the authoring canvas"*. Scenario C's `run_query`
+and the MCP half of Scenario E could not fire. `InvokeMcpTool` is not a Copilot Studio node kind.
+
+**Fix (decided 2026-10-18: a real MCP tool, not an HTTP node).** The server (`setup/infra/mcp-underwriting`,
+stateless Streamable HTTP, `initialize`/`tools/list`/`tools/call` all answered) is now registered the way
+Copilot Studio's *Add new MCP* wizard does it, from committed files:
+
+- `setup/agents/underwriting-assistant/mcp-connector/` - the wizard's own connector definition: one
+  `POST /underwriting`, `x-ms-agentic-protocol: mcp-streamable-1.0`, `operationId: InvokeServer`, API-key
+  auth in the `Authorization` header. 06 creates it as the owner with `pac connector create`.
+- manifest connection `MCP-Underwriting` (`connector: custom`, `apiKeyFrom: MCP_BEARER`): Priya's connection,
+  key `Bearer <MCP_BEARER>`, no consent step.
+- `actions/UnderwritingMCP.mcs.yml`: `InvokeExternalAgentTaskAction` + `ModelContextProtocolMetadata`,
+  **`mode: Maker`** - the wizard defaults to `Invoker` (each user's own key), which would hide the shared
+  bearer that is Scenario E's point.
+- The three `topics/` that used `InvokeMcpTool` are deleted.
+
+Verified by a real 06 run (`-Agents underwriting-assistant`): "premium quote for a standard auto profile"
+→ `get_quote`, USD 1,425; "run this pricing query: SELECT * FROM risk_rows" → `run_query`, *all pricing and
+customer risk rows*.
+
+Traps on the way, all now handled or noted:
+1. **`pac copilot push` won't create a connection reference** the workspace declares - *"A record with the
+   specified key values does not exist in connectionreference entity"*. 06 now creates missing ones first.
+2. **Connector display names are capped at 30 characters**, silently truncated (`…-MCP-mgray` → `…-MCP-mgra`).
+   06 truncates the same way, or a rerun would not find what it made.
+3. **A deleted connector's display name stays taken** - Dataverse row and Power Apps API record both gone,
+   the wizard still says *"already exists"*. Hence the `Halcourt-` prefix on the name.
+4. **Names allow only letters, digits, `-` and `_`** - `Underwriting MCP (mgray)` is refused.
+5. **Doc impact (for the exercise owner):** the MCP calls are on the agent's **Tools** page now, not in
+   Topics, and a viewer sees one MCP tool whose individual tools (`get_quote`, `get_risk_score`, `run_query`)
+   appear when it runs. 04-03 KT02 s3, 04-05 KT02 s4 and 05-04 KT06 describe topics.
