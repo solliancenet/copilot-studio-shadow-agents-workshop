@@ -301,6 +301,16 @@ $mfaRoleTemplates = @(
   'f28a1f50-f6e7-4571-818b-6a12f2af6b6c','fe930be7-5e62-47db-91af-98c3a49a38b1','11648597-926c-4cf3-9c36-bcebb0ba8dcc'
 )
 $templates = (Graph GET 'directoryRoleTemplates?$select=id,displayName').value
+# PIM-eligible roles need the kit's app-only identity: the az token lacks RoleEligibilitySchedule.* scopes.
+$EligibleRoleIds = [ordered]@{}; $pimToken = $null
+if ($EligibleRoles -and -not $Destroy) {
+  . (Join-Path $PSScriptRoot '_labapp.ps1'); Ensure-LabApp
+  $pimToken = Get-AppToken 'https://graph.microsoft.com'
+  foreach ($n in $EligibleRoles) {
+    $t = $templates | Where-Object { $_.displayName -eq $n } | Select-Object -First 1
+    if ($t) { $EligibleRoleIds[$n] = $t.id } else { Write-Warning "No role template '$n' - not made eligible" }
+  }
+}
 $roleTargets = @()
 $needsCaExclusion = $false
 foreach ($roleName in $Roles) {
@@ -428,6 +438,21 @@ foreach ($i in 1..$Count) {
     Try-Graph POST "directoryRoles/$($rt.RoleId)/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
     if (-not $err -or $err -match 'already exist|added object references already exist') { $roleResults += $rt.Name }
     else { $roleResults += "$($rt.Name) FAILED"; Write-Warning "  $upn - role '$($rt.Name)': $err" }
+  }
+  # PIM-eligible Exercise 05 roles (activated by the attendee, time-boxed). An existing eligibility comes back
+  # as RoleAssignmentExists - success on a re-run.
+  foreach ($er in $EligibleRoleIds.GetEnumerator()) {
+    try {
+      $b = @{ action = 'adminAssign'; principalId = $u.id; roleDefinitionId = $er.Value; directoryScopeId = '/'
+              justification = 'Halcourt lab: Exercise 05 only, activated on demand'
+              scheduleInfo = @{ startDateTime = (Get-Date).ToUniversalTime().ToString('o'); expiration = @{ type = 'noExpiration' } } }
+      Invoke-RestMethod -Method POST -Uri 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilityScheduleRequests' `
+        -Headers @{ Authorization = "Bearer $pimToken" } -ContentType 'application/json' -Body ($b | ConvertTo-Json -Depth 5) | Out-Null
+      $roleResults += "$($er.Key) (eligible)"
+    } catch {
+      if ("$_" -match 'RoleAssignmentExists|already exists') { $roleResults += "$($er.Key) (eligible)" }
+      else { $roleResults += "$($er.Key) (eligible) FAILED"; Write-Warning "  $upn - eligibility '$($er.Key)': $($_.Exception.Message.Split([char]10)[0])" }
+    }
   }
   $row.roles = $roleResults -join '; '
 

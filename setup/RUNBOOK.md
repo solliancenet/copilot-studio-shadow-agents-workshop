@@ -802,6 +802,13 @@ admins and 14 unused Microsoft sample users; the sample users' seats were releas
 Why this role and not something weaker:
 [decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
 
+
+**Exercise 05 roles are PIM-eligible, not held.** 07 also makes every attendee *eligible* for AI Administrator
+(05-05: block an agent) and Security Administrator (05-07: Defender real-time protection). Tell attendees at
+the start of Exercise 05: Entra admin center > *Privileged Identity Management* > *My roles* > *Activate*, a
+justification, 1-2 hours. Dataverse writes use Power Platform Administrator's per-environment self-elevation
+instead. Why: [errata](../reference/runbook-errata.md#phase-8b--exercise-05s-write-steps-pim-eligible-roles-and-per-environment-self-elevation-2026-10-18).
+
 ### Phase 8c — Per-student slices (needed from Exercise 03)
 
 Module 5 has attendees *apply* controls — a scoped Dataverse role, row-level security, a DLP policy,

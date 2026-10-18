@@ -43,6 +43,16 @@ $DvRoleName   = 'Lab Reviewer (read-only)'
 #               read all tenant configuration - acceptable in an isolated training tenant, a decision made
 #               2026-10-18.
 $DirectoryRoles = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader')
+# PIM-ELIGIBLE roles: not held, but activatable by the attendee, for the Exercise 05 steps that WRITE where
+# no narrower lever exists. Activation is time-boxed (attendees pick 1-2 hours), needs a justification,
+# and is logged. Resource scoping doesn't help either: both roles act on tenant-wide objects.
+#   AI Administrator      - 05-05 KT06: Block / assign owner / Delete an agent in Agent 365.
+#   Security Administrator - 05-07 KT01/KT06: turn on Defender real-time protection for agents.
+# Not here, deliberately: Conditional Access Administrator (05-04 KT03 writes the policy down - one wrong
+# edit to CA-Require-MFA-Admins locks every account out) and Dataverse System Administrator (attendees
+# self-elevate per environment with Power Platform Administrator, as 05-05 KT06 already says).
+# 07 creates these with the kit's app-only identity (_labapp.ps1); the az token lacks the PIM scopes.
+$EligibleRoles = @('AI Administrator', 'Security Administrator')
 
 # Estate groups every attendee joins (plain names; 07 adds the estate suffix). Membership is what lets a
 # lab account CHAT with the published agents: 06 restricts chat on each agent to one security group

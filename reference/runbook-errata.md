@@ -1210,3 +1210,25 @@ Traps on the way, all now handled or noted:
 5. **Doc impact (for the exercise owner):** the MCP calls are on the agent's **Tools** page now, not in
    Topics, and a viewer sees one MCP tool whose individual tools (`get_quote`, `get_risk_score`, `run_query`)
    appear when it runs. 04-03 KT02 s3, 04-05 KT02 s4 and 05-04 KT06 describe topics.
+
+### Phase 8b · Exercise 05's write steps: PIM-eligible roles, and per-environment self-elevation (2026-10-18)
+
+Exercise 05 asks attendees to *change* things. Decided 2026-10-18: an attendee who must perform an action
+holds the role for it, as narrowly as the platform allows - which for these turned out to be **time**, not
+resources:
+
+| Step | Lever | How |
+|---|---|---|
+| 05-02, 05-03, 05-05 b, 05-07 auditing - Dataverse / Copilot Studio writes | **System Administrator, self-elevated per environment** | Power Platform Administrator's own *Membership > Add me*, one environment at a time; 05-05 KT06 already says so. No standing grant, and none in Claims-Test during Exercise 04 - a standing one there would let attendees read claims directly and void Scenario D. |
+| 05-05 KT06 - Block / Delete / assign owner in Agent 365 | **AI Administrator, PIM-eligible** | Entra > *Privileged Identity Management* > *My roles* > *Activate*, justification, 1-2 hours |
+| 05-07 KT01/KT06 - Defender real-time protection for agents | **Security Administrator, PIM-eligible** | as above |
+| 05-04 KT03 - workload-identity CA policy | *not granted* | the step writes the policy down; one wrong edit to `CA-Require-MFA-Admins` locks every account out |
+
+Neither role can be scoped to resources: the agent block and the Defender setting are tenant-wide objects.
+PIM makes them *eligible* - inert until activated, time-boxed, justified and audited. E5 includes Entra ID
+P2, so PIM is available. Verified: student03 activated AI Administrator from *My roles* and held it as an
+active assignment.
+
+The az token can't create eligibility (`PermissionScopeNotGranted: RoleEligibilitySchedule.ReadWrite.Directory`),
+so 07 uses the kit's app-only identity (`_labapp.ps1`, shared with 03c), which now also holds that permission.
+Doc impact: 05-05 KT06 and 05-07 should tell attendees to activate the role first.
