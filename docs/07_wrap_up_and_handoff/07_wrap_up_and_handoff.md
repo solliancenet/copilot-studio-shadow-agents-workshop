@@ -1,11 +1,11 @@
 ---
-title: "Exercise 08: Wrap-up & Hand-off"
+title: "Exercise 07: Wrap-up & Take-home"
 layout: default
-nav_order: 10
+nav_order: 9
 has_children: true
 ---
 
-# Exercise 08: Wrap-up & Hand-off
+# Exercise 07: Wrap-up & Take-home
 
 ## Scenario
 
@@ -15,8 +15,9 @@ three — and, harder, with an honest read on whether Microsoft's controls actua
 found.
 
 This last stop is not another lab. It is the hand-off. You will retell the day as a method you can run
-again — this time against your own tenant in your first week back — and you will keep the references you
-need to go deeper on any control that maps to a gap you carry home. Nothing here reveals anything you did
+again, this time against your own tenant: [Take it home]({% link docs/07_wrap_up_and_handoff/07_01.md %})
+shows where to look and what to do first. You will also keep the references you need to go deeper on any
+control that maps to a gap you carry home. Nothing here reveals anything you did
 not already discover for yourself; it names what you learned so you can repeat it.
 
 ## Objectives
@@ -29,6 +30,8 @@ After this exercise you will be able to:
   it** — and explain why the honest answer is the one worth briefing to leadership.
 - Recognize the two hard cases that a platform toggle mostly only dents, versus the failures that least
   privilege and lifecycle hygiene genuinely close.
+- Take the seven questions home: know where each one is answered in your own tenant, and leave with a
+  first-week plan that starts with a quick win.
 - Find the right Microsoft Learn or OWASP reference for any control gap you take home, and point your own
   team at the Estate Binder as the scaffold for a real review.
 
@@ -43,7 +46,7 @@ flowchart LR
   M --> B["BREAK<br/>Exercise 04"]
   B --> C["CONTROL<br/>Exercise 05"]
   C --> R["RETEST<br/>Exercise 05"]
-  R --> O["OPERATIONALIZE<br/>Exercises 06–07"]
+  R --> O["OPERATIONALIZE<br/>Exercise 06"]
   O -. "next estate" .-> D
 ```
 
@@ -56,7 +59,7 @@ Each phase left a page in your binder. Follow the deliverable links to your own 
 | BREAK | [Break the agents]({% link docs/04_break_the_agents/04_break_the_agents.md %}) | [Agent Threat Model]({% link worksheets/templates/03-agent-threat-model.md %}) |
 | CONTROL / RETEST | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | [Control Efficacy Matrix]({% link worksheets/templates/04-control-efficacy-matrix.md %}) |
 | OPERATIONALIZE | [Apply a security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %}) |
-| TAKE HOME | [Assess your own estate]({% link docs/07_assess_your_estate/07_assess_your_estate.md %}) | [Own-Estate Assessment]({% link worksheets/templates/06-own-estate-assessment.md %}) |
+| TAKE HOME | [Take it home]({% link docs/07_wrap_up_and_handoff/07_01.md %}) | [Own-Estate Assessment]({% link worksheets/templates/06-own-estate-assessment.md %}) |
 
 The one question that runs through every phase is the same one: **whose authority is this agent
 exercising, and what can it reach when it does?**
@@ -74,8 +77,9 @@ platform does and does not fix. Three honest takeaways are worth carrying out th
 
 {: .note }
 > **Over-permission and lifecycle are genuinely closable.** Least privilege on the acting identity,
-> row-level security in Dataverse, and joiner-mover-leaver hygiene — disable the departed owner's account
-> *and* kill the connections it left live — actually remove the failure rather than just shrinking it.
+> record-level access in Dataverse (security-role privilege depth, ownership, business units, teams, and
+> sharing), and joiner-mover-leaver hygiene — disable the departed owner's account *and* kill the
+> connections it left live — actually remove the failure rather than just shrinking it.
 
 {: .important }
 > **Logging can miss the most important question.** When a shared or service identity acts on a user's
@@ -100,6 +104,8 @@ closing that distance — and the honesty to say where the method, and the platf
 
 ## Where to next
 
-Keep the [Estate Binder]({% link worksheets/index.md %}) as the scaffold for your first real review, and
-use the curated [resources & further reading]({% link docs/08_wrap_up_and_handoff/08_01.md %}) to go
-deeper on any control that maps to a gap you are taking home.
+Start with [Take it home]({% link docs/07_wrap_up_and_handoff/07_01.md %}): the seven questions mapped to
+your own tenant, and a first-week plan. Keep the [Estate Binder]({% link worksheets/index.md %}) as the
+scaffold for your first real review, and use the curated
+[resources & further reading]({% link docs/07_wrap_up_and_handoff/07_02.md %}) to go deeper on any control
+that maps to a gap you are taking home.
