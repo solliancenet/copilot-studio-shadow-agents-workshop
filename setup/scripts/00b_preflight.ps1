@@ -71,7 +71,7 @@ Check 'Agent 365 in the M365 admin center' '01-01 KT01 s3, 02-01 KT01 s4, 04-06 
   Result 'PASS' "present - attendees need the AI Reader role to see M365 admin center > Agents (checked below)"
 }
 
-Check "Attendees hold the directory roles ($($DirectoryRoles -join ', '))" 'Power Platform Administrator: 01-01 connection reads. AI Reader: the Agent 365 pages' {
+Check "Attendees hold the directory roles ($($DirectoryRoles -join ', '))" 'Power Platform Administrator: 01-01 connection reads. AI Reader: the Agent 365 pages. Security Reader: CA and Defender (05-04, 05-07). Global Reader: Purview (05-06, 05-07)' {
   $who = (Get-Json ("https://graph.microsoft.com/v1.0/users?`$select=id,userPrincipalName&`$filter=" + [uri]::EscapeDataString("startswith(userPrincipalName,'$StudentPrefix')")) 'https://graph.microsoft.com').value |
          Where-Object { $_.userPrincipalName -like "$StudentPrefix*.$Estate@*" }
   if (-not $who) { return Result 'WARN' "no $StudentPrefix*.$Estate accounts yet - run 07" }

@@ -33,7 +33,16 @@ $DvRoleName   = 'Lab Reviewer (read-only)'
 #               nav, which looks exactly like a tenant that lacks Agent 365 (it was misreported as such until
 #               2026-10-17). Agent 365 itself needs no service plan in the SKU list: the tenant shows the
 #               'Agent 365' service principal and the page renders for AI Reader on DEVELOPERPACK_V2_E5.
-$DirectoryRoles = @('Power Platform Administrator', 'AI Reader')
+#   Security Reader - read-only; Entra > Conditional Access policies (05-04 KT01) and the Defender portal's
+#               Alerts, Incidents and AI agents (05-07). Without it CA says "You don't have access" and Defender
+#               shows only Audit and Settings (verified 2026-10-18). It does NOT reach Purview, whose role
+#               groups are separate.
+#   Global Reader - read-only, tenant-wide. Chosen for Purview (05-06, 05-07): it is the one Entra role Purview
+#               honours for Information Protection (labels, classifiers) and DSPM for AI, without the
+#               interactive Security & Compliance sign-in a Purview role group would need. Broad: attendees can
+#               read all tenant configuration - acceptable in an isolated training tenant, a decision made
+#               2026-10-18.
+$DirectoryRoles = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader')
 
 # Estate groups every attendee joins (plain names; 07 adds the estate suffix). Membership is what lets a
 # lab account CHAT with the published agents: 06 restricts chat on each agent to one security group
@@ -54,6 +63,9 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadBusinessUnit';           Needs = '03-02: a role scoped to a business unit' }
   @{ Privilege = 'prvReadConnector';              Needs = '01-01 KT01 s3 and 02-03 connections' }
   @{ Privilege = 'prvReadTeam';                   Needs = '03-02 role editor: roles(...) read (named in its 403)' }
+  @{ Privilege = 'prvReadPosition';               Needs = '03-02 KT01 s2, 04-04 KT01 s1: PPAC Settings > Users list - its systemusers query (named in its 403; without it the list shows "something went wrong")' }
+  @{ Privilege = 'prvReadSettingDefinition';      Needs = 'PPAC Settings > Users: settingdefinitions read (named in its 403)' }
+  @{ Privilege = 'prvReadWorkflow';               Needs = '03-01 KT01 s2, 04-04 KT02 s5: PPAC Resources > Flows lists another owner''s flow (Bot Viewer grants it at Basic only: the list said "No flows found")' }
   # PPAC role editor: the per-table privilege grid ............................. 03-02 KT01 s2, 03-04 KT01 s3
   @{ Privilege = 'prvReadAttribute';              Needs = '03-02 role editor: EntityDefinitions (named in its 403)' }
   @{ Privilege = 'prvReadEntity';                 Needs = '03-02 role editor: EntityDefinitions' }

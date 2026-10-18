@@ -64,11 +64,15 @@ param(
   [string]$DomainSuffix,                               # default: the tenant's default verified domain
   [string]$InitialPassword   = 'Lab-Only-Passw0rd!',   # one shared password; rotate per delivery
   [switch]$UniquePasswords,                            # instead: a distinct typed-by-hand password each
-  [string[]]$Roles           = @('Power Platform Administrator', 'AI Reader'),
+  [string[]]$Roles           = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader'),
                                                        # PPA: the /scopes/admin/ connection reads of Lab 01-01.
                                                        # AI Reader: read-only; opens M365 admin center > Agents
                                                        # (Agent 365) for 01-01 s3, 02-01 s4, 04-06 s1. Without it
                                                        # that page is simply absent - verified 2026-10-17.
+                                                       # Security Reader: read-only; CA policies (05-04) and
+                                                       # Defender alerts / AI agents (05-07) - 2026-10-18.
+                                                       # Global Reader: read-only; Purview labels, classifiers,
+                                                       # DSPM for AI (05-06, 05-07) - 2026-10-18.
   [string]$LabGroup,                                   # CA-exclusion group; default Lab-Students-<estate>
   [switch]$ExcludeFromAdminMfa,                        # FALLBACK ONLY: weaken CA-Require-MFA-Admins so these
                                                        # accounts sign in password-only. Buys PPAC and nothing
@@ -507,7 +511,10 @@ function Get-EstateDataverseEnvironments {
   $envs = (Invoke-RestMethod -Method GET -Headers @{ Authorization = "Bearer $tok" } `
             -Uri 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01').value
   $names = 'Halcourt-Prod', 'Claims-Test', 'Maker-Sandbox' | ForEach-Object { Get-EstateName $_ $Estate }
-  @($envs | Where-Object { $_.properties.displayName -in $names } | ForEach-Object {
+  # Plus the tenant's default environment, which every estate shares: Expense Helper and Onboarding Guide
+  # live there, and Lab 04-04 KT02 s5 / 04-06 KT02 open them in Copilot Studio. Without the role an
+  # attendee's agent list there is simply empty (verified 2026-10-17).
+  @($envs | Where-Object { $_.properties.displayName -in $names -or $_.properties.isDefault } | ForEach-Object {
       [pscustomobject]@{ Name = $_.properties.displayName; Id = $_.name
                          OrgUrl = $_.properties.linkedEnvironmentMetadata.instanceApiUrl } } |
     Where-Object { $_.OrgUrl })
