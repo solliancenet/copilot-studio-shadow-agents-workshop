@@ -87,17 +87,11 @@ it is promoted to production.
 > Most of the estate's worst findings are lifecycle failures a calendar would have caught. Orphan
 > detection is the same owner and connection-owner lookup, run on a schedule.
 
-## Production promotion gate
-
-### Required before production
-- [ ] Every KNOW IT, OWN IT and SCOPE IT box above is checked.
-- [ ] Authorization is operating against the requesting user.
-- [ ] DLP and environment controls are operating.
-- [ ] No secrets in configuration.
-- [ ] Required logging is enabled.
-- [ ] Monitoring and lifecycle owner is set.
-
 ## Gate record
+
+**Production promotion gate.** Every box above is checked — or the failure is covered by a layered
+control, an accepted residual risk signed by the security reviewer, or a valid, unexpired formal temporary
+exception, recorded in the Gate record below.
 
 One row per agent you run through the gate. **Production?** applies the exposure definition (others use
 it, it reaches PII or Compensation, or it acts). **Stalls at** is the first stage that fails, or *passes*.
