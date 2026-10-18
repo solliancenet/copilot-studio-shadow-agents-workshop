@@ -13,8 +13,10 @@ search_exclude: true
 it is promoted to production.
 
 ## KNOW IT — inventory, classify, understand purpose
-- [ ] Agent is in the inventory, across all environments.
-- [ ] Purpose and intended users are documented.
+- [ ] Agent is in the inventory, across all environments — including the default and personal ones.
+- [ ] The inventory is refreshed on a set cadence (it is a point-in-time snapshot), with the Agent 365
+      registry (**Microsoft 365 admin center → Agents → All agents → Registry**) as its ongoing source.
+- [ ] Purpose and intended users are documented *before* the agent is considered for promotion.
 - [ ] Data sensitivity of what it can reach is classified (the inventory's **Data sensitivity** column).
 
 ## OWN IT — accountable owners
@@ -30,13 +32,22 @@ it is promoted to production.
 ## SCOPE IT — identity, permissions, data, connectors, tools, APIs
 - [ ] Acting credential is recorded for every knowledge source, connector, tool, flow, HTTP and MCP
       integration.
-- [ ] Permissions are least-privilege (scoped Dataverse role + narrowed record-level access).
+- [ ] Permissions are least-privilege (scoped Dataverse role + narrowed record-level access, not a broad
+      customizer or admin role).
 - [ ] Connectors, tools and MCP operations limited to what the purpose needs; no shared/service-account
       connections without review.
 - [ ] Grounding scoped to the minimum necessary content.
 - [ ] HTTP/MCP integrations authenticate per-user where possible, validate input, and hold **no secrets in
       configuration**.
 - [ ] The agent's data reach is bounded by its intended users' reach.
+
+{: .note }
+> A shared service identity has one fixed security context: scoping it shrinks the blast radius, but
+> requester-specific access needs on-behalf-of authorization.
+
+{: .note }
+> What an MCP server advertises, what the agent calls, and what the token can invoke are three different
+> lists. Scope is set by the widest.
 
 ## CONTROL IT — environment, DLP, identity, authorization, data controls
 - [ ] Lives in an environment whose DLP policy matches its inventoried **Data sensitivity**.
@@ -50,6 +61,10 @@ it is promoted to production.
 - [ ] Conditional Access applicability recorded per path (principal, Entra token or not, channel,
       applicable policy).
 
+{: .note }
+> Neither DLP nor Conditional Access changes whose credential acts. Conditional Access on an agent's
+> Agent ID is enforced only when the agent runs in Teams, and requires Microsoft Agent 365 (or E7).
+
 ## WATCH IT — logging, detection, lifecycle
 - [ ] Actions are logged; attribution (the `CopilotInteraction` event correlated with the downstream
       event) tested and recorded as complete / cross-log only / partial / unavailable.
@@ -58,7 +73,8 @@ it is promoted to production.
 - [ ] Detection and Defender real-time protection are specified for this agent's sensitivity class (a
       PII-handling agent gets both; a public-FAQ agent does not).
 - [ ] Detection covers unusual record volumes, access to a rarely touched sensitive store, a new
-      connector, and actions far outside normal hours or patterns.
+      connector, and actions far outside normal hours or patterns, watched through Defender for Cloud
+      Apps, Purview audit and Power Platform activity logs.
 - [ ] A lifecycle and permission review is scheduled. Review owner: ____________  Frequency: ________
 - [ ] The permission review re-runs the SCOPE IT checks on the same cadence.
 - [ ] Owner departure triggers orphan detection immediately: business, technical and security roles
@@ -66,6 +82,10 @@ it is promoted to production.
       reassigned or retired.
 - [ ] When the agent is retired or deleted, its Agent ID is confirmed gone (it follows the agent, not the
       owner).
+
+{: .note }
+> Most of the estate's worst findings are lifecycle failures a calendar would have caught. Orphan
+> detection is the same owner and connection-owner lookup, run on a schedule.
 
 ## Production promotion gate
 
@@ -77,16 +97,27 @@ it is promoted to production.
 - [ ] Required logging is enabled.
 - [ ] Monitoring and lifecycle owner is set.
 
-### Accepted residual risk
-- Risk: ______________________________
-- Why it can't be eliminated: ______________________________
-- Accepted by: ________________  Date: __________
+## Gate record
 
-### Formal temporary exception
-- Reason: ______________________________
-- Compensating controls: ______________________________
-- Approver: ________________
-- Remediation owner: ________________  Remediation date: __________
-- Expiry date: __________ (an expired exception blocks production use)
+One row per agent you run through the gate. **Production?** applies the exposure definition (others use
+it, it reaches PII or Compensation, or it acts). **Stalls at** is the first stage that fails, or *passes*.
 
-Sign-off: ________________  Date: __________
+| Agent | Production? | Stalls at | Why |
+|---|---|---|---|
+| | | | |
+| | | | |
+
+**DENTS IT failures** — one row per dented control in your Exercise 05 matrix for this agent:
+
+| Agent | Dented control | Layered control *or* accepted residual risk (and why it can't be removed) | Accepted by | Date |
+|---|---|---|---|---|
+| | | | | |
+
+**Formal temporary exception** (only if a required control isn't yet implemented; an expired exception
+blocks production use):
+
+| Agent | Reason | Compensating controls | Accountable approver | Remediation owner | Remediation date | Expiry date |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
+**Security reviewer sign-off:** Name ________________  Date __________

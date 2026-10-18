@@ -55,7 +55,7 @@ Each phase left a page in your binder. Follow the deliverable links to your own 
 | MAP | [Identity & effective access]({% link docs/03_identity_and_effective_access/03_identity_and_effective_access.md %}) | [Agent Access Map]({% link worksheets/templates/02-agent-access-map.md %}) |
 | BREAK | [Break the agents]({% link docs/04_break_the_agents/04_break_the_agents.md %}) | [Agent Threat Model]({% link worksheets/templates/03-agent-threat-model.md %}) |
 | CONTROL / RETEST | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | [Control Efficacy Matrix]({% link worksheets/templates/04-control-efficacy-matrix.md %}) |
-| OPERATIONALIZE | [Build a security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %}) |
+| OPERATIONALIZE | [Apply a security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %}) |
 | TAKE HOME | [Assess your own estate]({% link docs/07_assess_your_estate/07_assess_your_estate.md %}) | [Own-Estate Assessment]({% link worksheets/templates/06-own-estate-assessment.md %}) |
 
 The one question that runs through every phase is the same one: **whose authority is this agent
