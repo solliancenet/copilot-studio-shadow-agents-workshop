@@ -20,8 +20,8 @@ it is promoted to production.
 ## OWN IT — accountable owners
 - [ ] Named **business owner**.
 - [ ] Named **technical owner**.
-- [ ] **Security accountability** assigned — all three roles named at registration. The maker who built
-      the agent is not the security-accountable party by default.
+- [ ] Named **security reviewer** — all three roles named at registration. The maker who built the
+      agent is not the security reviewer by default.
 - [ ] Agent owner is an enabled account.
 - [ ] Each connection's owner is recorded, enabled and known — separately from the agent owner.
 - [ ] No disabled owner, and no unreviewed shared-mailbox or service-account owner, on the agent or any

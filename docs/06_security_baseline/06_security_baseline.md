@@ -46,8 +46,8 @@ agent's purpose and intended users are recorded *before* it is considered for pr
 OWN IT has no task of its own either: it is the owner and connection-owner checks you ran in Exercise 02,
 when you looked up each agent owner and each connection owner separately and flagged the ones that didn't
 hold up. As an operating rule, OWN IT means three things. A **business owner**, a **technical owner** and
-**security accountability** are named when the agent is registered. The maker who built the agent is
-*not* the security-accountable party by default. And a disabled owner, or an unreviewed shared-mailbox or
+**security reviewer** are named when the agent is registered. The maker who built the agent is
+*not* the security reviewer by default. And a disabled owner, or an unreviewed shared-mailbox or
 service-account owner, of the agent **or of any connection it uses** is an automatic fail until a live,
 named person is accountable.
 
