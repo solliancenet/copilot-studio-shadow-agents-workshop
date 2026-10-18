@@ -39,8 +39,12 @@ it is promoted to production.
 - [ ] The agent's data reach is bounded by its intended users' reach.
 
 ## CONTROL IT — environment, DLP, identity, authorization, data controls
-- [ ] Lives in an environment with appropriate DLP.
-- [ ] Authorization enforced against the **requesting user**, not a shared identity.
+- [ ] Lives in an environment whose DLP policy matches its inventoried **Data sensitivity**.
+- [ ] Not in the default environment if it handles sensitive data.
+- [ ] Not in a sandbox doing production work unless that sandbox has production DLP; otherwise the agent
+      moves to a managed production environment.
+- [ ] Authorization enforced against the **requesting user**, not a shared identity, for any agent that
+      can change state or read PII.
 - [ ] Data protection verified: label applied, encryption and VIEW/EXTRACT rights checked, any label-keyed
       DLP policy checked, retest result recorded.
 - [ ] Conditional Access applicability recorded per path (principal, Entra token or not, channel,

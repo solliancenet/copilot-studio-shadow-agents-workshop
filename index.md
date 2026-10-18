@@ -58,7 +58,7 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 | 4 | [Break the agents]({% link docs/04_break_the_agents/04_break_the_agents.md %}) | Failure modes & attack paths | 60 min |
 | — | _Lunch / longer break_ | | 30 min |
 | 5 | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | CLOSES IT / DENTS IT / MISSES IT | 60 min |
-| 6 | [Build an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 10 min |
+| 6 | [Build an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 5 min |
 | 7 | [Assess your own estate]({% link docs/07_assess_your_estate/07_assess_your_estate.md %}) | Your tenant, your first week back | 20 min |
 | 8 | [Wrap-up & hand-off]({% link docs/08_wrap_up_and_handoff/08_wrap_up_and_handoff.md %}) | Resources & next steps | — |
 

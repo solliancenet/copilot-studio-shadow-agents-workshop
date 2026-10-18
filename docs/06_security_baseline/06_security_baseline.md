@@ -58,12 +58,26 @@ MCP integration. Dataverse access uses a scoped security role with narrowed reco
 broad customizer or admin role. Connectors, tools and MCP operations are limited to what the purpose needs.
 Grounding is narrowed to the minimum content. HTTP and MCP integrations authenticate **per-user where
 possible**, validate their input, and hold **no secrets in configuration**. And the agent's data reach is
-bounded by its intended users' reach. The tasks below start at CONTROL IT.
+bounded by its intended users' reach.
 
 {: .note }
 > A shared service identity has one fixed security context: scoping it shrinks the blast radius, but
 > requester-specific access needs on-behalf-of authorization. And what an MCP server advertises, what the
 > agent calls, and what the token can invoke are three different lists — scope is set by the widest.
+
+CONTROL IT has no task of its own either: it is the DLP, authorization, data-protection and Conditional
+Access tests you ran in Exercise 05, with the Scenario D evidence from Exercise 04. As an operating rule,
+CONTROL IT means six things. An agent lives in an environment whose DLP policy matches the **Data
+sensitivity** in its Exercise 02 inventory. The default environment is disallowed for sensitive agents. A
+sandbox doing production work needs production DLP, or the agent moves to a managed production
+environment. Authorization is enforced against the **requesting user**, not a shared identity, for any
+agent that can change state or read PII. Data protection is verified, not assumed: the label applied,
+whether it encrypts, who holds VIEW and EXTRACT, and any DLP policy keyed on the label. And Conditional
+Access applicability is recorded per path. The tasks below start at WATCH IT.
+
+{: .note }
+> Neither DLP nor Conditional Access changes whose credential acts. And Conditional Access on an agent's
+> Agent ID is enforced only when the agent runs in Teams, and requires Microsoft Agent 365 (or E7).
 
 {: .note }
 > This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Halcourt-specific by the end:
@@ -86,11 +100,13 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 10 minutes
+**Estimated time:** 5 minutes
 
 ## Deliverable
 
 The [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %})
 — completed as your operating model and framed as the gate an agent must clear before production. Your
-Exercise 02–03 inventory and Access Map fill its KNOW IT, OWN IT and SCOPE IT sections, with your
-Exercise 05 retests; each task in this exercise builds and sharpens one of the other sections, and the final task turns the whole checklist into the promotion gate.
+Exercise 02–03 inventory and Access Map fill its KNOW IT, OWN IT and SCOPE IT sections, and your
+Exercise 04 Scenario D evidence and Exercise 05 retests fill SCOPE IT and CONTROL IT. The first task in
+this exercise builds the WATCH IT section, and the second turns the whole checklist into the promotion
+gate.
