@@ -39,8 +39,8 @@ After this exercise you will be able to:
 - Join your five CSVs (agents, connections, agent identities, users, environments) into one complete
   inventory row per agent, covering every environment including the sandbox and personal ones, and
   classify each agent by the most sensitive data it can reach.
-- Distinguish the **agent owner** from the **connection owner** and from the **effective actor**, and
-  explain why recording only the agent owner hides real authority.
+- Distinguish the **agent owner** from the **connection owner**, and explain why recording only the agent
+  owner hides who is accountable for the connections an agent uses.
 - Flag the problem conditions — orphaned, shadow, test-became-prod, shared connection, and unknown or
   ambiguous owner — and justify **clearing** the agents that look risky but are clean.
 

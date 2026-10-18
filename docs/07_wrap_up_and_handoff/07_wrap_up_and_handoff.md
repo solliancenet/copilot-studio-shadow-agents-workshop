@@ -71,9 +71,10 @@ platform does and does not fix. Three honest takeaways are worth carrying out th
 
 {: .warning }
 > **Indirect injection and confused-deputy are the honest hard cases.** Platform toggles — DLP,
-> environment separation, Conditional Access — mostly only *dent* them. The real fixes are not switches in
-> an admin center: they are scoping what an agent's grounding can reach, and authorizing against the
-> *requesting* user rather than the shared or owner identity the agent runs as.
+> environment separation, Conditional Access — mostly only *dent* them. The strongest measures aren't
+> admin-center switches. Scoping grounding shrinks the injection surface and keeps sensitive content out of
+> reach; authorizing against the *requesting* user removes the confused deputy. Scoping reduces indirect
+> injection — it doesn't eliminate it for content that stays in scope.
 
 {: .note }
 > **Over-permission and lifecycle are genuinely closable.** Least privilege on the acting identity,
@@ -82,10 +83,11 @@ platform does and does not fix. Three honest takeaways are worth carrying out th
 > connections it left live — actually remove the failure rather than just shrinking it.
 
 {: .important }
-> **Logging can miss the most important question.** When a shared or service identity acts on a user's
-> behalf, the audit trail records that identity as the actor — not who really asked. You can reconstruct
-> that something happened; you often cannot reconstruct *who caused it*. Design for attribution before you
-> need it.
+> **Logging can split the most important question across two logs.** The downstream log records the
+> shared or service identity as the actor. Copilot Studio's own audit event may still carry the requesting
+> user and a thread ID, so attribution often depends on correlating the two. Complete, cross-log only,
+> partial or unavailable is something you find out, not something you assume. Design for attribution
+> before you need it.
 
 ## The closing promise, kept
 
@@ -94,8 +96,8 @@ At the start of the day the promise was that you would be able to answer three q
 
 - **How many agents do you have?** — You inventory *all* environments, including the personal and "test"
   ones, and you count the agents nobody realizes exist.
-- **Who owns them?** — You look past the named agent owner to the *connection* owner and the *acting*
-  identity, because that is where the real authority lives.
+- **Who owns them?** — You record the agent owner and the connection owner separately — who is
+  accountable — and, per operation, the credential that acts and whose request it was.
 - **What can they access?** — You map effective access to the data and endpoints an agent's identity can
   reach, not the data its user can, and you say plainly which control closes, dents, or misses each gap.
 

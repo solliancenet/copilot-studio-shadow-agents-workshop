@@ -45,6 +45,6 @@ One sentence you can take to leadership about *why this matters now*:
 > ______________________________________________
 
 {: .tip }
-> Every agent created since May 2026 has an Entra Agent ID; older agents may still use a legacy app
-> registration until Microsoft migrates them. Agent 365 went GA on May 1, 2026. The governance surface
+> New Copilot Studio agents created since May 2026 get an Entra Agent ID; older Copilot Studio agents may
+> still use a legacy app registration until Microsoft migrates them. Agent 365 went GA on May 1, 2026. The governance surface
 > arrived faster than the governance did — that's the case.
