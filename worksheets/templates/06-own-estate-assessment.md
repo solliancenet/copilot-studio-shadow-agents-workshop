@@ -34,7 +34,7 @@ your tenant, then commit to three actions.
 **Gaps — what do we need to investigate first?**
 > ______________________________________________
 
-## Top 3 Monday-morning actions
+## Top 3 first-week actions
 
 | # | Action | Owner | By when |
 |---|--------|-------|---------|

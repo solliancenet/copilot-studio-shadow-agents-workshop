@@ -5,7 +5,7 @@ nav_order: 9
 has_children: true
 ---
 
-# Your estate, Monday morning
+# Your estate, your first week back
 
 For six hours you have been the platform owner and security reviewer for a tenant that
 was not yours. You discovered Halcourt Mutual's agents, mapped what they could reach,
@@ -18,15 +18,15 @@ who owns them, what can they reach* — are unanswered in **your** organization 
 You go back to work with a real tenant, real makers, and real data behind your agents.
 You will not finish an inventory in thirty minutes, and that is not the goal. The goal is
 to leave knowing exactly what to pull, which surfaces to open, and which questions you
-cannot yet answer — plus three concrete actions you can take Monday morning and one
-sentence that gets leadership to fund them. Everything you practiced against Halcourt
+cannot yet answer — plus three concrete actions you can take in your first week back and
+one sentence that gets leadership to fund them. Everything you practiced against Halcourt
 maps directly onto your own estate; this exercise is where you make that translation
 explicit.
 
 ```mermaid
 flowchart LR
   A[Six hours on<br/>Halcourt Mutual] --> B[Seven questions<br/>for YOUR tenant]
-  B --> C[Top three<br/>Monday actions]
+  B --> C[Top three<br/>first-week actions]
   C --> D[One sentence<br/>to leadership]
 ```
 
@@ -36,7 +36,7 @@ After this exercise you will be able to:
 
 - Translate the lab's discovery, mapping, and control techniques onto your own tenant's Microsoft surfaces.
 - Answer — or explicitly scope *how* you will answer — the seven questions for your estate.
-- Name your top three Monday-morning actions, each with an owner and a date.
+- Name your top three first-week actions, each with an owner and a date.
 - Make a one-sentence case to leadership for why agent governance matters *now*.
 
 ## Duration

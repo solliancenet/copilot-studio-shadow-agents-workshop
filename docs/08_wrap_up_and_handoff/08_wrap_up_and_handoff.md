@@ -15,9 +15,9 @@ three — and, harder, with an honest read on whether Microsoft's controls actua
 found.
 
 This last stop is not another lab. It is the hand-off. You will retell the day as a method you can run
-again — this time against your own tenant on Monday morning — and you will keep the references you need to
-go deeper on any control that maps to a gap you carry home. Nothing here reveals anything you did not
-already discover for yourself; it names what you learned so you can repeat it.
+again — this time against your own tenant in your first week back — and you will keep the references you
+need to go deeper on any control that maps to a gap you carry home. Nothing here reveals anything you did
+not already discover for yourself; it names what you learned so you can repeat it.
 
 ## Objectives
 

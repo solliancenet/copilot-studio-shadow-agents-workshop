@@ -9,9 +9,8 @@ has_children: true
 
 ## Scenario
 
-You spent the morning finding out what Halcourt Mutual's agents can actually do. Now turn that into
-something you can hand to a colleague on Monday: an operating model that any agent must pass through
-before it earns production trust.
+You've found out what Halcourt Mutual's agents can actually do. Now turn that into something you can hand
+to a colleague: an operating model that any agent must pass through before it earns production trust.
 
 By this point you have an inventory, an access map, a threat model, and an honest control-efficacy
 matrix. That is a snapshot of *one* estate on *one* day. It is not yet an operating model. When the next
