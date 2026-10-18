@@ -41,8 +41,15 @@ agent's data-sensitivity classification and its intended users. As an operating 
 things. The inventory covers **every** environment, including the default and personal ones, and is
 refreshed on a set cadence, because any inventory is a point-in-time snapshot. The Agent 365 registry
 (**Microsoft 365 admin center → Agents → All agents → Registry**) is the ongoing source for it. And an
-agent's purpose and intended users are recorded *before* it is considered for promotion. The tasks below
-start at OWN IT.
+agent's purpose and intended users are recorded *before* it is considered for promotion.
+
+OWN IT has no task of its own either: it is the owner and connection-owner checks you ran in Exercise 02,
+when you looked up each agent owner and each connection owner separately and flagged the ones that didn't
+hold up. As an operating rule, OWN IT means three things. A **business owner**, a **technical owner** and
+**security accountability** are named when the agent is registered. The maker who built the agent is
+*not* the security-accountable party by default. And a disabled owner, or an unreviewed shared-mailbox or
+service-account owner, of the agent **or of any connection it uses** is an automatic fail until a live,
+named person is accountable. The tasks below start at SCOPE IT.
 
 {: .note }
 > This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Halcourt-specific by the end:
@@ -65,11 +72,11 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 20 minutes
+**Estimated time:** 15 minutes
 
 ## Deliverable
 
 The [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %})
 — completed as your operating model and framed as the gate an agent must clear before production. Your
-Exercise 02–03 inventory fills its KNOW IT section; each task in this exercise builds and sharpens one of
-the other sections, and the final task turns the whole checklist into the promotion gate.
+Exercise 02–03 inventory fills its KNOW IT and OWN IT sections; each task in this exercise builds and
+sharpens one of the other sections, and the final task turns the whole checklist into the promotion gate.
