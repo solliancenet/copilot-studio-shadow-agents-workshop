@@ -59,7 +59,6 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 | — | _Lunch / longer break_ | | 30 min |
 | 5 | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | CLOSES IT / DENTS IT / MISSES IT | 60 min |
 | 6 | [Apply an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 10 min |
-| 7 | [Wrap-up & take-home]({% link docs/07_wrap_up_and_handoff/07_wrap_up_and_handoff.md %}) | Your tenant, your first week back; resources | — |
 
 ## Your Estate Binder (deliverables)
 
@@ -74,7 +73,8 @@ You leave with a completed binder, one artifact per phase:
 | OPERATIONALIZE | Agent Security Review Checklist |
 | Take-home | Own-Estate Assessment Worksheet + top-3 actions |
 
-Templates are in the [Estate Binder]({% link worksheets/index.md %}).
+Templates are in the [Estate Binder]({% link worksheets/index.md %}). Where to look in your own tenant, a
+first-week starting list and further reading are in the [Appendix]({% link appendix.md %}).
 
 ## Prerequisites
 

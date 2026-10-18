@@ -28,7 +28,7 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | 14 | Provision the Purview label for Exercise 05 | OPEN | No script or runbook phase creates `Confidential-PII`. Create it as an encrypting label with VIEW and EXTRACT only for HR leadership; seed `Leadership/2026-comp-bands-labeled.xlsx` in `HR-Benefits`, labeled well before delivery so SharePoint search has indexed it; leave `2026-comp-bands.xlsx` unlabeled (Exercise 04 needs it); confirm the SSN sensitive-information type. 05_06 depends on it. |
 | 15 | Student licensing | OPEN | Every lab account is unlicensed today, and the tenant has 0 free E5 seats (25/25 used). Per student (plus the facilitator): (1) **Microsoft 365 E5** or another license that includes Microsoft 365 — Copilot Studio records `CopilotInteraction` audit events only for licensed users (05_07), and it's likely needed to open the published agents in Teams / Microsoft 365 Copilot / SharePoint (Exercise 04's published-agent route); (2) **Microsoft Agent 365** — not in E5; an add-on to E5 or included in E7 — for registry risk signals (05_05) and Conditional Access for agents (05_04), licensed per user. No separate Copilot Studio license: chatting with a published agent draws on tenant capacity. Seats = students per delivery + facilitator. Supersedes the licensing notes in items 8 and 9. |
 | 16 | Audit and Defender provisioning for Exercise 05 | OPEN | 05_07 reconstructs Exercise 04 from the logs, so auditing must be on before Exercise 04 runs: turn on Dataverse auditing in `Claims-Test` (environment + `Claim` and `Customer` tables); confirm Purview Audit is on (on by default); set up Defender real-time protection for the estate's agents (needs a Defender admin, an Entra app and the Microsoft 365 app connector). `CopilotInteraction` events need licensed lab accounts — see item 15. |
-| 17 | Fold Exercise 07 (Assess Your Own Estate) into the wrap-up | DONE | The old Exercise 07 was a slide deck dressed as a lab. Its crosswalk, quick wins, ranking rule and leadership case now live in the wrap-up, renumbered Exercise 07, as a take-home reference page (`07_01`, Take it home); Resources moved to `07_02`. |
+| 17 | Remove non-lab exercises (old Exercise 07 and the wrap-up) | DONE | Both were lecture content dressed as labs. The lab ends at Exercise 06's promotion gate. The tenant crosswalk, first-week quick wins, ranking rule, leadership tip and further reading moved to `appendix.md`, next to `index.md`; the Own-Estate Assessment worksheet stays in the Estate Binder. |
 
 _Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
 
@@ -258,9 +258,9 @@ before delivery and update `AGENTS.md` if reality differs:
 
 ## Numbering rationale
 
-Exercises `00`–`07`; `00` is environment/orientation (not counted in the six hours), `07` is wrap-up and
-take-home. Modules `01`–`06` map 1:1 to the outline's first six modules; the outline's Module 7 (own-estate
-assessment) is folded into `07` as a take-home page. Task pages are numeric `NN_MM.md`, title in
+Exercises `00`–`06`; `00` is environment/orientation (not counted in the six hours). Exercises `01`–`06`
+map 1:1 to the outline's first six modules. The outline's Module 7 (own-estate assessment) and the wrap-up
+are lecture, not lab: their take-home material and further reading live in `appendix.md`. Task pages are numeric `NN_MM.md`, title in
 front matter (matches `github-workshop` / TWL400).
 
 ## Pre-delivery checklist

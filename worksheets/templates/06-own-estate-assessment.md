@@ -8,9 +8,8 @@ search_exclude: true
 
 # Own-Estate Assessment
 
-**Take-home deliverable for Exercise 07** — see
-[Take it home]({% link docs/07_wrap_up_and_handoff/07_01.md %}) for where to look in your tenant and how to
-rank your actions. This one is about *your* organization, not the lab. Fill it for your tenant, then commit
+**Take-home worksheet** — see the [Appendix]({% link appendix.md %}) for where to look in your tenant and
+how to rank your actions. This one is about *your* organization, not the lab. Fill it for your tenant, then commit
 to three actions.
 
 ## The seven questions
