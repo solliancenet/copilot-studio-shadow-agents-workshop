@@ -37,7 +37,8 @@ After this exercise you will be able to:
   Microsoft 365 admin center agent registry, and your five CSVs — and state what each **reveals** and
   what it **misses**.
 - Join your five CSVs (agents, connections, agent identities, users, environments) into one complete
-  inventory row per agent, covering every environment including the sandbox and personal ones.
+  inventory row per agent, covering every environment including the sandbox and personal ones, and
+  classify each agent by the most sensitive data it can reach.
 - Distinguish the **agent owner** from the **connection owner** and from the **effective actor**, and
   explain why recording only the agent owner hides real authority.
 - Flag the problem conditions — orphaned, shadow, test-became-prod, shared connection, and unknown or

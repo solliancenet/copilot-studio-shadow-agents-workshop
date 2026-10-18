@@ -15,7 +15,7 @@ it is promoted to production.
 ## KNOW IT — inventory, classify, understand purpose
 - [ ] Agent is in the inventory, across all environments.
 - [ ] Purpose and intended users are documented.
-- [ ] Data sensitivity of what it touches is classified.
+- [ ] Data sensitivity of what it can reach is classified (the inventory's **Data sensitivity** column).
 
 ## OWN IT — accountable owners
 - [ ] Named **business owner**.

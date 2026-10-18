@@ -13,11 +13,14 @@ just the ones you were told about. Build it from the live tenant: the CSVs you f
 Copilot Studio and the admin portals for what they don't hold. If you can't reach the tenant, use the
 filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack).
 
-| # | Agent | Environment | Owner | Status | Identity | Connections | Connectors | Tools / actions | Grounding / data | Permissions (summary) | External systems |
-|---|-------|-------------|-------|--------|----------|-------------|------------|-----------------|------------------|-----------------------|------------------|
-| 1 |       |             |       |        |          |             |            |                 |                  |                       |                  |
-| 2 |       |             |       |        |          |             |            |                 |                  |                       |                  |
-| … |       |             |       |        |          |             |            |                 |                  |                       |                  |
+**Data sensitivity** is the most sensitive class of data the agent can *reach* through its grounding or
+its connections: PII, compensation, internal, or public/none. When in doubt, classify up.
+
+| # | Agent | Environment | Owner | Status | Identity | Connections | Connectors | Tools / actions | Grounding / data | Data sensitivity | Permissions (summary) | External systems |
+|---|-------|-------------|-------|--------|----------|-------------|------------|-----------------|------------------|------------------|-----------------------|------------------|
+| 1 |       |             |       |        |          |             |            |                 |                  |                  |                       |                  |
+| 2 |       |             |       |        |          |             |            |                 |                  |                  |                       |                  |
+| … |       |             |       |        |          |             |            |                 |                  |                  |                       |                  |
 
 ## Flags — the problem estate
 

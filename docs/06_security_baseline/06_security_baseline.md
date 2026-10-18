@@ -36,6 +36,14 @@ flowchart LR
   G -->|any gate fails| R["Remediate — do not promote"]
 ```
 
+KNOW IT has no task of its own here: it is the inventory you built in Exercises 02 and 03, including each
+agent's data-sensitivity classification and its intended users. As an operating rule, KNOW IT means three
+things. The inventory covers **every** environment, including the default and personal ones, and is
+refreshed on a set cadence, because any inventory is a point-in-time snapshot. The Agent 365 registry
+(**Microsoft 365 admin center → Agents → All agents → Registry**) is the ongoing source for it. And an
+agent's purpose and intended users are recorded *before* it is considered for promotion. The tasks below
+start at OWN IT.
+
 {: .note }
 > This is the **OPERATIONALIZE** phase of the through-line. Nothing here is Halcourt-specific by the end:
 > the deliverable is a checklist you take home and apply to agents that don't exist yet.
@@ -57,11 +65,11 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 25 minutes
+**Estimated time:** 20 minutes
 
 ## Deliverable
 
 The [Agent Security Review Checklist]({% link worksheets/templates/05-agent-security-review-checklist.md %})
-— completed as your operating model and framed as the gate an agent must clear before production. Each
-task in this exercise builds and sharpens one section of it; the final task turns the whole checklist
-into the promotion gate.
+— completed as your operating model and framed as the gate an agent must clear before production. Your
+Exercise 02–03 inventory fills its KNOW IT section; each task in this exercise builds and sharpens one of
+the other sections, and the final task turns the whole checklist into the promotion gate.

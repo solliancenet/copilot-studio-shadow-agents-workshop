@@ -118,6 +118,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 1. Benefits Buddy — `cs-agent-benefits-buddy-prod`
 - **Env / Owner:** Halcourt-Prod / Marcus Webb.
+- **Data sensitivity (by reach):** **Compensation** — whole-site `HR-Benefits` grounding reaches `Leadership/2026-comp-bands.xlsx`.
 - **Purpose:** Answer employee benefits & open-enrollment questions.
 - **Connections:** SharePoint (Marcus's user connection).
 - **Connectors / tools:** SharePoint, Office 365 Users. No custom actions.
@@ -131,6 +132,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 2. Claims Copilot — `cs-agent-claims-copilot-test`
 - **Env / Owner:** Claims-Test / Priya Nair.
+- **Data sensitivity (by reach):** **PII** — Dataverse `Customer` (SSN, DOB) via svc-claims.
 - **Purpose:** Let adjusters look up and update claim status.
 - **Connections:** **Shared** Dataverse connection running as **svc-claims**.
 - **Connectors / tools:** Dataverse — `List rows` (Claim, Customer), `Update claim status`.
@@ -147,6 +149,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 3. Policy Lookup Bot — `cs-agent-policy-lookup-prod`
 - **Env / Owner:** Halcourt-Prod / **IT Helpdesk shared mailbox** (ambiguous ownership).
+- **Data sensitivity (by reach):** **PII** — the full-scope Policy API key reaches `/customer/{id}`.
 - **Purpose:** Look up policy details.
 - **Connectors / tools:** Copilot Studio **HTTP action** → Policy API. **API key hard-coded in the action
   header config.** Action calls `GET /policy/{id}` with `{id}` taken straight from user input.
@@ -160,6 +163,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 4. Underwriting Assistant — `cs-agent-underwriting-prod`
 - **Env / Owner:** Halcourt-Prod / Priya Nair.
+- **Data sensitivity (by reach):** **Internal** — pricing DB via `run_query`.
 - **Purpose:** Help underwriters price risk.
 - **Connectors / tools:** **MCP** server tools `get_quote`, `get_risk_score`, **and** `run_query`.
 - **PLANTED PROBLEM A (Scenario E — MCP boundary):** static shared bearer auth; the server advertises
@@ -170,6 +174,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 5. Expense Helper — `cs-agent-expense-helper-default`
 - **Env / Owner:** Halcourt (default) / Sam Olsen.
+- **Data sensitivity (by reach):** **Internal** — expense records.
 - **Purpose:** Help employees submit expenses.
 - **Connectors / tools:** Power Automate flow `Submit and auto-approve expense under $500`, running as
   **Sam Olsen** (a real approver).
@@ -180,6 +185,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 6. Onboarding Guide — `cs-agent-onboarding-default`
 - **Env / Owner:** Halcourt (default) / **Tom Dean (DISABLED account) → orphaned.**
+- **Data sensitivity (by reach):** **Internal** — SharePoint onboarding content, plus mail send.
 - **Purpose:** Help new hires with onboarding.
 - **Connectors / tools:** SharePoint + Office 365 Outlook (**send mail**), via a **shared connection Tom
   created** that is still live.
@@ -191,6 +197,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 7. Team Wiki — `cs-agent-team-wiki-sandbox`
 - **Env / Owner:** Maker-Sandbox / Dev Kim.
+- **Data sensitivity (by reach):** **Internal** — every site Dev can read (broad, but not `Leadership/`).
 - **Purpose:** A maker's personal "ask the wiki" bot; never sanctioned.
 - **Connectors / tools:** SharePoint + Microsoft Graph search across **every site Dev can see** (broad).
 - **PLANTED PROBLEM A (Module 2 — shadow agent):** built outside IT's knowledge in a personal env; broad
@@ -201,6 +208,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 ### 8. Sales Nudge — `cs-agent-sales-nudge-prod`
 - **Env / Owner:** Halcourt-Prod / Lena Ford (**maker owner**) — but runs on a **CRM/Dataverse shared
   connection owned by Tom Dean (departed)**.
+- **Data sensitivity (by reach):** **PII** — CRM/Dataverse under Tom Dean's broad CRM access.
 - **Purpose:** Nudge reps about leads.
 - **PLANTED PROBLEM A (Module 2 — shared connection / unknown effective owner):** the *agent* owner is
   known and present; the *connection* owner is a ghost. Inventory that records only the agent owner
@@ -211,6 +219,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 9. HR FAQ v2 (copy) — `cs-agent-hr-faq-v2-prod` — **DECOY / noise**
 - **Env / Owner:** Halcourt-Prod / Marcus Webb.
+- **Data sensitivity (by reach):** **Internal** — the all-staff `HR FAQ` library only.
 - **Looks risky** (a duplicate "v2", HR data, sounds like sprawl) but is **benign**: read-only, grounded
   on the **`HR FAQ` document library** in `HR-Benefits` only — a dedicated, all-staff-published library
   holding one clean FAQ, **not** the whole site, **not** `Shared Documents` (which holds the poisoned
@@ -221,6 +230,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 10. Meeting Notes Summarizer — `cs-agent-meeting-notes-sandbox` — **DECOY / noise**
 - **Env / Owner:** Maker-Sandbox / Dev Kim.
+- **Data sensitivity (by reach):** **Internal** — Dev's own OneDrive notes.
 - Summarizes the maker's **own** OneDrive notes (`Dev-Kim-Meeting-Notes.docx` in Dev's OneDrive `Documents`,
   seeded in Phase 4b); no shared data, no actions. **Benign.** Noise to force real inventory rather than
   "sandbox = bad" pattern-matching.

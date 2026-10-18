@@ -5,18 +5,22 @@
 
 ## Completed flags
 
-| Agent | Env | Owner (status) | Orphan | Shadow | Test→Prod | Shared conn | Unknown owner | Forgotten |
-|---|---|---|:--:|:--:|:--:|:--:|:--:|:--:|
-| Benefits Buddy | Prod | marcus.webb (ok) | | | | | | |
-| Claims Copilot | Claims-Test | priya.nair (ok) | | | ✅ | ✅ (svc-claims) | | |
-| Policy Lookup Bot | Prod | it.helpdesk (shared mbx) | | | | | ✅ | |
-| Underwriting Assistant | Prod | priya.nair (ok) | | | | | | |
-| Expense Helper | Default | sam.olsen (ok) | | | | | | |
-| Onboarding Guide | Default | **tom.dean (DISABLED)** | ✅ | | | ✅ (tom.dean) | ✅ | ✅ |
-| Team Wiki | Sandbox | dev.kim (ok) | | ✅ | | | | ✅ |
-| Sales Nudge | Prod | lena.ford (ok) | | | | ✅ (tom.dean CRM) | ✅ (conn≠agent owner) | |
-| HR FAQ v2 (copy) | Prod | marcus.webb (ok) | | | | | | (decoy — clean) |
-| Meeting Notes Summarizer | Sandbox | dev.kim (ok) | | | | | | (decoy — clean) |
+| Agent | Env | Owner (status) | Data sensitivity | Orphan | Shadow | Test→Prod | Shared conn | Unknown owner | Forgotten |
+|---|---|---|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| Benefits Buddy | Prod | marcus.webb (ok) | Compensation (whole-site `HR-Benefits` incl. `Leadership/2026-comp-bands.xlsx`) | | | | | | |
+| Claims Copilot | Claims-Test | priya.nair (ok) | PII (Dataverse `Customer`: SSN, DOB) | | | ✅ | ✅ (svc-claims) | | |
+| Policy Lookup Bot | Prod | it.helpdesk (shared mbx) | PII (full-scope Policy API key reaches `/customer/{id}`) | | | | | ✅ | |
+| Underwriting Assistant | Prod | priya.nair (ok) | Internal (pricing DB via `run_query`) | | | | | | |
+| Expense Helper | Default | sam.olsen (ok) | Internal (expense records) | | | | | | |
+| Onboarding Guide | Default | **tom.dean (DISABLED)** | Internal (SharePoint + mail send) | ✅ | | | ✅ (tom.dean) | ✅ | ✅ |
+| Team Wiki | Sandbox | dev.kim (ok) | Internal (every site Dev can read — not `Leadership/`) | | ✅ | | | | ✅ |
+| Sales Nudge | Prod | lena.ford (ok) | PII (CRM/Dataverse under Tom Dean's broad CRM access) | | | | ✅ (tom.dean CRM) | ✅ (conn≠agent owner) | |
+| HR FAQ v2 (copy) | Prod | marcus.webb (ok) | Internal (`HR FAQ` library only) | | | | | | (decoy — clean) |
+| Meeting Notes Summarizer | Sandbox | dev.kim (ok) | Internal (Dev's own OneDrive notes) | | | | | | (decoy — clean) |
+
+Data sensitivity is by **reach**, not intent. An attendee working from the artifact pack alone has no
+grounding data, so Benefits Buddy may be classified from its SharePoint connection only; accept
+"Compensation (from connections only)" or a classify-up equivalent.
 
 ## The joins that reveal the findings
 
