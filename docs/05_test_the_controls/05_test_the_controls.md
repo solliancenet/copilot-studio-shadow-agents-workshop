@@ -13,8 +13,10 @@ You spent Exercise 04 breaking things. Every scenario ended the same way: you re
 down what worked, and moved on. That was the point — you now hold a list of concrete, demonstrated ways
 the Halcourt Mutual estate misbehaves.
 
-This exercise returns to that list. For each failure you take a Microsoft control, **configure it against
-the real estate**, then **re-run the exact same attack** and see what changed. You are not here to admire
+This exercise returns to that list. For each failure, your facilitator **configures a Microsoft control
+against the real estate** while you watch, and you **re-run the exact same attack** and see what changed.
+The estate is shared by everyone in the room, so each change is made once, by the facilitator, and undone
+when the retests are done. You are not here to admire
 a feature list. You are here to answer one honest question per cell: after this control is on, does the
 attack still work?
 
@@ -30,7 +32,7 @@ The rhythm of the whole exercise is **Attack → Control → Retest**:
 
 ```mermaid
 flowchart LR
-  A["Attack<br/>an Exercise 04 failure<br/>you reproduced"] --> C["Control<br/>configure it<br/>against the estate"]
+  A["Attack<br/>an Exercise 04 failure<br/>you reproduced"] --> C["Control<br/>the facilitator applies it<br/>to the estate"]
   C --> R["Retest<br/>re-run the<br/>same attack"]
   R --> V{"Honest<br/>verdict"}
   V -->|CLOSES IT| Rec["Record verdict +<br/>remaining risk<br/>in the matrix"]
@@ -45,8 +47,9 @@ flowchart LR
 > *DENTS IT* or *MISSES IT* is worth more than a hopeful *CLOSES IT*.
 
 Each task in this exercise takes one control family, explains what it actually governs (and where its
-boundary lies), walks you through configuring it against the Halcourt Mutual estate, and sends you back to
-the specific Exercise 04 scenario to retest. Decide each verdict yourself first; then reveal the suggested
+boundary lies), shows you every step of configuring it against the Halcourt Mutual estate — the
+facilitator's steps are written out so you can repeat them on your own tenant — and sends you back to the
+specific Exercise 04 scenario to retest. Decide each verdict yourself first; then reveal the suggested
 verdict to compare. You *will* be told what to look for and where the control stops being able to help.
 
 Work each task in the live tenant, the preferred path. Every task also has an **offline path**: if the
@@ -56,15 +59,16 @@ working without it — because they already tell you which environment carries w
 credential each connection carries. Label those offline verdicts as reasoned conclusions, not retest
 results.
 
-Some controls are tenant-wide and shared by every estate in the lab tenant: the default-environment changes
-in Task 05-02, and the Conditional Access policy in Task 05-04 unless the facilitator agrees otherwise. For
-those, you specify the control rather than apply it, and label the verdict as reasoned, like an offline one.
+Your lab account reads the estate; it doesn't change it. One control isn't demonstrated at all, because a
+single wrong edit locks every account in the tenant out: the Conditional Access policy in Task 05-04. For
+that one, you specify the control rather than watch it applied, and label the verdict as reasoned, like an
+offline one.
 
 ## Objectives
 
 After this exercise you will be able to:
 
-- Configure (or, where unavailable, evaluate) the core Microsoft controls — DLP, environment strategy,
+- Explain how each core Microsoft control is configured, and evaluate it — DLP, environment strategy,
   Dataverse least privilege, Conditional Access for agents, Agent 365 governance, Purview, and Defender /
   audit — against a live Copilot Studio estate.
 - Re-run a reproduced attack against a configured control and reach a defensible **CLOSES IT / DENTS IT /
