@@ -72,10 +72,18 @@ function RootRole($E, [string]$Name) {
 
 # ---- Dlp ---------------------------------------------------------------------------------------------
 $BAP = 'https://api.bap.microsoft.com/providers/PowerPlatform.Governance/v2/policies'
-function DlpAll { (Api GET "$BAP`?api-version=2016-11-01" $PP).value | ForEach-Object { $_.policyDefinition } }
+# The LIST call returns each policy WITHOUT its connectorGroups - a snapshot or a comparison built on it is
+# blind to the very change 05-01 makes (found 2026-10-19: a blocked HTTP connector read as "unchanged", and
+# the restore did nothing). Read every policy individually.
+function DlpAll {
+  (Api GET "$BAP`?api-version=2016-11-01" $PP).value | ForEach-Object {
+    (Api GET "$BAP/$($_.policyDefinition.name)?api-version=2016-11-01" $PP).policyDefinition
+  }
+}
 function DlpShape($p) {
   # What a demonstration changes: connector classification, custom-connector patterns, scope.
   [ordered]@{
+    default = $p.defaultConnectorsClassification
     groups = @($p.connectorGroups | Sort-Object classification | ForEach-Object { "$($_.classification): " + ((@($_.connectors | ForEach-Object name) | Sort-Object) -join ',') })
     custom = @($p.customConnectorUrlPatternsDefinition.rules | ForEach-Object { "$($_.order) $($_.pattern) $($_.dataGroup)" })
     envs   = @($p.environments | ForEach-Object name | Sort-Object)
@@ -96,6 +104,7 @@ function Dlp-Diff {
 }
 function Dlp-Restore {
   $want = @(Load 'dlp'); $have = @(DlpAll)
+  if (@($want | Where-Object { -not $_.connectorGroups }).Count) { throw "The dlp snapshot has no connector groups (taken by an older version of this script) - it can't restore a policy. Take a new snapshot BEFORE the next demonstration." }
   foreach ($w in $want) {
     $h = $have | Where-Object name -eq $w.name
     if (-not $h) { Write-Warning "  '$($w.displayName)' was deleted since the snapshot - recreate it by hand (Phase 3 for the estate's own)."; continue }

@@ -1309,3 +1309,15 @@ svc-claims' roles and teams in Claims-Test - and the RUNBOOK lists the portal-on
 scope, the Agent 365 Block, Defender). It replaces the walkthrough pipeline's `estate_state.py`, which
 lived outside the repo and stripped every team from Environment Maker on restore, whether or not a team
 held it before.
+
+### Exercise 05 · the DLP list call has no connector groups - a snapshot built on it can't restore (2026-10-19)
+
+**Symptom.** In the first facilitator-account recording of 05-01, `09_ex05_demo_state.ps1 -Diff` reported
+"same as the snapshot" after the facilitator had blocked both HTTP connectors, and the safety restore did
+nothing. Halcourt-Prod's policy was left blocking HTTP until it was restored by hand (17:22-17:25 UTC).
+**Evidence.** `GET .../PowerPlatform.Governance/v2/policies` returns each policy WITHOUT `connectorGroups`;
+`GET .../policies/<id>` includes them (Confidential 1771 / Blocked 2 after the save). The script compared and
+snapshotted the list form, so classification was invisible to it.
+**Fix.** `DlpAll` reads every policy individually; the shape includes the default classification; Restore
+refuses a snapshot without connector groups. Tested end to end: an API PATCH blocking HTTP -> Diff
+`CHANGED` -> Restore -> Blocked 0.
