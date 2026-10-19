@@ -19,8 +19,8 @@ Copy this block per agent.
 
 **Agent:** ____________________  **Environment:** ____________________
 
-**Agent identity:** ____________________ (Entra Agent ID or legacy app registration, from Copilot Studio →
-**Settings** → **Advanced** → **Metadata**)
+**Agent identity:** ____________________ (Entra Agent ID: **Entra ID** → **Agents** → **Agent identities**,
+matched to the agent by the `applicationId` in its Dataverse `bots` row, as in Task 01-02)
 
 | Layer | Value |
 |---|---|
