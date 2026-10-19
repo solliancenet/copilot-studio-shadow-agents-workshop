@@ -1363,5 +1363,6 @@ Members. Claims-Knowledge had the same grant: every employee could edit the clai
 **Fix.** Groups are created `Private`; `Grant-SiteAccess` strips the Everyone claim from Members (so a re-run
 repairs an existing site). Live: both groups set Private, the claim removed from both sites. After the fix
 student03 gets SharePoint's access-denied page for the file, and Benefits Buddy, asked in Teams as student03,
-**still** returns the comp table, minutes after the change. Search can lag a permission change, so that
-result is provisional until re-asked once the index has caught up.
+**still** returns the comp table - re-asked 35 minutes later, after the index had time to catch up, with
+the same result. The agent reads what the employee can't: Scenario B's asymmetry is real once the site is
+private. Test path: Teams web as student03 via the agent's install link (06 now saves it).
