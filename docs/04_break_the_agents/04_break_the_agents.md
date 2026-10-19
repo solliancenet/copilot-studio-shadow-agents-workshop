@@ -42,7 +42,7 @@ You record what actually happened, not what you expected. You do **not** decide 
 
 ```mermaid
 flowchart LR
-  U["Chat user<br/>(e.g. Jordan Blake, low-priv)"] -->|asks a question| A["Copilot Studio agent"]
+  U["Chat user<br/>(your lab account, low-priv)"] -->|asks a question| A["Copilot Studio agent"]
   subgraph reach["What the agent could reach — its configured reach, not necessarily the user's"]
     direction TB
     G["Grounding sources<br/>SharePoint / Dataverse"]
