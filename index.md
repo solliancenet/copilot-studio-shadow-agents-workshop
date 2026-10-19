@@ -26,9 +26,9 @@ Ask most organizations three simple questions and nobody has the answers:
 2. **Who owns them?**
 3. **What can they access?**
 
-Every new Copilot Studio agent now gets its own Entra identity, and Microsoft Agent 365 (generally
-available since May 2026) gives admins a registry of their agents: owners and, where available, knowledge
-sources and tools. That list is where a review starts. By the end of the day you will be able to
+Every new Copilot Studio agent now gets its own Entra Agent ID, and Microsoft Agent 365 (generally
+available since May 1, 2026) gives admins a registry of their agents: owners and, where available,
+knowledge sources and tools. That list is where a review starts. By the end of the day you will be able to
 determine whose credentials each tool runs on, what access those credentials allow, and which controls
 reduce the risk.
 
@@ -79,13 +79,15 @@ first-week starting list and further reading are in the [Appendix]({% link appen
 ## Prerequisites
 
 - A modern browser.
-- For the preferred, hands-on path: the lab account (username and password) the facilitator hands out at
-  the start of Exercise 00, along with the lab tenant's domain and your estate id, and the
-  [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"} for the few
-  facts only an API returns. The account can inspect the whole estate, and can change parts of it
-  because Exercise 05 has you configure controls. Until a task tells you to change something, look but don't
-  change. You gather the estate's data into blank CSVs from the
-  [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
+- For the preferred, hands-on path:
+  - At the start of Exercise 00 the facilitator hands you a lab account (username and password), the lab
+    tenant's domain and your estate id.
+  - Install the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"}
+    for the few facts only an API returns.
+  - The account can inspect the whole estate. It can also change parts of it, because Exercise 05 has you
+    configure controls. Until a task tells you to change something, look but don't change.
+  - You gather the estate's data into blank CSVs from the
+    [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
 - Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
 - Optional: a Copilot-enabled editor for the analysis tasks — see
   [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
