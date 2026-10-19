@@ -1352,3 +1352,16 @@ back doesn't.
 **Fix.** `09` re-adds each user separately and reports the ones it can't; a lockdown demonstration removes only
 enabled, current accounts. The 12 stale records lost the role (harmless: they can't sign in) and the
 snapshot was retaken.
+
+### Phase 4 · public group sites gave every employee the comp file (2026-10-19)
+
+**Symptom.** As student03 (an ordinary employee), `Leadership/2026-comp-bands.xlsx` opened directly - so
+Benefits Buddy disclosing it proved nothing, and Scenario B's asymmetry was gone.
+**Evidence.** 03 created both sites' M365 groups through Graph without `visibility`, so they were **Public**,
+and SharePoint put `Everyone except external users` in each site's Members group. `Leadership/` keeps
+Members. Claims-Knowledge had the same grant: every employee could edit the claims knowledge base.
+**Fix.** Groups are created `Private`; `Grant-SiteAccess` strips the Everyone claim from Members (so a re-run
+repairs an existing site). Live: both groups set Private, the claim removed from both sites. After the fix
+student03 gets SharePoint's access-denied page for the file, and Benefits Buddy, asked in Teams as student03,
+**still** returns the comp table - the agent reads what the employee can't (re-checked after the search
+index caught up: see the next entry if it changes).
