@@ -147,10 +147,12 @@ function Makers-Read { $E = DefaultEnv; $rid = RootRole $E 'Environment Maker'
   [ordered]@{ role = $rid
     users = @((Dv $E GET "roles($rid)/systemuserroles_association?`$select=systemuserid,domainname").value | ForEach-Object systemuserid | Sort-Object)
     teams = @((Dv $E GET "roles($rid)/teamroles_association?`$select=teamid,name").value | ForEach-Object teamid | Sort-Object)
-    self  = @(Self-Roles $E) } }
+    self  = @(Self-Roles $E)
+    # Entra-group teams (teamtype 2 security group, 3 Office group): the lockdown creates one for Halcourt-Makers.
+    groupteams = @((Dv $E GET 'teams?$select=teamid&$filter=teamtype eq 2 or teamtype eq 3').value | ForEach-Object teamid | Sort-Object) } }
 function Makers-Snapshot { $m = Makers-Read; Save 'default-makers' $m; Write-Host "  Environment Maker: $($m.users.Count) users, $($m.teams.Count) teams" }
 function Makers-Diff { $w = Load 'default-makers'; $h = Makers-Read
-  $d = @(Compare-Object @($w.users) @($h.users)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.self) @($h.self))
+  $d = @(Compare-Object @($w.users) @($h.users)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.self) @($h.self)) + @(Compare-Object @($w.groupteams) @($h.groupteams))
   if ($d.Count) { $d | ForEach-Object { Write-Host "  $(if ($_.SideIndicator -eq '=>') {'ADDED  '} else {'REMOVED'}) $($_.InputObject)" } } else { Write-Host '  Environment Maker (and the facilitator''s roles): same as the snapshot' }
   $d.Count }
 function Makers-Restore { $E = DefaultEnv; $w = Load 'default-makers'; $h = Makers-Read; $rid = $h.role; $ref = @{ '@odata.id' = "$($E.Org)/api/data/v9.2/roles($rid)" }
@@ -158,6 +160,9 @@ function Makers-Restore { $E = DefaultEnv; $w = Load 'default-makers'; $h = Make
   foreach ($u in @($h.users) | Where-Object { $_ -notin $w.users }) { Dv $E DELETE "systemusers($u)/systemuserroles_association($rid)/`$ref" | Out-Null }
   foreach ($t in @($w.teams) | Where-Object { $_ -notin $h.teams }) { Dv $E POST "teams($t)/teamroles_association/`$ref" $ref | Out-Null }
   foreach ($t in @($h.teams) | Where-Object { $_ -notin $w.teams }) { Dv $E DELETE "teams($t)/teamroles_association($rid)/`$ref" | Out-Null }
+  foreach ($t in @((Makers-Read).groupteams) | Where-Object { $_ -notin @($w.groupteams) }) {
+    try { Dv $E DELETE "teams($t)" | Out-Null; Write-Host "  deleted group team $t (created by the demonstration)" } catch { Write-Warning "  could not delete team $t : $($_.Exception.Message.Split([char]10)[0])" }
+  }
   Self-Restore $E $w.self
   (Makers-Diff) -eq 0 }
 
