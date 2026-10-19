@@ -42,3 +42,6 @@ infra/main.json
 
 # Windows build VM overrides (setup/windows-vm/compose.yaml)
 setup/windows-vm/.env
+
+# Python bytecode
+__pycache__/
