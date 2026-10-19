@@ -1296,3 +1296,16 @@ A review of PR #10 found, and this commit fixes:
   removed by name; the Teams channel is judged by the bot record's `channels`, not by the browser script,
   which no longer reports "already" when it simply couldn't find the button.
 - **03c** built Marcus's UPN on the initial domain; personas use the default domain.
+
+### Delivery · Exercise 05 is demonstrated, not done by attendees (2026-10-19)
+
+**Decision (Matt, 2026-10-19).** Attendees share one estate, so one attendee's change is everyone's result
+(16 people applying and undoing the same DLP policy on top of each other). The facilitator applies each
+control once, live, and restores it; attendees retest. Pages: PR #17.
+**Kit.** No attendee write role remains: AI Administrator eligibility is retired too (withdrawn live from
+the five lab accounts; 07 withdraws it on re-run). `09_ex05_demo_state.ps1` snapshots and restores what a
+script can restore exactly - data policies, the default environment's Environment Maker users AND teams,
+svc-claims' roles and teams in Claims-Test - and the RUNBOOK lists the portal-only reversals (knowledge
+scope, the Agent 365 Block, Defender). It replaces the walkthrough pipeline's `estate_state.py`, which
+lived outside the repo and stripped every team from Environment Maker on restore, whether or not a team
+held it before.

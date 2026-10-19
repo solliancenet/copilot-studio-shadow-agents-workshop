@@ -806,12 +806,35 @@ Why this role and not something weaker:
 [decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
 
 
-**Exercise 05 roles are PIM-eligible, not held.** 07 also makes every attendee *eligible* for AI Administrator
-(05-05: block an agent). Tell attendees at the start of Exercise 05: Entra admin center > *Privileged Identity
-Management* > *My roles* > *Activate*, a justification, 1-2 hours. **Defender real-time protection (05-07) is
-yours to turn on**, before Exercise 05: the only role that can is Security Administrator, which can also edit
-Conditional Access, so attendees don't get it (they watch the setting with Security Reader). Dataverse writes use Power Platform Administrator's per-environment self-elevation
-instead. Why: [errata](../reference/runbook-errata.md#phase-8b--exercise-05s-write-steps-pim-eligible-roles-and-per-environment-self-elevation-2026-10-18).
+**Attendees hold no Exercise 05 write role.** Exercise 05 is demonstrated: you apply each control to the
+shared estate and restore it (below), and attendees retest. An older kit made attendees PIM-eligible for AI
+Administrator and Security Administrator; 07 withdraws both on its next run (`$RetiredEligibleRoles`).
+Why: [errata](../reference/runbook-errata.md#phase-8b--review-fixes-to-this-branch-2026-10-19).
+
+### Exercise 05 demonstrations (during delivery)
+
+Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
+the estate back. Snapshot everything before the session, restore each control as soon as its retests are
+done, and finish with a diff.
+
+```powershell
+pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All     # before Exercise 05 starts
+# ... demonstrate, let the room retest ...
+pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp       # or DefaultMakers / ClaimsRoles
+pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at the end: all "same as the snapshot"
+```
+
+| Task | You demonstrate | Back to the estate |
+|---|---|---|
+| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Restore -Control Dlp` |
+| 05-02 | default environment: Environment Maker members → the `Halcourt-Makers-<estate>` group; a default-environment data policy named `Halcourt-Default-DLP-<estate>` | `-Restore -Control DefaultMakers`, then `Dlp` (deletes the new policy - the estate id in its name is what allows that) |
+| 05-03 | Benefits Buddy's knowledge narrowed (as Marcus, Copilot Studio) **or** the reader's permission on `Leadership/` removed; a scoped role for svc-claims in Claims-Test | knowledge / SharePoint permission: **by hand**, then republish Benefits Buddy; the role: `-Restore -Control ClaimsRoles` |
+| 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
+| 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
+| 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
+
+The default environment and the tenant's Defender setting are shared with every estate in the tenant:
+coordinate with any other facilitator delivering at the same time.
 
 ### Phase 8c — Per-student slices (needed from Exercise 03)
 
@@ -889,7 +912,11 @@ agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision 
 | `scripts/04_provision_dataverse.ps1` | Claim/Customer tables, PII rows, over-broad role |
 | `scripts/05_export_artifact_pack.ps1` | Regenerate the artifact-pack CSVs |
 | `scripts/06_provision_agents.ps1` | Provision the agents from committed workspaces, as each owner |
-| `scripts/lib/consent_browser.py` | Headless connection-consent helper (the only browser step in Phase 6) |
+| `scripts/lib/consent_browser.py` | Headless connection-consent helper (browser step in Phase 6) |
+| `scripts/lib/enable_teams_channel.py` | Adds the Teams channel to an agent as its owner (browser step in Phase 6) |
+| `scripts/03c_provision_purview.ps1` | Phase 4c: the encrypting label and the labelled comp copy |
+| `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
+| `scripts/09_ex05_demo_state.ps1` | Exercise 05 demonstrations: snapshot / diff / restore the shared estate |
 | `scripts/99_teardown.ps1` | Remove the estate |
 | `agents/manifest.json` | Phase 6 control data: agents, connections and flows (estate-agnostic) |
 | `agents/<slug>/` | Committed `pac copilot` agent workspaces the engine replays |

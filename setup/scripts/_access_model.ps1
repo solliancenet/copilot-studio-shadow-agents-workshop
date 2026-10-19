@@ -47,21 +47,14 @@ $DvRoleName   = 'Lab Reviewer (read-only)'
 #               read all tenant configuration - acceptable in an isolated training tenant, a decision made
 #               2026-10-18.
 $DirectoryRoles = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader')
-# PIM-ELIGIBLE roles: not held, but activatable by the attendee, for the Exercise 05 steps that WRITE where
-# no narrower lever exists. Activation is time-boxed (attendees pick 1-2 hours), needs a justification,
-# and is logged. Resource scoping doesn't help: the agent block acts on tenant-wide objects.
-#   AI Administrator      - 05-05 KT06: Block / assign owner / Delete an agent in Agent 365.
-# Not here, deliberately - each can edit Conditional Access, and one wrong edit to CA-Require-MFA-Admins
-# locks every account out, across every estate in the tenant:
-#   Conditional Access Administrator (05-04 KT03 writes the policy down instead), and
-#   Security Administrator (it manages CA policies too), so 05-07's Defender real-time protection is a
-#   FACILITATOR step; attendees observe it with Security Reader.
-# Nor Dataverse System Administrator: attendees self-elevate per environment with Power Platform
-# Administrator (05-05 KT06), and remove it after.
-# 07 creates these with the kit's app-only identity (_labapp.ps1); the az token lacks the PIM scopes.
-$EligibleRoles = @('AI Administrator')
+# PIM-ELIGIBLE roles: none. Exercise 05 is DEMONSTRATED (decided 2026-10-19): the facilitator applies each
+# control to the shared estate once and restores it (09_ex05_demo_state.ps1); attendees retest. So no
+# attendee needs a write role - not AI Administrator (05-05's Block), not Security Administrator (05-07's
+# Defender setting, and it can edit Conditional Access), not Conditional Access Administrator, not
+# Dataverse System Administrator. 07 keeps the PIM machinery for a future step that truly needs one.
+$EligibleRoles = @()
 # Eligibility an older kit granted; 07 withdraws it on its next run.
-$RetiredEligibleRoles = @('Security Administrator')
+$RetiredEligibleRoles = @('AI Administrator', 'Security Administrator')
 
 # Estate groups every attendee joins (plain names; 07 adds the estate suffix). Membership is what lets a
 # lab account CHAT with the published agents: 06 restricts chat on each agent to one security group
