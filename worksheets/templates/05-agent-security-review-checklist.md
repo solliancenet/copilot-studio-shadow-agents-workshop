@@ -26,7 +26,7 @@ it is promoted to production.
       agent is not the security reviewer by default.
 - [ ] Agent owner is an enabled account.
 - [ ] Each connection's owner is recorded, enabled and known — separately from the agent owner.
-- [ ] No disabled owner, and no unreviewed shared-mailbox or service-account owner, on the agent or any
+- [ ] No departed or disabled owner, and no unreviewed shared-mailbox or service-account owner, on the agent or any
       connection it uses. Either one is an automatic fail until a live, named person is accountable.
 
 ## SCOPE IT — identity, permissions, data, connectors, tools, APIs
