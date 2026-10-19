@@ -37,5 +37,5 @@ Mark each agent against these. (Some agents hit several; some are clean.)
 
 - Agents found: ______
 - Environments covered: ______
-- Agents with a disabled or ambiguous owner: ______
-- Agents on a shared/service-account connection: ______
+- Agents flagged Orphaned or Unknown / ambiguous owner: ______
+- Agents flagged Shared connection: ______

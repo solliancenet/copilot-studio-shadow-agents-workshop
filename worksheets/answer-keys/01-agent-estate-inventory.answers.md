@@ -12,7 +12,7 @@
 | Policy Lookup Bot | Prod | it.helpdesk (shared mbx) | PII (full-scope Policy API key reaches `/customer/{id}`) | | | | | ✅ | |
 | Underwriting Assistant | Prod | priya.nair (ok) | Internal (pricing DB via `run_query`) | | | | | | |
 | Expense Helper | Default | sam.olsen (ok) | Internal (expense records) | | | | | | |
-| Onboarding Guide | Default | **tom.dean (DISABLED)** | Internal (SharePoint + mail send) | ✅ | | | ✅ (tom.dean) | ✅ | ✅ |
+| Onboarding Guide | Default | **tom.dean (DISABLED)** | Internal (SharePoint + mail send) | ✅ | | | ✅ (tom.dean) | | ✅ |
 | Team Wiki | Sandbox | dev.kim (ok) | Internal (every site Dev can read — not `Leadership/`) | | ✅ | | | | ✅ |
 | Sales Nudge | Prod | lena.ford (ok) | PII (CRM/Dataverse under Tom Dean's broad CRM access) | | | | ✅ (tom.dean CRM) | ✅ (conn≠agent owner) | |
 | HR FAQ v2 (copy) | Prod | marcus.webb (ok) | Internal (`HR FAQ` library only) | | | | | | (decoy — clean) |
@@ -33,9 +33,16 @@ grounding data, so Benefits Buddy may be classified from its SharePoint connecti
   Claims-Adjusters group.
 - **Policy Lookup Bot:** owner `it.helpdesk` = shared mailbox (`users-export` `is_shared_mailbox = TRUE`)
   → nobody personally accountable; connection auth type = "API key in action config".
+- **Expense Helper (not flagged):** hunt 4's group-share check surfaces `PA-Expense-AutoApprove`, shared
+  with `All-Employees`, running as owner. Expect attendees to raise it. It doesn't take the Shared
+  connection flag: it runs as `sam.olsen`, the agent's own enabled owner. Carry the share into Exercise 03.
+- **Onboarding Guide is not Unknown / ambiguous owner:** its owner is a known, named, disabled person.
+  That is the Orphan flag.
 - **Team Wiki:** `Maker-Sandbox`, personal env, not in any sanctioned list — pure shadow.
 - **Decoys:** HR FAQ v2 and Meeting Notes Summarizer look risky by name/location but have least-privilege,
   single-source grounding and no actions. Correctly cleared.
 
-**Expected count:** 10 agents, 4 environments; 2 disabled/ambiguous owners (tom.dean, it.helpdesk);
-3 shared/service-account connections (DV-Claims-Shared, DV-CRM-Shared, SP/O365-Onboarding).
+**Expected count:** 10 agents, 4 environments; 3 agents flagged Orphaned or Unknown / ambiguous owner
+(Onboarding Guide, Policy Lookup Bot, Sales Nudge); 3 agents flagged Shared connection (Claims Copilot on
+DV-Claims-Shared, Sales Nudge on DV-CRM-Shared, Onboarding Guide on SP-Onboarding and
+O365-Outlook-Onboarding).
