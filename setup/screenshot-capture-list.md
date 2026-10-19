@@ -18,4 +18,4 @@ Total: 13 screenshots.
 | `ex04_t03_kt02_s01.png` | `docs/04_break_the_agents/04_03.md` | Underwriting Assistant's topics, each calling one Underwriting MCP tool: get_quote, get_risk_score, and a broad run_query (the calls are topic nodes, not tools — capture the Topics list, bearer value redacted if shown) |
 | `ex04_t05_kt02_s01.png` | `docs/04_break_the_agents/04_05.md` | Policy Lookup Bot's topic with the HTTP request node, the API key value redacted (the request is a node in the *Look up policy* topic, not a tool) |
 | `ex05_t03_kt01_s01.png` | `docs/05_test_the_controls/05_03.md` | Dataverse custom security role scoped to user-level read on Claim and Customer, with organization-wide privileges removed |
-| `ex05_t06_kt01_s01.png` | `docs/05_test_the_controls/05_06.md` | Applying the Confidential-PII sensitivity label to 2026-comp-bands.xlsx in the HR-Benefits site |
+| `ex05_t06_kt01_s01.png` | `docs/05_test_the_controls/05_06.md` | Inspecting the Confidential-PII sensitivity label on 2026-comp-bands-labeled.xlsx in the HR-Benefits site |
