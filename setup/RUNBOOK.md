@@ -835,9 +835,9 @@ pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at
 
 | Task | You demonstrate | Back to the estate |
 |---|---|---|
-| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Restore -Control Dlp` |
-| 05-02 | default environment: Environment Maker members → the `Halcourt-Makers-<estate>` group; a default-environment data policy named `Halcourt-Default-DLP-<estate>` | `-Restore -Control DefaultMakers`, then `Dlp` (deletes the new policy - the estate id in its name is what allows that) |
-| 05-03 | Benefits Buddy's knowledge narrowed (as Marcus, Copilot Studio) **or** the reader's permission on `Leadership/` removed; a scoped role for svc-claims in Claims-Test | knowledge / SharePoint permission: **by hand**, then republish Benefits Buddy; the role: `-Restore -Control ClaimsRoles` |
+| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
+| 05-02 | default environment: Environment Maker members → the `Halcourt-Makers-<estate>` group; a default-environment data policy named `Halcourt-Default-DLP-<estate>` | `-Action Restore -Control DefaultMakers`, then `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
+| 05-03 | Benefits Buddy's knowledge narrowed (as Marcus, Copilot Studio) **or** the reader's permission on `Leadership/` removed; a scoped role for svc-claims in Claims-Test | knowledge / SharePoint permission: **by hand**, then republish Benefits Buddy; the role: `-Action Restore -Control ClaimsRoles` |
 | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
 | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
 | 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
