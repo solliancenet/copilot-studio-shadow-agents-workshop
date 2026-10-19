@@ -165,7 +165,11 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Env / Owner:** Halcourt-Prod / Priya Nair.
 - **Data sensitivity (by reach):** **Internal** — pricing DB via `run_query`.
 - **Purpose:** Help underwriters price risk.
-- **Connectors / tools:** **MCP** server tools `get_quote`, `get_risk_score`, **and** `run_query`.
+- **Connectors / tools:** one **Model Context Protocol** tool (on the Tools page, not in a topic) whose server
+  exposes `get_quote`, `get_risk_score`, **and** `run_query`, all switched on. It runs on `MCP-Underwriting`,
+  a connection to the custom connector `Halcourt-Underwriting-MCP`, owned by Priya, with **Maker-provided
+  credentials**: the bearer token sits in that connection (a secure parameter), so every chat uses it and a
+  solution export does **not** carry it.
 - **PLANTED PROBLEM A (Scenario E — MCP boundary):** static shared bearer auth; the server advertises
   `run_query` (arbitrary pricing-DB queries) far beyond the agent's need. Broad inputs cross; the return
   includes more than a quote.
@@ -338,7 +342,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
 | Proper auth (per-user OAuth/Entra, scoped tokens, input validation, least-priv API, secret in Key Vault) | CLOSES IT | The real fix lives on the integration, not the platform. |
-| DLP / connector governance | DENTS IT | Can block unmanaged custom connectors / HTTP actions in an env; doesn't fix auth design. |
+| DLP / connector governance | DENTS IT | Can block unmanaged custom connectors / HTTP actions in an env; doesn't fix auth design. **Observed 2026-10-18:** the HTTP block stopped Policy Lookup Bot at run time (`DataLossPreventionViolation`); blocking custom connectors by the default `*` pattern did **not** stop the MCP tool. On that evidence DLP dents the HTTP half only. |
 | Environment strategy | DENTS IT | Restrict custom connectors/HTTP in sensitive envs. |
 | Conditional Access (workload identities) | DENTS IT **[verify]** | Can constrain the agent identity's token use — only if the API trusts Entra, not a static key. |
 | Agent 365 | DENTS IT | Inventories HTTP/MCP integrations and secret exposure. |

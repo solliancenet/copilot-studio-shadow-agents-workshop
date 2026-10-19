@@ -37,8 +37,8 @@ If you're working in the tenant, you fill in each blank CSV at the task that fir
 |---|---|---|
 | `environments-export.csv` | Power Platform admin center: **Environments**, **Data policy**, and each environment's **Security roles** | [Task 00-02]({% link docs/00_lab_environment/00_02.md %}) |
 | `agents-export.csv` | Power Platform admin center: **Inventory**, filtered to Copilot Studio agents. Microsoft 365 admin center: the agent **Registry** | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
-| `users-export.csv` | Microsoft Entra admin center: **Users** (or Graph Explorer). Exchange admin center: **Mailboxes**, filtered to shared mailboxes | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
-| `connections-export.csv` | The Power Platform admin API, through `az rest`. Copilot Studio: each agent's **Connection Settings**, **Topics**, and **Tools**. Power Platform admin center: each environment's **Flows** | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
+| `users-export.csv` | Microsoft Entra admin center: **Users**, and the users query (`az rest`) for leave dates and sign-ins. Exchange admin center: **Mailboxes**, filtered to shared mailboxes | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
+| `connections-export.csv` | The Power Platform admin API, through `az rest`. Copilot Studio: each agent's **Tools** and **Topics**. Power Platform admin center: each environment's **Flows** | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
 | `agent-identities-export.csv` | Microsoft Entra admin center: **Agent identities** (or Graph Explorer) | [Task 01-02]({% link docs/01_the_agent_estate/01_02.md %}) |
 
 A few columns have no field in the tenant, so you write them yourself: `maker_access` (who holds the maker
