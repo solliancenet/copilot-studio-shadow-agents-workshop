@@ -18,6 +18,7 @@ Controls the script can restore exactly:
   DefaultMakers the default environment's Environment Maker role: its users AND teams (05-02 lockdown).
   ClaimsRoles   svc-claims' security roles and team memberships in Claims-Test, and custom roles created there
                 since the snapshot (05-03 scoped role).
+  Both also strip roles the facilitator account gave itself in that environment (Membership > Add me).
 Not restorable here (portal only; RUNBOOK checklist): Benefits Buddy's knowledge scope (05-03), the Agent 365
 Block (05-05), Defender real-time protection (05-07).
 
@@ -123,21 +124,41 @@ function Dlp-Restore {
   (Dlp-Diff) -eq 0
 }
 
+# ---- the facilitator account's own roles ------------------------------------------------------------
+# To edit roles in an environment the facilitator first adds itself (Membership > Add me = System
+# Administrator). That is part of the demonstration too, so each Dataverse control snapshots the facilitator
+# account's roles in its environment and strips anything added. The user record may not exist until the
+# first Add me; then the snapshot holds no roles and the restore removes every role the account gained.
+function Self-Roles($E) {
+  $u = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=startswith(domainname,'$(Get-EstateAlias 'facilitator' $Estate)@')").value | Select-Object -First 1
+  if (-not $u) { return @() }
+  @((Dv $E GET "systemusers($($u.systemuserid))/systemuserroles_association?`$select=roleid").value | ForEach-Object roleid | Sort-Object)
+}
+function Self-Restore($E, $Want) {
+  $u = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=startswith(domainname,'$(Get-EstateAlias 'facilitator' $Estate)@')").value | Select-Object -First 1
+  if (-not $u) { return }
+  foreach ($r in @(Self-Roles $E) | Where-Object { $_ -notin @($Want) }) {
+    Dv $E DELETE "systemusers($($u.systemuserid))/systemuserroles_association($r)/`$ref" | Out-Null; Write-Host "  facilitator: removed role $r"
+  }
+}
+
 # ---- DefaultMakers -----------------------------------------------------------------------------------
 function Makers-Read { $E = DefaultEnv; $rid = RootRole $E 'Environment Maker'
   [ordered]@{ role = $rid
     users = @((Dv $E GET "roles($rid)/systemuserroles_association?`$select=systemuserid,domainname").value | ForEach-Object systemuserid | Sort-Object)
-    teams = @((Dv $E GET "roles($rid)/teamroles_association?`$select=teamid,name").value | ForEach-Object teamid | Sort-Object) } }
+    teams = @((Dv $E GET "roles($rid)/teamroles_association?`$select=teamid,name").value | ForEach-Object teamid | Sort-Object)
+    self  = @(Self-Roles $E) } }
 function Makers-Snapshot { $m = Makers-Read; Save 'default-makers' $m; Write-Host "  Environment Maker: $($m.users.Count) users, $($m.teams.Count) teams" }
 function Makers-Diff { $w = Load 'default-makers'; $h = Makers-Read
-  $d = @(Compare-Object @($w.users) @($h.users)) + @(Compare-Object @($w.teams) @($h.teams))
-  if ($d.Count) { $d | ForEach-Object { Write-Host "  $(if ($_.SideIndicator -eq '=>') {'ADDED  '} else {'REMOVED'}) $($_.InputObject)" } } else { Write-Host '  Environment Maker: same as the snapshot' }
+  $d = @(Compare-Object @($w.users) @($h.users)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.self) @($h.self))
+  if ($d.Count) { $d | ForEach-Object { Write-Host "  $(if ($_.SideIndicator -eq '=>') {'ADDED  '} else {'REMOVED'}) $($_.InputObject)" } } else { Write-Host '  Environment Maker (and the facilitator''s roles): same as the snapshot' }
   $d.Count }
 function Makers-Restore { $E = DefaultEnv; $w = Load 'default-makers'; $h = Makers-Read; $rid = $h.role; $ref = @{ '@odata.id' = "$($E.Org)/api/data/v9.2/roles($rid)" }
   foreach ($u in @($w.users) | Where-Object { $_ -notin $h.users }) { Dv $E POST "systemusers($u)/systemuserroles_association/`$ref" $ref | Out-Null }
   foreach ($u in @($h.users) | Where-Object { $_ -notin $w.users }) { Dv $E DELETE "systemusers($u)/systemuserroles_association($rid)/`$ref" | Out-Null }
   foreach ($t in @($w.teams) | Where-Object { $_ -notin $h.teams }) { Dv $E POST "teams($t)/teamroles_association/`$ref" $ref | Out-Null }
   foreach ($t in @($h.teams) | Where-Object { $_ -notin $w.teams }) { Dv $E DELETE "teams($t)/teamroles_association($rid)/`$ref" | Out-Null }
+  Self-Restore $E $w.self
   (Makers-Diff) -eq 0 }
 
 # ---- ClaimsRoles -------------------------------------------------------------------------------------
@@ -147,10 +168,11 @@ function Claims-Read { $E = Env (Get-EstateName 'Claims-Test' $Estate)
   [ordered]@{ user = $su
     roles = @((Dv $E GET "systemusers($su)/systemuserroles_association?`$select=roleid").value | ForEach-Object roleid | Sort-Object)
     teams = @((Dv $E GET "systemusers($su)/teammembership_association?`$select=teamid").value | ForEach-Object teamid | Sort-Object)
-    custom = @((Dv $E GET 'roles?$select=roleid&$filter=ismanaged eq false').value | ForEach-Object roleid | Sort-Object) } }
+    custom = @((Dv $E GET 'roles?$select=roleid&$filter=ismanaged eq false').value | ForEach-Object roleid | Sort-Object)
+    self   = @(Self-Roles $E) } }
 function Claims-Snapshot { $c = Claims-Read; Save 'claims-roles' $c; Write-Host "  svc-claims: $($c.roles.Count) roles, $($c.teams.Count) teams; $($c.custom.Count) unmanaged roles in Claims-Test" }
 function Claims-Diff { $w = Load 'claims-roles'; $h = Claims-Read
-  $d = @(Compare-Object @($w.roles) @($h.roles)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.custom) @($h.custom))
+  $d = @(Compare-Object @($w.roles) @($h.roles)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.custom) @($h.custom)) + @(Compare-Object @($w.self) @($h.self))
   if ($d.Count) { $d | ForEach-Object { Write-Host "  $(if ($_.SideIndicator -eq '=>') {'ADDED  '} else {'REMOVED'}) $($_.InputObject)" } } else { Write-Host '  svc-claims roles: same as the snapshot' }
   $d.Count }
 function Claims-Restore { $E = Env (Get-EstateName 'Claims-Test' $Estate); $w = Load 'claims-roles'; $h = Claims-Read; $su = $w.user
@@ -158,6 +180,7 @@ function Claims-Restore { $E = Env (Get-EstateName 'Claims-Test' $Estate); $w = 
   foreach ($r in @($h.roles) | Where-Object { $_ -notin $w.roles }) { Dv $E DELETE "systemusers($su)/systemuserroles_association($r)/`$ref" | Out-Null }
   foreach ($t in @($h.teams) | Where-Object { $_ -notin $w.teams }) { Dv $E DELETE "teams($t)/teammembership_association($su)/`$ref" | Out-Null }
   foreach ($t in @($w.teams) | Where-Object { $_ -notin $h.teams }) { Dv $E POST "teams($t)/teammembership_association/`$ref" @{ '@odata.id' = "$($E.Org)/api/data/v9.2/systemusers($su)" } | Out-Null }
+  Self-Restore $E $w.self
   # Roles the demonstration created (the scoped role), once nobody holds them.
   foreach ($r in @((Claims-Read).custom) | Where-Object { $_ -notin $w.custom }) { try { Dv $E DELETE "roles($r)" | Out-Null; Write-Host "  deleted role $r (created by the demonstration)" } catch { Write-Warning "  could not delete role $r : $($_.Exception.Message.Split([char]10)[0])" } }
   (Claims-Diff) -eq 0 }
