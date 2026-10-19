@@ -1265,3 +1265,15 @@ looking up a persona.
 **Fix.** `_estate.ps1` (loaded by every Phase 1-9 script) now points an unset `AZURE_CONFIG_DIR` at the
 repo's `.azure/` and **throws** if it is set anywhere else. `00_conditional_access_baseline.ps1` doesn't load
 it but requires `-TenantId`.
+
+### Phase 8b · a viewer can't open a connector tool's Details without prvReadconnectionreference (2026-10-19)
+
+**Symptom.** As student03, Claims Copilot → Tools → *List claims* showed only "This Tool has encountered an
+error obtaining required dependencies"; the MCP tool on Underwriting Assistant opened fine.
+**Evidence.** `Bot Viewer` grants `prvReadconnectionreference` at **Basic** depth, and Claims Copilot's
+references belong to svc-claims and Priya. Adding it at **Global** to the Lab Reviewer role in Claims-Test
+fixed it at once (Details then show *Maker-provided credentials*).
+**Fix.** In `$DvAccessModel`; applied by hand to the role in all four environments (re-running 07 would
+also re-license student01-05). Also confirmed as a viewer: Settings (Connection Settings, Advanced →
+Metadata) is closed at every address; Knowledge, Tools and Topics open at `/knowledge`, `/actions`, `/topics`;
+the bots table's `synchronizationstatus.applicationId` equals the agent identity's Application ID.

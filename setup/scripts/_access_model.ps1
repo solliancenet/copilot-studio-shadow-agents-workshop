@@ -88,6 +88,7 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadbot';                    Needs = 'agent list and agent page - GLOBAL depth, the agents belong to the personas' }
   @{ Privilege = 'prvReadbotcomponent';           Needs = 'Knowledge, Topics, Tools' }
   @{ Privilege = 'prvReadbotcomponentcollection'; Needs = 'agent page' }
+  @{ Privilege = 'prvReadconnectionreference';    Needs = '02-02, 03-01, 03-04, 04-02: a connector tool''s Details / credentials setting (Bot Viewer grants it at Basic only: Claims Copilot''s tools said "error obtaining required dependencies")' }
   @{ Privilege = 'prvReadmsdynce_botcontent';     Needs = 'agent page' }
   @{ Privilege = 'prvReadAICopilot';              Needs = 'agent page' }
   @{ Privilege = 'prvReadCopilotExampleQuestion'; Needs = 'agent page' }
