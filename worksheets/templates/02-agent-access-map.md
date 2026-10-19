@@ -19,6 +19,9 @@ Copy this block per agent.
 
 **Agent:** ____________________  **Environment:** ____________________
 
+**Agent identity:** ____________________ (Entra Agent ID or legacy app registration, from Copilot Studio →
+**Settings** → **Advanced** → **Metadata**)
+
 | Layer | Value |
 |---|---|
 | Acting credential (end user / maker or connection owner / service account / flow owner / key / token) |  |
