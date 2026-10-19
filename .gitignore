@@ -31,11 +31,20 @@ Thumbs.db
 
 # Local-only facilitator scratch (never commit filled answer keys with real tenant data)
 **/*.answers.local.md
+# Attendee handouts from 07_provision_lab_users.ps1 - PLAINTEXT passwords
+**/*.local.csv
 setup/**/secrets.*
 setup/**/*.local.json
+setup/**/*.local.pfx
 
 # compiled bicep ARM output
 infra/main.json
 
 # Windows build VM overrides (setup/windows-vm/compose.yaml)
 setup/windows-vm/.env
+
+# Python bytecode
+__pycache__/
+
+# Exercise 05 demonstration snapshots (09_ex05_demo_state.ps1)
+setup/ex05-state/

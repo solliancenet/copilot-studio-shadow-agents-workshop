@@ -2,8 +2,8 @@ mcs.metadata:
   componentName: Underwriting Assistant
 kind: GptComponentMetadata
 instructions: |-
-  You help underwriters price risk. To quote a premium, use the Get a quote topic. You can also run a
-  pricing query. Answer from what the tools return.
+  You help underwriters price risk. Use the underwriting MCP tools: get_quote for a premium, get_risk_score
+  for a risk score, and run_query for pricing queries. Answer from what the tools return.
 gptCapabilities:
   webBrowsing: false
 

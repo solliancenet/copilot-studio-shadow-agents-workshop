@@ -1,0 +1,17 @@
+mcs.metadata:
+  componentName: ${MCP_CONNECTOR_NAME}
+  description: The Underwriting MCP server as a Copilot Studio MCP tool (get_quote, get_risk_score, run_query).
+kind: TaskDialog
+modelDisplayName: ${MCP_CONNECTOR_NAME}
+modelDescription: "Halcourt underwriting tools: premium quotes, risk scores and pricing queries."
+action:
+  kind: InvokeExternalAgentTaskAction
+  connectionReference: cr3f5_UnderwritingAssistant.${CONNECTOR:MCP-Underwriting}.MCPUnderwriting
+  # Maker: every chat runs on the maker's connection, so every user's call carries the one shared bearer
+  # (Scenario E). Copilot Studio's MCP wizard defaults to Invoker (each user's own key), which hides it.
+  connectionProperties:
+    mode: Maker
+
+  operationDetails:
+    kind: ModelContextProtocolMetadata
+    operationId: InvokeServer

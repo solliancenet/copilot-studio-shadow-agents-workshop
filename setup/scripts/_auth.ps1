@@ -32,9 +32,16 @@ function Connect-LabGraph([string[]]$Scopes, [string]$TenantId) {
       else              { Write-Host "Microsoft Graph: the az sign-in lacks $($missing -join ', ') - signing in separately." }
     }
   }
-  $connectArgs = @{ Scopes = $Scopes; UseDeviceCode = $true; NoWelcome = $true }
-  if ($TenantId) { $connectArgs['TenantId'] = $TenantId }
-  Connect-MgGraph @connectArgs
+  # Device code signs in to whatever tenant the browser picks, so pin it: to -TenantId, else to the tenant
+  # the repo's az sign-in is on (the tenant _estate.ps1's guard vouches for), and check it afterwards.
+  if (-not $TenantId -and (Get-Command az -ErrorAction SilentlyContinue)) { $TenantId = az account show --query tenantId -o tsv 2>$null }
+  if (-not $TenantId) { throw 'No tenant to pin the Graph sign-in to: pass -TenantId, or sign az in to the lab tenant (scripts/env.sh).' }
+  Connect-MgGraph -Scopes $Scopes -UseDeviceCode -NoWelcome -TenantId $TenantId
+  $ctx = Get-MgContext
+  if ($ctx -and $TenantId -match '^[0-9a-f-]{36}$' -and $ctx.TenantId -ne $TenantId) {
+    Disconnect-MgGraph | Out-Null
+    throw "Graph signed in to tenant $($ctx.TenantId), not $TenantId."
+  }
 }
 
 # Exchange Online, same idea: Connect-ExchangeOnline accepts a delegated access token, so reuse the az

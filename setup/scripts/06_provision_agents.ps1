@@ -29,6 +29,12 @@ param(
   [string]$DomainSuffix,                               # default: tenant's default verified domain
   [string]$LabPassword = 'Lab-Only-Passw0rd!',
   [string[]]$Agents,                                   # slugs to limit to; default: all with a workspace
+  [string]$TargetEnvironment,                          # build into THIS environment instead of the manifest's
+                                                       # (per-student slices, Phase 8c); use with -Agents
+  [string]$DisplayNameSuffix,                          # slice builds: keeps each slice's agent - and so its
+                                                       # tenant-wide Entra identity - distinguishable.
+                                                       # APPLIES ON FIRST BUILD ONLY: a rebuild pushes the
+                                                       # committed workspace's own name and renames nothing
   [switch]$SkipConnections,
   [switch]$SkipPrereqs,
   [switch]$VerifyOnly
@@ -54,6 +60,10 @@ if (-not $DomainSuffix) {
   $DomainSuffix = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
     --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv
 }
+# SharePoint hosts come from the tenant's INITIAL domain (<prefix>.onmicrosoft.com -> <prefix>.sharepoint.com),
+# which is what the committed knowledge sources reference as ${SP_HOST} / ${SP_MY_HOST}.
+$SpPrefix = (az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
+  --query "value[0].verifiedDomains[?isInitial].name | [0]" -o tsv).Split('.')[0]
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 
 # ---- tokens -------------------------------------------------------------------------------------------
@@ -88,7 +98,12 @@ function Invoke-Bap([string]$Method, [string]$Path, $Body, [string]$Api = '2021-
 Write-Host "Estate '$Estate' on $DomainSuffix - resolving environments..."
 $allEnvs = (Invoke-Bap GET 'scopes/admin/environments').value
 function Resolve-Env([string]$Canonical) {
-  $name = if ($manifest.environments.$Canonical -eq 'shared') { $Canonical } else { Get-EstateName $Canonical $Estate }
+  # -TargetEnvironment redirects EVERY canonical name to one environment. Phase 8c uses it to build an
+  # agent and its connections into a per-student slice; the manifest still says Claims-Test, but the
+  # slice is where it lands. Only sensible together with -Agents.
+  $name = if ($TargetEnvironment) { $TargetEnvironment }
+          elseif ($manifest.environments.$Canonical -eq 'shared') { $Canonical }
+          else { Get-EstateName $Canonical $Estate }
   $e = $allEnvs | Where-Object { $_.properties.displayName -eq $name } | Select-Object -First 1
   if (-not $e) { throw "Environment '$name' not found (canonical '$Canonical')." }
   [pscustomobject]@{ Name = $name; Id = $e.name; Org = $e.properties.linkedEnvironmentMetadata.instanceUrl.TrimEnd('/') }
@@ -105,6 +120,33 @@ function Get-Prefix([object]$E) {
 }
 
 # ---- Dataverse (as admin, or as a persona) ------------------------------------------------------------
+function Invoke-BindWithTempRole([object]$E, [string]$Owner, [string]$CrefId, [string]$ConnId) {
+  # Privileges the connection reference PATCH checks on the caller (each named, in turn, by its 403).
+  $need = 'prvReadconnectionreference', 'prvWriteconnectionreference', 'prvReadAsyncOperation'
+  $bu   = (Dv $E GET 'businessunits?$select=businessunitid&$filter=parentbusinessunitid eq null').value[0].businessunitid
+  $name = "Lab-Bind-Temp-$([guid]::NewGuid().ToString('N').Substring(0,6))"
+  $rid  = $null; $su = $null
+  try {
+    # Created inside the try, so a failure at any point still reaches the cleanup below.
+    Dv $E POST 'roles' @{ name = $name; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
+    $rid  = (Dv $E GET "roles?`$select=roleid&`$filter=name eq '$name'").value[0].roleid
+    if (-not $rid) { throw "temporary role '$name' was not found after creating it" }
+    $privs = foreach ($n in $need) { @{ PrivilegeId = (Dv $E GET "privileges?`$select=privilegeid&`$filter=name eq '$n'").value[0].privilegeid; Depth = 'Global' } }
+    Dv $E POST "roles($rid)/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = @($privs) } | Out-Null
+    $su = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$(Get-Upn $Owner)'").value[0].systemuserid
+    Dv $E POST "systemusers($su)/systemuserroles_association/`$ref" @{ '@odata.id' = "$($E.Org)/api/data/v9.2/roles($rid)" } | Out-Null
+    for ($i = 0; $i -lt 6; $i++) {
+      Start-Sleep 20
+      try { DvAs $E $Owner PATCH "connectionreferences($CrefId)" @{ connectionid = $ConnId } | Out-Null; return $true } catch { }
+    }
+    return $false
+  } finally {
+    if ($su -and $rid) { try { Dv $E DELETE "systemusers($su)/systemuserroles_association($rid)/`$ref" | Out-Null } catch { } }
+    # Look the role up by name, not by $rid: the create can succeed and the lookup still come back empty.
+    $left = @((Dv $E GET "roles?`$select=roleid&`$filter=name eq '$name'").value)
+    foreach ($r in $left) { try { Dv $E DELETE "roles($($r.roleid))" | Out-Null } catch { Write-Warning "    remove the temporary role '$name' by hand" } }
+  }
+}
 function Dv([object]$E, [string]$Method, [string]$Path, $Body) {
   Invoke-Json $Method "$($E.Org)/api/data/v9.2/$Path" (Get-AdminToken $E.Org) $Body
 }
@@ -167,17 +209,55 @@ function Pa([string]$Alias, [string]$Method, [string]$Path, $Body, [string]$EnvI
   if ($EnvId) { $q += "&`$filter=environment eq '$EnvId'" }
   Invoke-Json $Method "$PA/$Path$q" (Get-PersonaToken $Alias 'https://service.powerapps.com/') $Body
 }
+# ---- custom connectors (the Underwriting MCP server as a Copilot Studio MCP tool) ---------------------
+# Copilot Studio caps a connector's display name at 30 characters and silently truncates; do the same, so a
+# rerun finds the connector it made (Halcourt-Underwriting-MCP-<estate> -> ...-mgra for estate mgray).
+function Get-CustomConnectorDisplay([object]$Def) { $n = Get-EstateName $Def.customConnector.name $Estate; if ($n.Length -gt 30) { $n.Substring(0, 30) } else { $n } }
+$script:CustomConnectors = @{}
+function Find-CustomConnector([object]$Def) {
+  $E = Env $Def.environment; $want = Get-CustomConnectorDisplay $Def
+  $all = (Invoke-Json GET "$PA/apis?api-version=2016-11-01&`$filter=environment eq '$($E.Id)' and IsCustomApi eq 'True'" (Get-PersonaToken $Def.owner 'https://service.powerapps.com/') $null).value
+  ($all | Where-Object { $_.properties.displayName -eq $want } | Select-Object -First 1).name
+}
+function Ensure-CustomConnector([string]$Name, [object]$Def) {
+  if ($script:CustomConnectors[$Name]) { return $script:CustomConnectors[$Name] }
+  $id = Find-CustomConnector $Def
+  if (-not $id -and -not $VerifyOnly) {
+    # The MCP wizard's own output, committed (setup/agents/<ws>/mcp-connector): one POST operation marked
+    # x-ms-agentic-protocol mcp-streamable-1.0, API-key auth in the Authorization header. Created as the
+    # connection's owner with pac, so the connector, its connection and the agent all belong to one maker.
+    $src = Join-Path $AgentsDir $Def.customConnector.workspace
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) "halcourt-connector/$Name"; New-Item -ItemType Directory -Force $tmp | Out-Null
+    $host_ = ([Uri]$AzdValues['UNDERWRITING_MCP_FQDN']).Host
+    (Get-Content (Join-Path $src 'apiDefinition.swagger.json') -Raw).Replace('${UNDERWRITING_MCP_HOST}', $host_).Replace('${MCP_CONNECTOR_NAME}', (Get-CustomConnectorDisplay $Def)) |
+      Set-Content (Join-Path $tmp 'apiDefinition.swagger.json') -NoNewline
+    Copy-Item (Join-Path $src 'apiProperties.json') $tmp -Force
+    $E = Env $Def.environment
+    $env:XDG_DATA_HOME = Get-PacHome $Def.owner
+    & $realPac auth clear 2>&1 | Out-Null
+    & $realPac auth create --name $Def.owner --username (Get-Upn $Def.owner) --password $LabPassword --environment $E.Org 2>&1 | Out-Null
+    $out = & $realPac connector create --api-definition-file (Join-Path $tmp 'apiDefinition.swagger.json') --api-properties-file (Join-Path $tmp 'apiProperties.json') --environment $E.Org 2>&1
+    for ($i = 0; $i -lt 6 -and -not $id; $i++) { Start-Sleep 10; $id = Find-CustomConnector $Def }
+    if (-not $id) { throw "custom connector for $Name not created: $(($out | Select-Object -Last 2) -join ' ')" }
+  }
+  $script:CustomConnectors[$Name] = $id; $id
+}
+function Get-ConnectorId([string]$Name) {   # the shared_* id, or the generated id of a custom connector
+  $def = $manifest.connections.$Name
+  if ($def.connector -eq 'custom') { Ensure-CustomConnector $Name $def } else { $def.connector }
+}
+
 $script:ConnIds = @{}
 function Get-ConnId([string]$Name) {
   if ($script:ConnIds[$Name]) { return $script:ConnIds[$Name] }
   $def = $manifest.connections.$Name; $E = Env $def.environment
-  $c = (Pa $def.owner GET "apis/$($def.connector)/connections" $null $E.Id).value |
+  $c = (Pa $def.owner GET "apis/$(Get-ConnectorId $Name)/connections" $null $E.Id).value |
     Where-Object { $_.properties.displayName -eq $Name -and $_.properties.createdBy.userPrincipalName -eq (Get-Upn $def.owner) } | Select-Object -First 1
   if ($c) { $script:ConnIds[$Name] = $c.name }
   $script:ConnIds[$Name]
 }
 function Ensure-Connection([string]$Name, [object]$Def) {
-  $E = Env $Def.environment; $alias = $Def.owner; $connector = $Def.connector
+  $E = Env $Def.environment; $alias = $Def.owner; $connector = Get-ConnectorId $Name
   $upn = Get-Upn $alias
   $mine = @((Pa $alias GET "apis/$connector/connections" $null $E.Id).value | Where-Object {
     $_.properties.createdBy.userPrincipalName -eq $upn -and $_.properties.displayName -eq $Name })
@@ -187,7 +267,14 @@ function Ensure-Connection([string]$Name, [object]$Def) {
   $c = if ($mine) { $mine[0] } else {
     $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name }
     if ($Def.params) { $props.connectionParameters = $Def.params }
+    if ($Def.apiKeyFrom) { $props.connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
     Pa $alias PUT "apis/$connector/connections/$([guid]::NewGuid().ToString('N'))" @{ properties = $props } $E.Id
+  }
+  if ($Def.apiKeyFrom) {
+    # An API-key connection has no OAuth consent: it is Connected (or not) as soon as it exists.
+    $st = @((Pa $alias GET "apis/$connector/connections/$($c.name)" $null $E.Id).properties.statuses.status)
+    if ($st -contains 'Error') { throw "connection $Name is in Error: $($st -join ',')" }
+    $script:ConnIds[$Name] = $c.name; return "created ($($c.name), API key)"
   }
   $link = (Pa $alias POST "apis/$connector/connections/$($c.name)/getConsentLink" @{ redirectUrl = 'https://global.consent.azure-apim.net/redirect' } $E.Id).consentLink
   $out = python3 (Join-Path $PSScriptRoot 'lib/consent_browser.py') --upn $upn --password $LabPassword --consent-url $link 2>&1
@@ -274,7 +361,16 @@ function Provision-Agent([object]$A) {
   #   3. make the committed config authoritative - drop the clone's server-state knowledge/tools/conn-refs
   #      and overlay the committed ones (schema-prefixed to match);
   #   4. push. Preserves the agent identity (no delete) and is conflict-free.
-  $display = if ($A.estateSuffixName) { "$($A.display) ($Estate)" } else { $A.display }   # shared default env: estate-suffixed
+  # Agent DISPLAY NAMES are the only thing distinguishing the Entra identities Copilot Studio creates, and
+  # those identities are TENANT-wide. Two builds of the same agent therefore produce two principals called
+  # "<name> (Microsoft Copilot Studio)" - verified: building claims-copilot into one slice already gave the
+  # tenant two. At 20 slices that is 21, which breaks Lab 01-02's identity matching and makes Phase 7's
+  # newest-per-name dedupe pick an arbitrary student's slice. So a slice build suffixes the name.
+  # A slice suffix REPLACES the estate suffix rather than stacking on it - appending produced
+  # "Onboarding Guide (mgray) (mgray-01)", which is just noise in the identity list.
+  $display = if ($DisplayNameSuffix)   { "$($A.display) ($DisplayNameSuffix)" }
+             elseif ($A.estateSuffixName) { "$($A.display) ($Estate)" }        # shared default env
+             else                      { $A.display }
   $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "halcourt-ws/$($A.slug)"
   # Get a synced workspace via clone - pac's OWN existence view (the Dataverse `bots` table can disagree,
   # e.g. a soft-deleted ghost that pac still sees). If clone finds nothing, the agent truly is absent:
@@ -316,12 +412,42 @@ function Provision-Agent([object]$A) {
   Get-ChildItem $wsdir -Recurse -Include *.mcs.yml | ForEach-Object {
     $c = Get-Content $_.FullName -Raw; $changed = $false
     foreach ($k in $AzdValues.Keys) { $tok = '${' + $k + '}'; if ($c.Contains($tok)) { $c = $c.Replace($tok, $AzdValues[$k]); $changed = $true } }
+    # The agent's own environment URL, for Dataverse tools that must name it (claims-copilot's List rows).
+    if ($c.Contains('${ENV_ORG_URL}')) { $c = $c.Replace('${ENV_ORG_URL}', $E.Org); $changed = $true }
+    # Tenant- and estate-specific names (knowledge sites, OneDrive paths, the default environment's display
+    # names) are tokens in the committed workspace, never this build's literal values.
+    foreach ($kv in @(@('${ESTATE}', $Estate), @('${SP_HOST}', "$SpPrefix.sharepoint.com"), @('${SP_MY_HOST}', "$SpPrefix-my.sharepoint.com"))) {
+      if ($c.Contains($kv[0])) { $c = $c.Replace($kv[0], $kv[1]); $changed = $true }
+    }
+    # ${UPN_PATH:<alias>}: a persona's OneDrive path segment (dev.kim.<estate>@<domain> -> dev_kim_<estate>_<domain_with_underscores>).
+    foreach ($x in [regex]::Matches($c, '\$\{UPN_PATH:([^}]+)\}')) { $c = $c.Replace($x.Value, ((Get-Upn $x.Groups[1].Value) -replace '[.@]', '_').ToLower()); $changed = $true }
+    # A custom connector's generated id, and its display name (the MCP tool's name in Copilot Studio).
+    foreach ($x in [regex]::Matches($c, '\$\{CONNECTOR:([^}]+)\}')) { $c = $c.Replace($x.Value, (Get-ConnectorId $x.Groups[1].Value)); $changed = $true }
+    if ($c.Contains('${MCP_CONNECTOR_NAME}')) {
+      $mcpDef = $manifest.connections.PSObject.Properties | Where-Object { $_.Value.connector -eq 'custom' } | Select-Object -First 1
+      $c = $c.Replace('${MCP_CONNECTOR_NAME}', (Get-CustomConnectorDisplay $mcpDef.Value)); $changed = $true
+    }
     foreach ($x in [regex]::Matches($c, '\$\{FLOW:([^}]+)\}')) {
       $fn = $x.Groups[1].Value
       $fid = (DvAs $E $alias GET ("workflows?`$select=workflowid&`$filter=name eq '" + $fn.Replace("'","''") + "' and category eq 5")).value | Select-Object -First 1
       if ($fid) { $c = $c.Replace($x.Value, $fid.workflowid); $changed = $true } else { Write-Host "    (flow '$fn' not found - run the flow-creation step first)" }
     }
     if ($changed) { Set-Content $_.FullName -Value $c -NoNewline }
+  }
+  # `pac copilot push` only POINTS at connection references - one the workspace declares but Dataverse lacks
+  # fails the push ("A record with the specified key values does not exist in connectionreference entity").
+  # Every reference before the MCP tool predated the push workflow, so this never showed. Create any that
+  # are missing, as the owner, before pushing.
+  $crFile = Join-Path $wsdir 'connectionreferences.mcs.yml'
+  if (Test-Path $crFile) {
+    foreach ($m in [regex]::Matches((Get-Content $crFile -Raw), 'connectionReferenceLogicalName:\s*(\S+)\s+connectorId:\s*(\S+)')) {
+      $ln = $m.Groups[1].Value; $cid = $m.Groups[2].Value
+      $have = (DvAuto $E $alias GET "connectionreferences?`$select=connectionreferenceid&`$filter=connectionreferencelogicalname eq '$ln'").value
+      if (-not $have) {
+        DvAs $E $alias POST 'connectionreferences' @{ connectionreferencelogicalname = $ln; connectionreferencedisplayname = $ln.Split('.')[-1]; connectorid = $cid } | Out-Null
+        Write-Host "    created connection reference $ln"
+      }
+    }
   }
   $push = & $realPac copilot push --project-dir $wsdir 2>&1
   if ($LASTEXITCODE -ne 0) { return "PUSH FAILED: " + (($push | Select-Object -Last 1) -join ' ') }
@@ -350,12 +476,54 @@ function Provision-Agent([object]$A) {
     $cid = Get-ConnId $cn
     if (-not $cid) { Write-Host "    (no live connection for $cn)"; continue }
     $connOwner = $manifest.connections.$cn.owner       # the connection's owner can bind it; the agent owner may not
-    $connector = $manifest.connections.$cn.connector
+    $connector = Get-ConnectorId $cn
     $cref = (DvAuto $E $alias GET "connectionreferences?`$select=connectionreferenceid,connectionid,connectorid&`$filter=startswith(connectionreferencelogicalname,'$schema')").value |
       Where-Object { $_.connectorid -like "*/$connector" } | Select-Object -First 1
     if ($cref -and $cref.connectionid -ne $cid) {
       try { DvAs $E $connOwner PATCH "connectionreferences($($cref.connectionreferenceid))" @{ connectionid = $cid } | Out-Null; Write-Host "    bound $cn -> $cid" }
-      catch { Write-Host "    (could not bind $cn as $connOwner`: $($_.Exception.Message.Split([char]10)[0]))" }
+      catch {
+        # Only the connection's owner may bind it (a Dataverse OAuth connection can't be shared), but a
+        # service-account owner holds just its scenario role, which lacks the reads the bind checks
+        # (claims-copilot: svc-claims). Lend it a throwaway role for the PATCH, then take it away again so
+        # the scenario role attendees inspect is unchanged. Measured 2026-10-18.
+        Write-Host "    (bind as $connOwner refused - retrying with a temporary role)"
+        $bound = $false
+        try { $bound = Invoke-BindWithTempRole $E $connOwner $cref.connectionreferenceid $cid }
+        catch { Write-Host "    (could not bind $cn as $connOwner`: $($_.Exception.Message.Split([char]10)[0]))" }
+        if ($bound) { Write-Host "    bound $cn -> $cid (via temporary role, now removed)" }
+        else        { Write-Warning "    $cn is NOT bound - the agent's tools on it will fail (ConnectionNotFound). Bind it in Copilot Studio as $connOwner." }
+      }
+    }
+  }
+
+  # Co-owners: Copilot Studio's own editor share needs the sharer to hold prvAssignRole, which a maker doesn't,
+  # so add them to the agent's owning team (<botid>_1) directly - which is all an editor share does.
+  foreach ($co in @($A.coOwners)) {
+    if (-not $co) { continue }
+    try {
+      $team = (Dv $E GET "teams?`$select=teamid&`$filter=name eq '$($bot.botid.Replace('-',''))_1'").value | Select-Object -First 1
+      $su = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$(Get-Upn $co)'").value | Select-Object -First 1
+      if ($team -and $su) {
+        Dv $E POST "teams($($team.teamid))/Microsoft.Dynamics.CRM.AddMembersTeam" @{ Members = @(@{ '@odata.type' = 'Microsoft.Dynamics.CRM.systemuser'; systemuserid = $su.systemuserid }) } | Out-Null
+        Write-Host "    co-owner $co"
+      } else { Write-Host "    (co-owner ${co}: team or user not found)" }
+    } catch { Write-Host "    (co-owner ${co} not added: $($_.Exception.Message.Split([char]10)[0]))" }
+  }
+
+  # Teams channel: attendees chat with the scenario agents in Teams (Lab 04), and an agent published with
+  # Microsoft authentication is reachable only through it. No headless API - added in the browser as the owner.
+  # The bot record is the judge, not the browser script: its configuration lists the channel once added.
+  if ($A.teamsChannel) {
+    $hasTeams = {
+      $cfg = (DvAs $E $alias GET "bots($($bot.botid))?`$select=configuration").configuration
+      $cfg -and @(($cfg | ConvertFrom-Json).channels | ForEach-Object { $_.channelId }) -contains 'msteams'
+    }
+    if (& $hasTeams) { Write-Host '    teams channel: already on' }
+    else {
+      $r = python3 (Join-Path $PSScriptRoot 'lib/enable_teams_channel.py') --upn (Get-Upn $alias) --password $LabPassword --env $E.Id --bot $bot.botid 2>&1
+      $code = $LASTEXITCODE
+      if (& $hasTeams) { Write-Host '    teams channel: added' }
+      else { Write-Warning "    teams channel NOT added (exit $code): $($r | Select-Object -Last 1) - attendees can't chat with $($A.display) in Teams. Screenshot: /tmp/enable_teams_channel_error.png" }
     }
   }
 
@@ -379,8 +547,8 @@ if (-not $SkipPrereqs) {
   # Dataverse will not add a sign-in-disabled user to an environment; it fails with an opaque Kepler
   # 'instanceNotFound' rather than saying so. it.helpdesk hits this every build: it is a SHARED MAILBOX, and
   # Exchange creates those disabled, so enable it here (RUNBOOK Phase 6, prereq 2). Any OTHER disabled owner
-  # is reported, never auto-enabled - after Phase 6.5 tom.dean is disabled deliberately, and quietly turning
-  # him back on would undo the departed-owner scenario.
+  # is reported, never auto-enabled: a disabled persona is a decision someone made (tom.dean is departed but
+  # stays ENABLED - see Phase 6.5 - so a disabled Tom means someone ran the Ex05 fix and didn't undo it).
   Write-Host "`n== Owner sign-in =="
   foreach ($alias in ($targets.owner | Select-Object -Unique)) {
     $upn = Get-Upn $alias
@@ -394,7 +562,7 @@ if (-not $SkipPrereqs) {
       Write-Host "{0,-12} -> enabled (shared mailbox; Exchange creates it disabled)" -f $alias
       Start-Sleep 10   # let the sign-in change reach Dataverse before addUser
     } else {
-      Write-Warning "$alias is sign-in disabled - Dataverse cannot add it. Enable it, or (if this is after Phase 6.5) run Phase 6 before disabling Tom."
+      Write-Warning "$alias is sign-in disabled - Dataverse cannot add it. Enable it (tom.dean stays enabled by design - Phase 6.5)."
     }
   }
 
@@ -420,7 +588,23 @@ if (-not $SkipConnections) {
 
 if (-not $SkipConnections -and $manifest.flows) {
   Write-Host "`n== Flows =="
-  foreach ($f in $manifest.flows) { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
+  foreach ($f in $manifest.flows) {
+    # One flow must not end the run. A slice build (-TargetEnvironment) targets a brand-new environment
+    # where the flow's owner holds no Dataverse role yet, so the read throws 0x80042f09 - report it and
+    # carry on to the agents, which are what the slice is for.
+    try   { "{0,-42} -> {1}" -f $f.name, (Ensure-Flow $f) | Write-Host }
+    catch {
+      $msg = $_.Exception.Message.Split([char]10)[0]
+      if ($TargetEnvironment) {
+        # Slice build only: the flow owner holds no Dataverse role in a brand-new environment yet.
+        "{0,-42} -> SKIPPED ({1})" -f $f.name, $msg | Write-Host
+      } else {
+        # Ordinary estate build: an agent that needs this flow would be provisioned with its
+        # ${FLOW:...} placeholder unresolved, which fails silently at run time instead of here.
+        throw "Flow '$($f.name)' failed in an ordinary estate build: $msg"
+      }
+    }
+  }
 }
 
 Write-Host "`n== Agents =="

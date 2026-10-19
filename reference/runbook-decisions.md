@@ -393,3 +393,147 @@ still need a human. Read the diff as *drift to review*, not as a test that shoul
 `-Canonicalize` maps the live names back to the canon's (strips the estate id, restores
 `@halcourtmutual.onmicrosoft.com`) so the export lands on the committed pack and `git diff` shows the
 drift. Without it the script refuses to write into the committed pack, which is published with the site.
+
+## Phase 8b — attendee accounts
+
+### Why attendees get `Power Platform Administrator`, and what the exclusion costs
+
+Lab 01-01 has attendees enumerate an environment's connections. Only the tenant-admin Power Platform
+endpoints under `/scopes/admin/` return another person's connections, and only a Power Platform
+Administrator reaches them. Both weaker options were tested on `0zwdt94t`, 2026-10-13, and both fail:
+
+| Option | Result |
+|---|---|
+| `Global Reader` + unlicensed | Signs in fine, reads Entra fine, but **404 `CRMRequestFailed`** on `/scopes/admin/environments` where a tenant admin gets `200` |
+| A per-environment role | The maker-facing connections API is **caller-scoped**. `marcus.webb`, who owns 1 of Halcourt-Prod's 2 connections, saw exactly 1; `priya.nair` and `dev.kim`, both environment members, saw 0 |
+
+The second result is the decisive one, and it is easy to assume otherwise. No environment-level role makes
+a user see another person's connections, because the API never returns them — this is not a permissions
+level we failed to find, it is a scope the endpoint does not have.
+
+The `404` is worth remembering on its own: the tenant-admin endpoints **hide themselves from an
+unauthorized caller** rather than returning `403`. An attendee following Lab 01-01 sees "not found" and
+reasonably concludes the estate is empty. It is an authorization result wearing a not-found costume.
+
+**So the role is necessary, and it is MFA-gated.** Power Platform Administrator sits in
+`CA-Require-MFA-Admins` (`00_conditional_access_baseline.ps1`), and an account holding it cannot sign in
+with a handed-out password at all — `AADSTS50079`. The resolution is one group per delivery,
+`Lab-Students-<estate>`, added to that policy's `excludeGroups`.
+
+Three properties make the exclusion safe to automate:
+
+- **Additive both ways.** The policy is read, one field changes, the whole `conditions` object goes back.
+  Another estate's exclusion is never touched, and `-Destroy` drops only this estate's group id.
+- **Verified after the write.** The script re-reads the policy and warns if the admin-role count moved.
+  This policy is what keeps MFA on the tenant's real admins; a silent clobber would be the worst outcome
+  here, so the write is never taken on trust.
+- **No extra sign-in.** `00_conditional_access_baseline.ps1` connects separately because it asks for
+  `Policy.ReadWrite.ConditionalAccess`. It turns out az's delegated `Directory.AccessAsUser.All` already
+  covers Conditional Access for a Global Administrator — verified `GET` 200 and `PATCH` 204 — so Phase 8b
+  stays non-interactive.
+
+**The cost, stated plainly.** An attendee account is a tenant-wide Power Platform admin exempt from the
+admin MFA policy. It can change or delete any environment in the tenant, including another facilitator's
+estate, and it makes Lab 00-01's "a security reviewer observes; they do not change the estate" untrue of
+the account itself. Give a delivery its own tenant where you can. This is only ever appropriate in an
+isolated, disposable training tenant.
+
+One cheaper option was not testable from the CLI and would be worth five minutes before the next delivery:
+whether PPAC's **portal** shows an environment's connections to a `Global Reader`. If it does, the step
+could be rewritten portal-first and the attendee account could go back to read-only.
+
+### Why licence assignment is best effort
+
+A Dev Program sandbox carries **25** E5 seats. The estate itself needs eight (Phase 2), and the optional
+content pack's ~16 sample users hold most of the rest; on the build tenant `subscribedSkus` reported
+`DEVELOPERPACK_V2_E5` at **25/25 consumed, 0 free**, so every attendee account came out unlicensed.
+
+That is why `07_provision_lab_users.ps1` checks seat availability up front, attempts assignment per account,
+never treats a failure as fatal, and prints who actually got one. Nothing an attendee does needs a seat:
+Entra reads do not, the `/scopes/admin/` Power Platform calls do not (verified unlicensed), and opening an
+agent in Copilot Studio is already gated on being its owner or co-author (Lab 01-01 step 6), which an
+attendee never is. `FLOW_FREE` (10,000 seats, 1 consumed) is
+available if some surface merely requires *a* licence to be present.
+
+The accounts still get `usageLocation` stamped from the tenant's country, because a licence cannot be
+assigned to an account without one — so freeing seats later and re-running is enough.
+
+### Why the script purges, not just deletes
+
+Deleting a user only **soft**-deletes it: it sits in `directory/deletedItems` for 30 days holding its UPN
+and `mailNickname`. The next delivery's `student01.<estate>` would collide with the last one's. `-Destroy`
+therefore deletes and then purges, the same lesson Phase 9 learned about sites and groups.
+
+The same applies to `Lab-Students-<estate>`, and it matters more there: a soft-deleted group still holds
+its `mailNickname`, so the next delivery could not recreate it, and the Conditional Access exclusion would
+be left pointing at a group nobody can see. `-Destroy` removes the exclusion first, then deletes and purges
+the group, in that order.
+
+### Why attendees need Dataverse access, and why it is an access model rather than a role
+
+Power Platform Administrator is a **tenant** role. It reaches the admin APIs and PPAC, and it grants
+nothing inside a Dataverse environment: reading `systemusers` or `roles` there fails with `0x80042f09`
+*"has not been assigned any roles"* (verified 2026-10-13). Most of the day's tasks read something that
+lives inside an environment, so the account needs in-environment access too. **Not System Administrator**,
+the obvious shortcut, which would hand every attendee write access to the estate they are reviewing on top
+of the tenant-wide admin role they already hold.
+
+The first version was a hand-built read-only role with five privileges, sized for what Exercises 01-02
+needed. It then failed three modules in a row, each time in a different way, each time diagnosed from a
+403 body and patched by adding what that body named:
+
+| Module | What failed | What it needed |
+|---|---|---|
+| 03-02, 03-04 | the PPAC role editor: *"Loading role failed!"* | six metadata reads the editor's `EntityDefinitions` and `recordfilters` calls make |
+| 01-01 s2-3, 02-01..03, all of 04 | opening an agent in Copilot Studio: *"You need additional access"* | eight Copilot read privileges at Global depth **plus** the built-in `Bot Viewer` |
+
+That pattern - the role was a side effect of whichever probe last failed - is why it became a declared
+**access model** (`setup/scripts/_access_model.ps1`): one row per privilege with the exercise step that
+needs it, enforced by Phase 8b on every run and verified by the preflight. Extend it from an exercise's
+requirement. A privilege nobody can tie to a step does not belong in it.
+
+**Why `Bot Viewer` as well, and why neither alone works** (verified 2026-10-16, one combination at a time):
+
+- Copilot Studio reads the agent's `bot` and `botcomponent` rows. The estate's agents belong to the
+  personas, so the attendee needs those reads at **Global** depth. `Bot Viewer` grants them at **Basic**
+  depth - own records only - so on its own it reads nothing.
+- The agent page also reads connection references, AI plugins, workflows, solutions, publishers and
+  environment variables, at the depths Copilot Studio expects. `Bot Viewer` carries those; the custom role
+  does not try to, because Microsoft maintains that set as the product changes.
+- So the custom role carries the Global-depth bot reads and the `Copilot*` set, `Bot Viewer` carries the
+  rest, and the attendee page opens with every privilege still `prvRead*`.
+
+**Why the role is reconciled, not just extended.** The live role had drifted: 22 privileges in one
+environment, 14 in another, against a list of 5, and one of them (`prvReadbot`) was the only reason the
+agent *list* worked at all. A greenfield build would not have had it. Phase 8b now adds what the model
+lists and removes what it does not, so the estate you tested is the estate you deliver. Dataverse stamps a
+baseline onto every custom role (`prvReadSdkMessage*`, `prvReadPluginAssembly`, the SharePoint trio) and
+refuses with 400 to remove it; the model names that baseline so it is reported once, not mistaken for
+drift. **The SharePoint write privileges on a role named "read-only" are that baseline, not a grant** - they
+cannot be removed, and the name stays accurate about everything the kit chose to grant.
+
+**Licensing is a gate too - for the custom role.** An unlicensed account runs in Administrative access
+mode, which *filters* a custom role's privileges (a role holding 18 applied as 15) and lets System
+Administrator through. The single-variable tests, both directions:
+
+| Account | Licence | Role | Role editor / agent page |
+|---|---|---|---|
+| student01 | none | custom (old) | fails |
+| student01 | E5 | custom | **works** |
+| student02 | none | System Administrator | **works** |
+| student03 | none | custom (complete model) + Bot Viewer | fails - "You don't have permission" (2026-10-17) |
+
+So the access model is necessary and, with a seat, sufficient. Without one, the only role that survives is
+System Administrator, which attendees hold only in their own slice. That is why 03-02 and 03-04 route
+there, and why the Copilot Studio configuration reads in 01, 02 and 04 either need a seat per attendee or
+agents built into each slice (08 lists that as not yet wired in).
+
+Three findings from the first build still stand:
+
+- **The usual licensing rule does not apply to `addUser`.** Dataverse normally refuses unlicensed users
+  (`userNotLicensed`); the BAP admin `addUser` endpoint adds one anyway, and a role assigned afterwards works.
+- **Match the account by Entra object id, never by UPN.** A destroy/recreate cycle leaves the previous
+  account's `systemuser` record behind under the *same* UPN; granting the role to that one reports success
+  while the live account still gets `0x80042f09`.
+- **A Developer environment can refuse `addUser` with 400.** Its owner is its only System Administrator, so
+  Maker-Sandbox may need a re-run or a manual add.

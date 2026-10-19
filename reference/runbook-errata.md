@@ -358,8 +358,8 @@ agents (Benefits Buddy, HR FAQ v2) were never affected; only agents with a conne
 - **All bot-record ops run AS THE OWNER, not admin.** Bot lookup, chat-audience PATCH and connection binding
   fail as admin in the default env (no `bots` read); and a connection reference can only be bound by the
   **connection's** owner (`ConnectionAuthorizationFailed` otherwise). The agent owner binds its own agent's
-  refs; the connection owner (a SysAdmin in that env, e.g. Tom in Prod) binds connections it owns — **before**
-  Phase 6.5 disables Tom.
+  refs; the connection owner (a SysAdmin in that env, e.g. Tom in Prod) binds connections it owns — so Tom must be
+  enabled (he now always is; see *Phase 6.5: a disabled owner's connections die*).
 - **Publisher prefix is stable per agent, not per env.** Don't rewrite it to the env's CDS Default Publisher
   (that duplicated an agent and mutated the committed source). Keep the committed prefix; ensure a publisher
   with it exists in the env (create on a fresh rebuild).
@@ -730,3 +730,617 @@ system topics still cross-referenced the *original* agent's dialogs (`cr3f5_HRFA
 Push succeeded and publish failed with `InvalidReferenceError` / `NotFound`. Fixed by rewriting the committed
 topic references to the agent's own schema. **When you capture a "copy" agent, grep `topics/*.mcs.yml` for
 stale `<old-schema>.topic.*` references.**
+
+
+### Phase 6 · the default-environment agents are orphans, not absences (diagnosed 2026-10-13)
+
+**Symptom.** `Halcourt (default)` appears to contain no agents. The build admin reads `bots` and gets
+`200` with an empty array. Every persona - including `sam.olsen`, the canonical owner of Expense Helper -
+reads the same empty array. `pac copilot list` as that owner reports *"No Chatbots found"*. Three
+independent reads agree, and all three are wrong.
+
+**What is actually there.** The bot records exist. `pac copilot init` for `cr458_ExpenseHelper` fails with
+the only message that tells the truth:
+
+```
+user with id 0bc88b57-... does not have WriteAccess right(s) for record with id 4cf3a8fe-...
+of entity Agent ... OwnerPrincipal: 48b56557-a6b6-f111-aaab-000d3a32c3db
+```
+
+Resolving that owner gives `fullname = "# Sam Olsen (mgray)"` and
+`domainname = ea559c6438cf4b19bd097c953a2abe15sam.olsen.mgray@...`. The GUID-prefixed UPN and the `#`
+prefix are how Dataverse renames the `systemuser` record of a **deleted** user. Its Entra object id
+(`ea559c64-...`) is not the live `sam.olsen` (`1264def9-...`).
+
+So the agents belong to a sam.olsen from an **earlier build of this same estate**. When Phase 9 removed the
+personas and Phase 2 recreated them, the new accounts got new `systemuser` records; the bots stayed behind,
+owned by the dead one. `bot` is user-owned, so a user-scoped read shows every live account an empty list.
+
+**Why it is worth writing down.** The failure mode is indistinguishable from "the agents were never built"
+unless you ask a tool that reports ownership. It is the same trap Lab 02-01 teaches - *an empty result can
+mean no access, not no agents* - landing on the facilitator rather than the attendee. It also means a
+rebuild cannot proceed: the schema name is taken, and the live owner has no write access to the record
+holding it.
+
+**What it is NOT.** Not another estate's agents, and not a schema-name collision between two estates -
+the usual reading of "the default-env agents are not estate-scoped". The collision here is between two
+builds of the *same* estate, across a teardown.
+
+**The fix needs rights the build admin does not have.** In `Halcourt (default)` the admin holds only
+Environment Maker and Basic User, so it cannot read the records, cannot create a security role
+(`403` on `POST /roles`) and cannot reassign or delete the bots. One of these has to happen first:
+
+- give the admin **System Administrator** in the default environment - PPAC -> the environment ->
+  Settings -> Users + permissions, or `pac admin assign-user --environment <id> --user <admin UPN>
+  --role "System Administrator"` (needs a fresh `pac` sign-in; the device-code flow is interactive); then
+- **reassign** the two bots to the live `sam.olsen` and `tom.dean`, which restores them without a rebuild,
+  **or delete** them and re-run `06_provision_agents.ps1 -Agents expense-helper` and `-Agents
+  onboarding-guide`. Onboarding Guide is owned by `tom.dean`, so it must be built **before** Phase 6.5
+  disables him, or he must be re-enabled for the build and disabled again afterwards.
+
+**Prevention.** Phase 9 should remove the default environment's agents while their owners still exist, or
+the teardown should reassign them to a surviving principal first. Deleting the personas before the agents
+is what strands them.
+
+
+### Phase 8c · agent identities collide across slices (found 2026-10-13)
+
+**Symptom.** Build the same agent into a per-student slice and the tenant gains a second Entra principal
+with the *same* name. Building `claims-copilot` into one slice was enough:
+`Claims Copilot (Microsoft Copilot Studio)` x2. At twenty slices it is twenty-one.
+
+**Why it matters twice over.**
+
+- **Lab 01-02** has attendees match each identity to an agent in `agents-export.csv`. The page already
+  anticipates duplicates and tells them to compare the identity's Object ID with the agent's **Entra Agent
+  ID** in Copilot Studio -> Settings -> Advanced -> Metadata. That works for two candidates. It does not
+  work for twenty-one.
+- **Phase 7's export** dedupes agent identities **newest-per-display-name**. With duplicates it silently
+  keeps whichever slice was built last, so a student's throwaway environment can end up in the committed
+  artifact pack.
+
+**Fix.** `06_provision_agents.ps1 -DisplayNameSuffix <slice>` suffixes the agent's display name, and the
+identity follows it: `Claims Copilot (mgray-01)`. The same idea the manifest already uses for the shared
+default environment (`estateSuffixName`), applied to slices.
+
+**Not a fix for the general case.** Two *estates* in one tenant still collide on the non-default agents,
+because only the default-environment two carry the estate id. That is the separate, known gap.
+
+### Phase 8c · the connection-reference bind warning is pre-existing
+
+A slice build reports `could not bind DV-Claims-Shared as svc-claims: 403 (Forbidden)` and the agent still
+publishes. It is tempting to read that as the slice being broken. It is not: `connectionreferences` in the
+**working** `Claims-Test-<estate>` shows the same three references with `connectionid` empty, exactly as a
+freshly built slice does. The slice is at parity with the estate, and Copilot Studio evidently carries the
+binding in its own agent settings rather than those rows.
+
+Retrying does not clear the 403 - it failed identically on a second run with svc-claims holding the same
+roles in both environments - so it is not the privilege-cache lag that explains several other delays in
+this kit. Whether the scenario actually fires is a functional question: drive the agent and watch, which is
+Module 4 work, not something the build can assert.
+
+
+### Phase 6 · a connection reference binds only when the agent owner owns the connection
+
+Building two agents into the same slice showed the rule the earlier `403` was hiding:
+
+| agent | agent owner | connection owner | bind |
+|---|---|---|---|
+| `onboarding-guide` | tom.dean | tom.dean (`O365-Outlook-Onboarding`) | **bound** |
+| `claims-copilot` | priya.nair | svc-claims (`DV-Claims-Shared`) | `403 Forbidden` |
+
+So the bind is not flaky, not a propagation delay and not slice-specific: it succeeds when one principal
+owns **both** the agent and the connection, and fails when they differ. That matches the rule the Phase 6
+notes already state - the agent owner binds its own agent's references, and a connection reference can
+only be bound by the connection's owner - the two requirements simply cannot both be met when the
+connection belongs to a service account.
+
+The shared estate is in exactly the same state (`connectionreferences` with `connectionid` empty in
+`Claims-Test-<estate>`), so this is long-standing and not a regression. Copilot Studio evidently carries
+the binding in the agent's own settings rather than those rows. Treat the warning as expected for any
+service-account connection, and judge the scenario by driving the agent, not by reading that table.
+
+
+### Phase 8c · Dataverse learns an owner is disabled late, not never
+
+Disable a persona in Entra and Dataverse's `systemuser.isdisabled` does **not** follow immediately.
+Measured 2026-10-13, same account, two environments:
+
+| environment | disabled in Entra | `isdisabled` in Dataverse |
+|---|---|---|
+| `Lab-mgray-01` (slice) | ~15 minutes earlier | **False** |
+| `Halcourt-Prod-<estate>` | weeks earlier | **True** |
+
+So it is a propagation lag, not a permanent divergence - worth knowing before someone reports it as a
+bug, and worth not "fixing" by re-disabling the account.
+
+**It does not affect the exercises.** Lab 02-03's orphan hunt and Lab 03-01's owner cross-check both read
+`account_enabled`, which comes from **Entra** via `users-export.csv`, and Entra is correct immediately. A
+student who queries an environment's `systemusers` table directly on the day a slice was built is the only
+one who would see the stale value.
+
+**Operationally** it joins the other lags in this kit - Conditional Access group membership, and `az`
+settling a token for a brand-new org. Build the slices well before the delivery
+rather than minutes before it. Nothing here is fast-path safe.
+
+
+### Phase 8c · the slice suffix only takes on a FIRST build
+
+`-DisplayNameSuffix` is applied by `pac copilot init`, which runs only when the agent does not yet exist.
+On a rebuild, clone-first finds the agent by schema name and pushes the committed workspace, which carries
+its own display name - so the agent is **not** renamed, and neither is the Entra identity it was born with.
+Verified: rebuilding `claims-copilot` into a slice with `-DisplayNameSuffix mgray-01` republished it as
+plain `Claims Copilot`, and the tenant still held two identities called
+`Claims Copilot (Microsoft Copilot Studio)`.
+
+**So set the suffix on the first build of a slice.** Getting it wrong is not repaired by re-running with
+the right flag; it is repaired by deleting the agent (or the whole slice environment) and building again.
+Because an identity outlives its agent, each correction leaves an orphaned principal behind - which is the
+same trap the default-environment agents fell into, arrived at from the other direction.
+
+Practical consequence for a twenty-slice delivery: build each slice **once**, with the suffix, and treat a
+slice as disposable rather than editable. Deleting the environment removes its agents; the orphaned
+identities that remain are harmless **provided** they were named distinctly in the first place, because
+then they can be told apart from the estate's own.
+
+
+### Phase 8b · attendee accounts can use PPAC and nothing else (found 2026-10-13)
+
+Signing a lab account into each portal the exercises use, in a real browser:
+
+| Portal | Lab account |
+|---|---|
+| Power Platform admin center | **works** |
+| Microsoft Entra admin center | **blocked** - *"Let's keep your account secure"*, MFA registration |
+| Microsoft 365 admin center | **blocked** - same |
+| Exchange admin center | **blocked** - same |
+| Graph Explorer | page loads (queries while signed in untested) |
+
+There is **no skip**: none of *Skip setup*, *Skip for now*, *Ask later*, *Maybe later* or *Not now* is
+offered. This is Microsoft's own mandatory MFA for admin portals, which is enforced independently of
+tenant Conditional Access - so `CA-Require-MFA-Admins`'s exclusion, which is what lets these accounts sign
+in with a handed-out password at all, does not reach it.
+
+**What it blocks.** Every task that sends an attendee anywhere but PPAC:
+
+- 01-01 KT01 step 3, and 02-01 KT01 step 4 - the agent registry in the M365 admin center;
+- 01-01 KT02 step 2, 03-01 KT02 step 3, 03-04 KT01 step 7 - owner checks in the Entra admin center;
+- 01-02 KT01 step 2 - *Entra ID -> Agents -> Agent identities*;
+- 01-01 KT02 step 2, 02-03 hunt 5, 03-01 KT02 step 3 - shared mailboxes in the Exchange admin center.
+
+**The fix is to stop avoiding MFA and enrol it.** Have attendees register MFA on first sign-in, the way
+they would for any corporate lab. That is strictly better than what is built today:
+
+- every portal the exercises use comes back;
+- the **CA exclusion becomes unnecessary**, so `CA-Require-MFA-Admins` no longer has to be weakened for a
+  delivery, and the accounts can hold Power Platform Administrator without that trade;
+- the only cost is each attendee needing an authenticator app and about two minutes at the start.
+
+The accounts still need Power Platform Administrator for Lab 01-01's `/scopes/admin/` calls - that finding
+is unchanged. What changes is that the MFA exclusion built to go with it is the wrong half of the trade.
+
+
+### Phase 8b · RESOLVED - MFA enrolment restores every portal (2026-10-13)
+
+The entry above records that a lab account reached PPAC and nothing else. Enrolling MFA fixes it, and the
+enrolment needs no phone: Entra's wizard offers **"Set up a different authentication app"**, which ends on
+a screen whose **"Can't scan the QR code?"** link prints the base32 secret. Capture it, generate the code
+in software (RFC 6238), finish the wizard.
+
+Measured after enrolling one account:
+
+| Portal | Before | After |
+|---|---|---|
+| Power Platform admin center | works | works |
+| Microsoft Entra admin center | blocked | **works** |
+| Microsoft 365 admin center | blocked | **works** (redirects to `admin.cloud.microsoft`) |
+| Exchange admin center | blocked | **works** |
+
+Two things that cost time and are worth knowing:
+
+- **Exchange asks to register a SECOND method after the code**, and only there is a skip offered - *"Not
+  now"*. Without taking it the sign-in parks on the registration page forever, which looks exactly like
+  the original block.
+- **The secret must be read up to whitespace.** The screen reads `Secret key: <key> Copy key`, and the
+  words that follow are themselves valid base32 letters, so a greedy character class swallows "Copy key"
+  into the key and every generated code is rejected as incorrect.
+
+So the facilitator instruction is simply: tell attendees to bring an authenticator app and register at
+first sign-in. Nothing in the kit has to weaken `CA-Require-MFA-Admins` to make the labs work.
+
+
+### Phase 8b · Lab 03-02's role editor needs a LICENCE, not more privileges (2026-10-14)
+
+**Symptom.** An attendee follows Task 03-02 to *"open a role under **Security roles** to see what it grants
+on each table"* and the page renders **"Loading role failed!"**. The roles *list* loads; only the editor
+fails — and the editor is the only place scope (user / business unit / organization) is visible.
+
+**Evidence.** Three Dataverse calls behind the editor return 403, and their bodies name the cause:
+
+```
+EntityDefinitions?$select=Privileges,…   PrivilegeName: prvReadAttribute … User Privileges Count: 15
+roles(roleid = …)?$select=…              is missing prvReadTeam privilege
+recordfilters?…                          is missing prvReadEntityRecordFilter privilege
+```
+
+and each carries:
+
+> `System Administrator unlicensed user with filtered privileges from associated roles. Consider assigning
+> License for the privileges to take affect. … unlicensed administrators get Administrative access mode only`
+
+**Why adding privileges does not fix it.** `Lab Reviewer (read-only)` was granted four more privileges,
+taking it to **18**; Dataverse still applied **15** (`privilegeCount=15`) and still reported
+`prvReadEntityRecordFilter` missing **by the exact id that had just been granted**. An account with no
+licence gets access mode `1 Administrative` and its roles' privileges are filtered. Assigning `FLOW_FREE`
+changed nothing — it is not a Dataverse-capable plan.
+
+**The blocker.** The tenant has no seat to give:
+
+| SKU | Enabled | Consumed | Free |
+|---|---|---|---|
+| `DEVELOPERPACK_V2_E5` | 25 | 25 | **0** |
+| `FLOW_FREE` | 10000 | 1 | 9999 (does not help) |
+
+The 25 E5 seats are held by **14 Microsoft demo sample users** (AdeleV, AlexW, DiegoS, GradyA, HenriettaM,
+IsaiahL, JohannaL, JoniS, LeeG, LidiaH, MeganB, MiriamG, NestorW, PattiF) that have nothing to do with
+Halcourt, the **8 estate personas**, and **3 admin accounts**. So ~14 seats are recoverable, which is also
+the real answer to "how many licensed attendees does this tenant support": about 14, not an arbitrary N.
+
+**Decision required before a delivery** — the two options are not equivalent:
+
+1. **Licence the lab accounts.** Free seats from the demo users and assign E5 in `07_provision_lab_users.ps1`.
+   Task 03-02 then works as written. Note the tenant is shared between estates, so those demo accounts may
+   belong to someone else's build — confirm before stripping them.
+2. **Reword Task 03-02.** Drop "open a role" and have attendees read the roles list, recording role breadth
+   as the **open question** that step 3 of the same task already sanctions ("role breadth unknown from
+   export; verify in tenant"). Pedagogically defensible, but it removes the one place the lab shows scope.
+
+**Also fixed here.** `07_provision_lab_users.ps1` granted privileges only in the branch that *created* the
+role, so adding a name to `$DvPrivilegeNames` silently did nothing in any environment that already had it —
+while still printing a success line. That is how the live role drifted to 14 privileges against a list of 5.
+Privileges are now reconciled on every run by diffing `RetrieveRolePrivilegesRole`.
+
+**Update (2026-10-14, same day): the licence is necessary but not sufficient — Dataverse must RE-SYNC it.**
+
+After freeing seats and assigning `DEVELOPERPACK_V2_E5`, the editor still failed with the same
+"unlicensed user with filtered privileges" message. Entra was correct; Dataverse was not. It keeps its own
+copy of licence state on the `systemuser` record and refreshes it asynchronously:
+
+```
+systemusers(<id>)?$select=islicensed,accessmode,modifiedon
+  islicensed  False          <- Dataverse still thinks the account is unlicensed
+  accessmode  1              <- 'Administrative', the mode that triggers privilege filtering
+  modifiedon  2026-10-14T01:36:41Z   <- PREDATES the licence assignment entirely
+```
+
+**`modifiedon` predating the licence assignment is the tell.** Until it moves, privileges are filtered
+(20 granted, 17 applied) and the error messages blame privileges rather than the sync — which sends you
+chasing privilege names that are already granted. On this build the flip took hours and did not happen
+until a BAP `addUser` nudge:
+
+```
+POST https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/
+     environments/<envId>/addUser?api-version=2021-04-01   { "objectId": "<entra object id>" }
+```
+
+After the flip: `islicensed True`, `accessmode 0` (Read-Write), and the granted privileges apply.
+
+**Facilitator consequence:** licence the attendee accounts the DAY BEFORE a delivery, not the morning of.
+An account licensed an hour before the lab will still fail Task 03-02, and the failure looks like a
+privilege problem, not a timing one. Verify with the `systemusers` query above before you start.
+
+**Also fixed (2026-10-14).** Re-running `07_provision_lab_users.ps1` against existing accounts rewrote the
+handout's password column as `(unchanged - from the run that created it)` — destroying the only copy of a
+working credential, since the script cannot read a password back from Entra. It now resolves the handout
+path up front and carries forward any password already recorded, and says
+`(unknown - set by an earlier run; reset it or use -Destroy and recreate)` only when there is genuinely
+nothing to carry.
+
+### Phase 8b · CORRECTION - the role editor is gated by SYSTEM ADMINISTRATOR, not by a licence (2026-10-14)
+
+The entries above conclude that Task 03-02 needs a Dataverse-capable licence and that attendee accounts
+must be licensed the day before a delivery. **That conclusion was drawn from one account that differed in
+two ways at once, and it is wrong.** A single-variable test says otherwise:
+
+| Account | Entra licence | Dataverse state | Dataverse role | Role editor |
+|---|---|---|---|---|
+| `student01` (morning) | none | `islicensed=False`, `accessmode=1` | Lab Reviewer (read-only) | **FAILS** |
+| `student01` (after E5) | E5 | `islicensed=True`, `accessmode=0` | Lab Reviewer (read-only) | works |
+| `student02` | **none** | `islicensed=False`, `accessmode=1` | **System Administrator** | **works** |
+
+An unlicensed account runs in **Administrative access mode**, which is designed to allow administrative
+work without a seat while withholding business *data*. System Administrator's privileges survive that
+filtering; a hand-built 21-privilege read-only role does not - it was applied as 17, and the ones dropped
+were exactly the metadata privileges the editor needs (`prvReadAttribute`, `prvReadRelationship`,
+`prvReadEntityRecordFilter`).
+
+**What this means for a delivery.** `08_provision_student_slices.ps1` already makes each attendee
+**System Administrator of their own slice**, and that slice already carries the substrate Task 03-02 asks
+about (`svc-claims` holding the over-broad role). So an attendee reading role scope **in their own slice
+needs no licence at all**. It fails only in the shared estate, where they hold just the reviewer role -
+and granting them System Administrator there is not an option, because it would give them write access to
+the shared estate and contradict "a security reviewer observes; they do not change the estate".
+
+So the fix is a ROUTING change, not a procurement one: point Task 03-02's role reading at the attendee's
+own slice.
+
+**The licence-sync trap recorded above is still real and still bidirectional** - it just is not the cause
+of this failure. Measured both ways on this tenant:
+
+| Change | Dataverse caught up after |
+|---|---|
+| E5 assigned | hours, and only after a BAP `addUser` nudge |
+| account created with no licence | ~50 minutes, during which it reported `islicensed=True` |
+
+The optimistic direction is the dangerous one: a freshly created unlicensed account reports as **licensed**
+for a while, so a rehearsal can pass and the delivery fail. Check
+`systemusers(<id>)?$select=islicensed,accessmode,modifiedon` and distrust it until `modifiedon` moves past
+your change.
+
+**Still unverified:** whether an unlicensed System Administrator can **create** a role (Module 5's ask, as
+opposed to reading one). The PPAC "New role" command renders **enabled** and its click produced **zero**
+4xx responses, so there is no evidence of a permission block - but the editor did not open under headless
+automation, so this is untested rather than proven. Also unverified: Module 5 retests that require reading
+Claim/Customer rows **as the attendee**, which Administrative access mode would block; retests performed by
+chatting with the agent run as `svc-claims` and are unaffected.
+
+### Phase 8b · PPAC's environment Users list needs prvReadPosition (2026-10-17)
+
+**Symptom.** As an attendee (Lab Reviewer + Bot Viewer, licensed), **Environments → `Claims-Test-<estate>` →
+Settings → Users + permissions → Users** shows *"It looks like something went wrong"* before any search.
+Lab 03-02 KT01 s2, 03-04 KT01 s3 and 04-04 KT01 s1 all start there.
+
+**Evidence.** The page's own query, `GET systemusers?$select=...`, returns 403 naming the gap: *"is missing
+prvReadPosition privilege ... on OTC=50"*. A second call on the same page,
+`settingdefinitions?$filter=uniquename eq 'msdyn_EnableTeamsChat'`, returns 403 for `prvReadSettingDefinition`.
+
+**Fix.** Both added to `$DvAccessModel` in `_access_model.ps1` and to the live `Lab Reviewer (read-only)`
+role in Halcourt-Prod, Maker-Sandbox and Claims-Test (31 privileges each: 22 modelled + 9 baseline). The
+list then loads, an account opens, and its summary shows **Direct Assigned Roles**; **Security roles → a
+role** opens the per-table grid with access levels.
+
+**Two things the task text doesn't say.** PPAC shows Dataverse display names with a `# ` prefix
+(`# Lab Student 03 (<estate>)`), so a search on the display name finds nothing; search by username. And
+for this account there is no separate **Manage security roles** command: the roles are listed in the
+user's summary panel.
+
+### Phase 8b · the default environment was outside the access model (2026-10-17)
+
+**Symptom.** In Copilot Studio, an attendee's agent list for `Halcourt (default)` is empty: *"Agents 0
+items"*. Expense Helper and Onboarding Guide live there, and Lab 04-04 KT02 s5 and 04-06 KT02 open them.
+
+**Cause.** `Get-EstateDataverseEnvironments` in `07_provision_lab_users.ps1` listed only the three estate
+environments. The role dates from Lab 03, which never touched the default environment.
+
+**Fix.** The function now includes the tenant's default environment (`properties.isDefault`). A
+`-Count 5 -NoLicense` run created `Lab Reviewer (read-only)` there and gave all five accounts it plus Bot
+Viewer; both agents were listed at once.
+
+### Phase 8b · another owner's flow needs prvReadWorkflow at Global (2026-10-17)
+
+**Symptom.** **PPAC → Halcourt (default) → Resources → Flows** says *"No flows found for this
+environment"*, while Inventory lists *Submit and auto-approve expense under $500* there as a Cloud flow
+(`statecode` 1, on). Lab 03-01 KT01 s2 and 04-04 KT02 s5 open that flow's **Details**.
+
+**Cause.** Bot Viewer grants workflow read at **Basic** depth only (the attendee's own flows).
+
+**Fix.** `prvReadWorkflow` at Global added to `$DvAccessModel` and to the live role in all four
+environments; the Flows list then shows the flow. **Not fixed by any role:** the Copilot Studio topic
+canvas still marks Expense Helper's flow node *"Flow not found or is turned off"* for the attendee. That
+check goes through Power Automate's own sharing, which only sharing the flow would satisfy - not done, since
+it would make attendees co-owners of Sam's flow. The task's PPAC route is the one that works.
+
+### Phase 6 · CORRECTION - Claims Copilot never worked: unbound reference, then the wrong Dataverse op (2026-10-18)
+
+The two Phase 6/8c entries above concluded that an empty `connectionid` on Claims Copilot's connection
+reference was harmless because "Copilot Studio evidently carries the binding in its own agent settings".
+**It does not.** Driven through the Test pane as its owner, every question failed:
+
+1. `ConnectionNotFound - The connection of connection reference … DVClaimsShared was not found`. The tool
+   editor showed **Connection: Not connected**. Priya can't select svc-claims' connection: a Dataverse OAuth
+   connection **can't be shared** (`ConnectionSharingNotAllowed`), so only svc-claims can bind it - and its
+   PATCH was refused for want of `prvReadconnectionreference`, `prvWriteconnectionreference` and
+   `prvReadAsyncOperation` (each named in turn by its 403). Fixed by lending svc-claims a throwaway role with
+   exactly those three, binding as svc-claims, then removing and deleting the role. 06 now does this
+   (`Invoke-BindWithTempRole`) whenever the owner's bind is refused.
+2. Then `ConnectorRequestFailure - Microsoft Dataverse returned HTTP 400` on every call, even unfiltered,
+   even as svc-claims. The tools used **ListRecords** (List rows, *current environment*), which has no
+   environment to resolve inside a Copilot Studio tool. **ListRecordsWithOrganization** with
+   `organization = <the environment URL>` works at once: "List the claims" returns all five, and "status of
+   CLM-9002" returns *Under review*. Both action YAMLs now use it, with a `${ENV_ORG_URL}` token 06 fills.
+
+To make the change live without a rebuild, svc-claims also had to open and re-save the tools and publish:
+it was made a **co-owner** of the agent (added to the agent's `<botid>_1` team; Priya's own editor share
+fails without `prvAssignRole`) and lent Bot Author + Basic User + Environment Maker for the edit, all three
+removed afterwards. Its only remaining role is `svc-claims Dataverse Full Access`.
+
+Until this, Scenarios C and D - and Claims Copilot's half of B - could not fire for anyone.
+
+### Phase 4c · Purview: the label arrives late, and the token is app-only (2026-10-18)
+
+Building issue #12 (`03c_provision_purview.ps1`) hit four things worth knowing before the next build:
+
+1. **Security & Compliance PowerShell refuses every az token** (`UnAuthorized` for the
+   `ps.compliance.protection.outlook.com` and `outlook.office365.com` resources alike), unlike Exchange
+   (`Connect-LabExchange`). App-only works - but `Connect-IPPSSession -Certificate` /
+   `-CertificateFilePath` dies inside the module on Linux (`NewEXOModule`: object reference not set). The
+   script signs its own client assertion and passes `-AccessToken`.
+2. **A new Microsoft 365 group isn't an Exchange recipient for a while**: `New-LabelPolicy -ExchangeLocation
+   <group mail>` says it "couldn't be found". The policy publishes to Marcus first; a rerun adds the group.
+3. **`assignSensitivityLabel` says `labelNotFound`** for a label created minutes earlier - SharePoint hasn't
+   received it. Typically about an hour, documented up to 24. It is also **metered**: the app needs a
+   `Microsoft.GraphServices/accounts` billing link, and only `privileged`/app-only assignment is allowed.
+4. `extractSensitivityLabels` is a **POST** (a GET says `itemNotFound`), and a loose
+   `'Social Security Number'` match finds *Austria Social Security Number* first - match
+   `'^U\.S\. Social Security Number'`.
+
+### Phase 6 · Underwriting Assistant's MCP calls never ran - rebuilt as a real MCP tool (2026-10-18)
+
+**Symptom.** Driven through the Test pane as Priya, every Underwriting Assistant topic that called the MCP
+server answered *"Action of type 'InvokeMcpTool' is not supported"* (`ActionTypeNotSupported`), and the
+attendee's canvas showed *"Your topic … can't be shown on the authoring canvas"*. Scenario C's `run_query`
+and the MCP half of Scenario E could not fire. `InvokeMcpTool` is not a Copilot Studio node kind.
+
+**Fix (decided 2026-10-18: a real MCP tool, not an HTTP node).** The server (`setup/infra/mcp-underwriting`,
+stateless Streamable HTTP, `initialize`/`tools/list`/`tools/call` all answered) is now registered the way
+Copilot Studio's *Add new MCP* wizard does it, from committed files:
+
+- `setup/agents/underwriting-assistant/mcp-connector/` - the wizard's own connector definition: one
+  `POST /underwriting`, `x-ms-agentic-protocol: mcp-streamable-1.0`, `operationId: InvokeServer`, API-key
+  auth in the `Authorization` header. 06 creates it as the owner with `pac connector create`.
+- manifest connection `MCP-Underwriting` (`connector: custom`, `apiKeyFrom: MCP_BEARER`): Priya's connection,
+  key `Bearer <MCP_BEARER>`, no consent step.
+- `actions/UnderwritingMCP.mcs.yml`: `InvokeExternalAgentTaskAction` + `ModelContextProtocolMetadata`,
+  **`mode: Maker`** - the wizard defaults to `Invoker` (each user's own key), which would hide the shared
+  bearer that is Scenario E's point.
+- The three `topics/` that used `InvokeMcpTool` are deleted.
+
+Verified by a real 06 run (`-Agents underwriting-assistant`): "premium quote for a standard auto profile"
+→ `get_quote`, USD 1,425; "run this pricing query: SELECT * FROM risk_rows" → `run_query`, *all pricing and
+customer risk rows*.
+
+Traps on the way, all now handled or noted:
+1. **`pac copilot push` won't create a connection reference** the workspace declares - *"A record with the
+   specified key values does not exist in connectionreference entity"*. 06 now creates missing ones first.
+2. **Connector display names are capped at 30 characters**, silently truncated (`…-MCP-mgray` → `…-MCP-mgra`).
+   06 truncates the same way, or a rerun would not find what it made.
+3. **A deleted connector's display name stays taken** - Dataverse row and Power Apps API record both gone,
+   the wizard still says *"already exists"*. Hence the `Halcourt-` prefix on the name.
+4. **Names allow only letters, digits, `-` and `_`** - `Underwriting MCP (mgray)` is refused.
+5. **Doc impact (for the exercise owner):** the MCP calls are on the agent's **Tools** page now, not in
+   Topics, and a viewer sees one MCP tool whose individual tools (`get_quote`, `get_risk_score`, `run_query`)
+   appear when it runs. 04-03 KT02 s3, 04-05 KT02 s4 and 05-04 KT06 describe topics.
+
+### Phase 8b · Exercise 05's write steps: PIM-eligible roles, and per-environment self-elevation (2026-10-18)
+
+Exercise 05 asks attendees to *change* things. Decided 2026-10-18: an attendee who must perform an action
+holds the role for it, as narrowly as the platform allows - which for these turned out to be **time**, not
+resources:
+
+| Step | Lever | How |
+|---|---|---|
+| 05-02, 05-03, 05-05 b, 05-07 auditing - Dataverse / Copilot Studio writes | **System Administrator, self-elevated per environment** | Power Platform Administrator's own *Membership > Add me*, one environment at a time; 05-05 KT06 already says so. No standing grant, and none in Claims-Test during Exercise 04 - a standing one there would let attendees read claims directly and void Scenario D. |
+| 05-05 KT06 - Block / Delete / assign owner in Agent 365 | **AI Administrator, PIM-eligible** | Entra > *Privileged Identity Management* > *My roles* > *Activate*, justification, 1-2 hours |
+| 05-07 KT01/KT06 - Defender real-time protection for agents | ~~Security Administrator, PIM-eligible~~ **facilitator** (2026-10-19) | Security Administrator can edit Conditional Access - the lockout this table exists to prevent. Withdrawn from the five lab accounts; 07 withdraws it on re-run |
+| 05-04 KT03 - workload-identity CA policy | *not granted* | the step writes the policy down; one wrong edit to `CA-Require-MFA-Admins` locks every account out |
+
+Neither role can be scoped to resources: the agent block and the Defender setting are tenant-wide objects.
+PIM makes them *eligible* - inert until activated, time-boxed, justified and audited. E5 includes Entra ID
+P2, so PIM is available. Verified: student03 activated AI Administrator from *My roles* and held it as an
+active assignment.
+
+The az token can't create eligibility (`PermissionScopeNotGranted: RoleEligibilitySchedule.ReadWrite.Directory`),
+so 07 uses the kit's app-only identity (`_labapp.ps1`, shared with 03c), which now also holds that permission.
+Doc impact: 05-05 KT06 and 05-07 should tell attendees to activate the role first.
+
+### Phase 6.5 · a disabled owner's connections die - Tom stays enabled (2026-10-19)
+
+**Symptom.** Onboarding Guide's `O365-Outlook-Onboarding` reference was unbound and Sales Nudge's
+`DV-CRM-Shared` reference too; Tom's Prod Dataverse connection showed `Error`.
+**Evidence.** The connection's status: `Failed to refresh access token ... AADSTS50057: The user account is
+disabled` (2026-10-17, two days after Phase 6.5 disabled him). Entra issues no token to a disabled user, so
+every OAuth connection he owns goes to `Error` at its next refresh. The planted state "owner disabled,
+connection still live" can't exist. And the answer key already says so: *Identity lifecycle / JML -
+CLOSES IT: connections die with the owner.*
+**Fix (decided 2026-10-19: "departed, still enabled").** Tom is a leaver nobody shut down. Phase 6.5 is now
+`01_provision_entra.ps1 -MarkDepartedOwner`: it sets his `employeeLeaveDateTime` (Entra's leaver record,
+which Lifecycle Workflows act on) and leaves the account enabled. `users-export` gains `employee_leave_date`.
+Disabling Tom is the Exercise 05 fix to test, never a build step.
+**Also found.** Tom had **no licence** (he lost it when recreated), so `Ensure-Connection` failed with
+`InvalidUserPlan`; the Phase 6 seat loop covers him on a fresh build. And Onboarding Guide was still owned
+by the *deleted* Tom's Dataverse record (renamed `<objectid>tom.dean...`), which 06 can't clone as the live
+Tom: reassign the bot, its components and its connection reference to the live record first (as for Sam's
+Expense Helper, whose SubmitExpense topic also pointed at the deleted Sam's flow until a 06 re-run resolved
+`${FLOW:...}` again).
+**Doc impact.** 02-03 hunts 1/4/5, 02-04, 05-05, 05-07, 06-01 ("whose account is disabled. The connection
+is still live") and the inventory key say "disabled"; they need "departed (leave date), still enabled".
+
+### All phases · a shell without `scripts/env.sh` uses your OTHER tenant (2026-10-19)
+
+**Symptom.** `06_provision_agents.ps1` printed `Estate 'mgray' on <a different company's domain>` and failed
+looking up a persona.
+**Evidence.** It ran in a detached background shell that hadn't picked up `AZURE_CONFIG_DIR`, so `az` used
+`~/.azure` - the facilitator's day-job tenant. It got as far as listing environments and one user lookup
+(reads; the 404 stopped it). A run with the persona names already in place there would have written.
+**Fix.** `_estate.ps1` (loaded by every Phase 1-9 script) now points an unset `AZURE_CONFIG_DIR` at the
+repo's `.azure/` and **throws** if it is set anywhere else. `00_conditional_access_baseline.ps1` doesn't load
+it but requires `-TenantId`.
+
+### Phase 8b · a viewer can't open a connector tool's Details without prvReadconnectionreference (2026-10-19)
+
+**Symptom.** As student03, Claims Copilot → Tools → *List claims* showed only "This Tool has encountered an
+error obtaining required dependencies"; the MCP tool on Underwriting Assistant opened fine.
+**Evidence.** `Bot Viewer` grants `prvReadconnectionreference` at **Basic** depth, and Claims Copilot's
+references belong to svc-claims and Priya. Adding it at **Global** to the Lab Reviewer role in Claims-Test
+fixed it at once (Details then show *Maker-provided credentials*).
+**Fix.** In `$DvAccessModel`; applied by hand to the role in all four environments (re-running 07 would
+also re-license student01-05). Also confirmed as a viewer: Settings (Connection Settings, Advanced →
+Metadata) is closed at every address; Knowledge, Tools and Topics open at `/knowledge`, `/actions`, `/topics`;
+the bots table's `synchronizationstatus.applicationId` equals the agent identity's Application ID.
+
+### Review fixes to this branch (2026-10-19)
+
+A review of PR #10 found, and this commit fixes:
+- **Security Administrator was PIM-eligible** for 05-07, but it can create, update and delete Conditional
+  Access policies - the CA-Require-MFA-Admins lockout the access model refuses CA Administrator for. Removed
+  from `$EligibleRoles`; 07 withdraws it (`$RetiredEligibleRoles`); withdrawn live from all five accounts.
+  Defender real-time protection is a facilitator step (RUNBOOK Phase 8b).
+- **`Ensure-LabApp` returned early** once app and certificate existed, so an app made by 03c before 07 needed
+  PIM never got `RoleEligibilitySchedule.ReadWrite.Directory`, and the certificate was never renewed. It now
+  checks every step on every call and renews a certificate within 30 days of expiry; 07 retries a 403 while
+  a fresh grant propagates and skips the billing link (`-NoBilling`).
+- **01 and 05 asked for `User-LifeCycleInfo.*`,** which the az token never carries, forcing device code on
+  every run. Dropped: Directory.AccessAsUser.All on the reused az token already reads and writes the leave
+  date. The device-code fallback in `_auth.ps1` is now pinned to the az tenant and checked afterwards.
+- **06:** a failed temporary-role bind now warns (it was silent) and the role is created inside the `try` and
+  removed by name; the Teams channel is judged by the bot record's `channels`, not by the browser script,
+  which no longer reports "already" when it simply couldn't find the button.
+- **03c** built Marcus's UPN on the initial domain; personas use the default domain.
+
+### Delivery · Exercise 05 is demonstrated, not done by attendees (2026-10-19)
+
+**Decision (Matt, 2026-10-19).** Attendees share one estate, so one attendee's change is everyone's result
+(16 people applying and undoing the same DLP policy on top of each other). The facilitator applies each
+control once, live, and restores it; attendees retest. Pages: PR #17.
+**Kit.** No attendee write role remains: AI Administrator eligibility is retired too (withdrawn live from
+the five lab accounts; 07 withdraws it on re-run). `09_ex05_demo_state.ps1` snapshots and restores what a
+script can restore exactly - data policies, the default environment's Environment Maker users AND teams,
+svc-claims' roles and teams in Claims-Test - and the RUNBOOK lists the portal-only reversals (knowledge
+scope, the Agent 365 Block, Defender). It replaces the walkthrough pipeline's `estate_state.py`, which
+lived outside the repo and stripped every team from Environment Maker on restore, whether or not a team
+held it before.
+
+### Exercise 05 · the DLP list call has no connector groups - a snapshot built on it can't restore (2026-10-19)
+
+**Symptom.** In the first facilitator-account recording of 05-01, `09_ex05_demo_state.ps1 -Diff` reported
+"same as the snapshot" after the facilitator had blocked both HTTP connectors, and the safety restore did
+nothing. Halcourt-Prod's policy was left blocking HTTP until it was restored by hand (17:22-17:25 UTC).
+**Evidence.** `GET .../PowerPlatform.Governance/v2/policies` returns each policy WITHOUT `connectorGroups`;
+`GET .../policies/<id>` includes them (Confidential 1771 / Blocked 2 after the save). The script compared and
+snapshotted the list form, so classification was invisible to it.
+**Fix.** `DlpAll` reads every policy individually; the shape includes the default classification; Restore
+refuses a snapshot without connector groups. Tested end to end: an API PATCH blocking HTTP -> Diff
+`CHANGED` -> Restore -> Blocked 0.
+
+### Phase 6 · the committed workspaces named THIS tenant and estate (2026-10-19)
+
+**Symptom.** Six committed knowledge sources pointed at `https://<this tenant>.sharepoint.com/sites/...-mgray` (and
+Dev's OneDrive by its literal personal path), and the two default-environment agents' display names said
+"(mgray)" - captured from the first build. Any other tenant or estate would have built Benefits Buddy, Team
+Wiki, HR FAQ v2, Claims Copilot and Meeting Notes grounded on the FIRST build's sites, and named its
+default-environment agents after another estate.
+**Fix.** The workspaces use tokens; 06 resolves them at push: `${ESTATE}`, `${SP_HOST}` / `${SP_MY_HOST}`
+(from the tenant's initial domain), `${UPN_PATH:<alias>}` (a persona's OneDrive path segment). Verified: the
+substitution reproduces every committed file exactly for estate mgray.
+
+### Exercise 05 · a role can't be given back to a disabled user (2026-10-19)
+
+**Symptom.** Restoring the default environment's Environment Maker after a 05-02 lockdown stopped at the first
+re-add: `0x80048d35 ... User ... is disabled. User must be enabled or Organization setting
+AllowRoleAssignmentOnDisabledUsers must be turned on`.
+**Evidence.** The default environment keeps a **disabled** record for every persona deleted and recreated
+(username `<32 hex><upn>`): 12 of them held Environment Maker. Removing a role from them works; adding it
+back doesn't.
+**Fix.** `09` re-adds each user separately and reports the ones it can't; a lockdown demonstration removes only
+enabled, current accounts. The 12 stale records lost the role (harmless: they can't sign in) and the
+snapshot was retaken.

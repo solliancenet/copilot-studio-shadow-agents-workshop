@@ -80,10 +80,11 @@ as Tom, then attach them.
   approver). Trigger it from the agent.
 - Publish. Verify Scenario D (a requester auto-approves via the agent's authority, not their own).
 
-### Onboarding Guide  (Halcourt (default), owner tom.dean → later disabled)
+### Onboarding Guide  (Halcourt (default), owner tom.dean → departed, still enabled)
 - Build **as Tom**: SharePoint + Office 365 Outlook (send mail) connections **owned by Tom**.
-- Publish. In **Phase 6.5**, disable Tom (`01_provision_entra.ps1 -DisableDepartedOwner`). Leave the agent
-  and connections live. Verify Scenario F / orphan (still published, still can send mail, no owner).
+- Publish. In **Phase 6.5**, mark Tom departed (`01_provision_entra.ps1 -MarkDepartedOwner`): a leave date,
+  account left **enabled**. Never disable him: Entra then refuses his token refresh and both connections
+  go to Error. Verify Scenario F / orphan (still published, still can send mail, owner has left).
 
 ### Team Wiki  (Maker-Sandbox, owner dev.kim)
 - Build **as Dev**: SharePoint + Microsoft Graph search across the sites Dev can see (broad).

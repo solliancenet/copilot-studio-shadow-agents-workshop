@@ -1,12 +1,12 @@
 {
-  "_comment": "FACILITATOR-ONLY. Estate-agnostic metadata for Phase 6 agent provisioning (06_provision_agents). The committed pac workspace under 'workspace/' holds each agent's instructions, knowledge and tools; this manifest holds what the workspace YAML does NOT: owner, environment, the connections to bind, and the chat audience. The engine resolves canonical names to this estate's live ids at run time (see _estate.ps1). 'capture' = how the workspace is obtained: 'authored' (benign, committed here) or 'clone' (build once in the portal, then `pac copilot clone` into setup/agents/ and commit - used for the planted agents whose config is not authored here).",
+  "_comment": "FACILITATOR-ONLY. Estate-agnostic metadata for Phase 6 agent provisioning (06_provision_agents). The committed pac workspace under 'workspace/' holds each agent's instructions, knowledge and tools; this manifest holds what the workspace YAML does NOT: owner, environment, the connections to bind, and the chat audience. The engine resolves canonical names to this estate's live ids at run time (see _estate.ps1). 'capture' = how the workspace is obtained: 'authored' (benign, committed here) or 'clone' (build once in the portal, then `pac copilot clone` into setup/agents/ and commit - used for the planted agents whose config is not authored here). coOwners = personas made co-owners of the agent (added to its <botid>_1 team), e.g. the service account whose connection the agent's tools run on. teamsChannel = add the Microsoft 365 and Teams channel (Lab 04 chats in Teams); done in the browser as the owner by lib/enable_teams_channel.py.",
   "environments": {
     "Halcourt-Prod": "estate-suffixed",
     "Claims-Test": "estate-suffixed",
     "Maker-Sandbox": "estate-suffixed",
     "Halcourt (default)": "shared"
   },
-  "_connections_comment": "OAuth connections the engine creates and authenticates per owner (headless consent). connector = the shared_* connector id; params = extra connectionParameters (e.g. the Graph HTTP connector needs its resource URIs); shareWith = a group to share it with (note: OAuth connections often refuse sharing - ConnectionSharingNotAllowed - the engine warns and continues). HTTP actions, MCP tools and Power Automate flows are NOT here: they are configured inside the agent workspace/flow, not as consented connections.",
+  "_connections_comment": "OAuth connections the engine creates and authenticates per owner (headless consent). connector = the shared_* connector id; params = extra connectionParameters (e.g. the Graph HTTP connector needs its resource URIs); shareWith = a group to share it with (note: OAuth connections often refuse sharing - ConnectionSharingNotAllowed - the engine warns and continues). connector = \"custom\" with customConnector {workspace, name} is a CUSTOM connector the engine creates from the workspace's apiDefinition/apiProperties (the Underwriting MCP server, as a real Copilot Studio MCP tool); apiKeyFrom names the azd value its connection's API key is built from - no consent. HTTP actions and Power Automate flows are NOT here: they are configured inside the agent workspace/flow, not as consented connections.",
   "connections": {
     "SP-HR-Benefits": {
       "connector": "shared_sharepointonline",
@@ -53,6 +53,16 @@
       "connector": "shared_onedriveforbusiness",
       "environment": "Maker-Sandbox",
       "owner": "dev.kim"
+    },
+    "MCP-Underwriting": {
+      "connector": "custom",
+      "environment": "Halcourt-Prod",
+      "owner": "priya.nair",
+      "customConnector": {
+        "workspace": "underwriting-assistant/mcp-connector",
+        "name": "Halcourt-Underwriting-MCP"
+      },
+      "apiKeyFrom": "MCP_BEARER"
     }
   },
   "_flows_comment": "Copilot-triggered cloud flows the engine creates (as the owner) BEFORE agents, so ${FLOW:<name>} resolves. definition = a file under setup/data/.",
@@ -76,7 +86,8 @@
       ],
       "chatAudience": "All-Employees",
       "planted": true,
-      "capture": "clone"
+      "capture": "clone",
+      "teamsChannel": true
     },
     {
       "slug": "claims-copilot",
@@ -89,7 +100,11 @@
       ],
       "chatAudience": "All-Employees",
       "planted": true,
-      "capture": "authored"
+      "capture": "authored",
+      "coOwners": [
+        "svc-claims"
+      ],
+      "teamsChannel": true
     },
     {
       "slug": "policy-lookup-bot",
@@ -100,7 +115,8 @@
       "connections": [],
       "chatAudience": "All-Employees",
       "planted": true,
-      "capture": "authored"
+      "capture": "authored",
+      "teamsChannel": true
     },
     {
       "slug": "underwriting-assistant",
@@ -108,10 +124,13 @@
       "workspace": "underwriting-assistant",
       "owner": "priya.nair",
       "environment": "Halcourt-Prod",
-      "connections": [],
+      "connections": [
+        "MCP-Underwriting"
+      ],
       "chatAudience": "Halcourt-Makers",
       "planted": true,
-      "capture": "authored"
+      "capture": "authored",
+      "teamsChannel": true
     },
     {
       "slug": "expense-helper",
@@ -123,7 +142,8 @@
       "chatAudience": "All-Employees",
       "planted": true,
       "capture": "authored",
-      "estateSuffixName": true
+      "estateSuffixName": true,
+      "teamsChannel": true
     },
     {
       "slug": "onboarding-guide",

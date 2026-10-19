@@ -32,6 +32,9 @@ param(
   [string]$CertPath = $env:HALCOURT_PNP_CERT_PFX,        # app-only .pfx (Sites.FullControl.All) -> headless, no device code
   [string]$CertPassword = $env:HALCOURT_PNP_CERT_PW,
   [string]$SiteOwner = $env:HALCOURT_SITE_OWNER,         # app-only only: group-site owner (default: the az signed-in admin)
+  [string]$SiteSuffix,                                   # per-student slices (Phase 8c): makes the sites
+                                                         # /sites/HR-Benefits-<estate>-<suffix> so each
+                                                         # attendee gets their own copy to label in Lab 05-06
   [switch]$Interactive                                   # browser sign-in (host / Windows); default: device code
 )
 $ErrorActionPreference = 'Stop'
@@ -275,8 +278,11 @@ function Grant-SiteAccess([string]$MemberGroup, [string]$ReaderGroup) {
 }
 
 # --- Sites -------------------------------------------------------------------
-$hrAlias     = Get-EstateName 'HR-Benefits' $Estate
-$claimsAlias = Get-EstateName 'Claims-Knowledge' $Estate
+# -SiteSuffix gives an attendee their own pair of sites. Lab 05-06 has each attendee apply a sensitivity
+# label to Leadership/2026-comp-bands.xlsx, and a label applied to one shared file is applied for everyone.
+$suffix      = if ($SiteSuffix) { "-$($SiteSuffix.TrimStart('-'))" } else { '' }
+$hrAlias     = (Get-EstateName 'HR-Benefits' $Estate) + $suffix
+$claimsAlias = (Get-EstateName 'Claims-Knowledge' $Estate) + $suffix
 $hrUrl = "$RootSiteUrl/sites/$hrAlias"
 $claimsUrl = "$RootSiteUrl/sites/$claimsAlias"
 Write-Host "Ensuring sites: $hrUrl and $claimsUrl"

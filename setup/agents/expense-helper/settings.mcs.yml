@@ -1,4 +1,4 @@
-displayName: Expense Helper (mgray)
+displayName: Expense Helper (${ESTATE})
 schemaName: cr458_ExpenseHelper
 accessControlPolicy: GroupMembership
 authenticationMode: Integrated
