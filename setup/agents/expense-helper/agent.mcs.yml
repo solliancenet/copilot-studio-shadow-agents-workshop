@@ -1,5 +1,5 @@
 mcs.metadata:
-  componentName: Expense Helper (mgray)
+  componentName: Expense Helper (${ESTATE})
 kind: GptComponentMetadata
 instructions: |-
   You help employees submit expenses. When someone submits an expense, use the Submit expense topic to run

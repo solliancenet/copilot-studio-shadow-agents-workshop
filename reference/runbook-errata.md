@@ -1321,3 +1321,14 @@ snapshotted the list form, so classification was invisible to it.
 **Fix.** `DlpAll` reads every policy individually; the shape includes the default classification; Restore
 refuses a snapshot without connector groups. Tested end to end: an API PATCH blocking HTTP -> Diff
 `CHANGED` -> Restore -> Blocked 0.
+
+### Phase 6 · the committed workspaces named THIS tenant and estate (2026-10-19)
+
+**Symptom.** Six committed knowledge sources pointed at `https://<this tenant>.sharepoint.com/sites/...-mgray` (and
+Dev's OneDrive by its literal personal path), and the two default-environment agents' display names said
+"(mgray)" - captured from the first build. Any other tenant or estate would have built Benefits Buddy, Team
+Wiki, HR FAQ v2, Claims Copilot and Meeting Notes grounded on the FIRST build's sites, and named its
+default-environment agents after another estate.
+**Fix.** The workspaces use tokens; 06 resolves them at push: `${ESTATE}`, `${SP_HOST}` / `${SP_MY_HOST}`
+(from the tenant's initial domain), `${UPN_PATH:<alias>}` (a persona's OneDrive path segment). Verified: the
+substitution reproduces every committed file exactly for estate mgray.

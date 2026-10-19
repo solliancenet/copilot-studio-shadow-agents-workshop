@@ -60,6 +60,10 @@ if (-not $DomainSuffix) {
   $DomainSuffix = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
     --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv
 }
+# SharePoint hosts come from the tenant's INITIAL domain (<prefix>.onmicrosoft.com -> <prefix>.sharepoint.com),
+# which is what the committed knowledge sources reference as ${SP_HOST} / ${SP_MY_HOST}.
+$SpPrefix = (az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
+  --query "value[0].verifiedDomains[?isInitial].name | [0]" -o tsv).Split('.')[0]
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 
 # ---- tokens -------------------------------------------------------------------------------------------
@@ -410,6 +414,13 @@ function Provision-Agent([object]$A) {
     foreach ($k in $AzdValues.Keys) { $tok = '${' + $k + '}'; if ($c.Contains($tok)) { $c = $c.Replace($tok, $AzdValues[$k]); $changed = $true } }
     # The agent's own environment URL, for Dataverse tools that must name it (claims-copilot's List rows).
     if ($c.Contains('${ENV_ORG_URL}')) { $c = $c.Replace('${ENV_ORG_URL}', $E.Org); $changed = $true }
+    # Tenant- and estate-specific names (knowledge sites, OneDrive paths, the default environment's display
+    # names) are tokens in the committed workspace, never this build's literal values.
+    foreach ($kv in @(@('${ESTATE}', $Estate), @('${SP_HOST}', "$SpPrefix.sharepoint.com"), @('${SP_MY_HOST}', "$SpPrefix-my.sharepoint.com"))) {
+      if ($c.Contains($kv[0])) { $c = $c.Replace($kv[0], $kv[1]); $changed = $true }
+    }
+    # ${UPN_PATH:<alias>}: a persona's OneDrive path segment (dev.kim.<estate>@<domain> -> dev_kim_<estate>_<domain_with_underscores>).
+    foreach ($x in [regex]::Matches($c, '\$\{UPN_PATH:([^}]+)\}')) { $c = $c.Replace($x.Value, ((Get-Upn $x.Groups[1].Value) -replace '[.@]', '_').ToLower()); $changed = $true }
     # A custom connector's generated id, and its display name (the MCP tool's name in Copilot Studio).
     foreach ($x in [regex]::Matches($c, '\$\{CONNECTOR:([^}]+)\}')) { $c = $c.Replace($x.Value, (Get-ConnectorId $x.Groups[1].Value)); $changed = $true }
     if ($c.Contains('${MCP_CONNECTOR_NAME}')) {

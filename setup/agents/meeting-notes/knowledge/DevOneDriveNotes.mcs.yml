@@ -4,4 +4,4 @@ mcs.metadata:
 kind: KnowledgeSourceConfiguration
 source:
   kind: SharePointSearchSource
-  site: https://0zwdt94t-my.sharepoint.com/personal/dev_kim_mgray_0zwdt94t_onmicrosoft_com/Documents
+  site: https://${SP_MY_HOST}/personal/${UPN_PATH:dev.kim}/Documents

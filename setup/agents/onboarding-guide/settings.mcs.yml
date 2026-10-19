@@ -1,4 +1,4 @@
-displayName: Onboarding Guide (mgray)
+displayName: Onboarding Guide (${ESTATE})
 schemaName: cr458_OnboardingGuide
 accessControlPolicy: GroupMembership
 authenticationMode: Integrated
