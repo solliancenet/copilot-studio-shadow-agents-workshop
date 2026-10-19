@@ -27,7 +27,8 @@ grounding data, so Benefits Buddy may be classified from its SharePoint connecti
 - **Onboarding Guide orphan:** `agents-export` owner = `tom.dean`; `users-export` shows `tom.dean` →
   `employee_leave_date = 2026-01-30`, last sign-in 2026-01-30, yet `account_enabled = TRUE`: nobody ran the
   leaver process, which is why the connection in `connections-export` is still live. (A disabled owner's
-  connections stop at the next token refresh - disabling him is the fix, not the planted state.)
+  connections stop at the next token refresh — disabling him is the fix, not the planted state.) Live, his
+  sign-in activity will postdate the leave date (provisioning); accept either reading.
 - **Sales Nudge hidden owner:** agent owner `lena.ford` (enabled) but `connections-export` shows
   `DV-CRM-Shared` owned by `tom.dean` (left; still enabled). The effective authority is a ghost.
 - **Claims Copilot:** environment `Claims-Test` (type Sandbox in `environments-export`, no DLP) but doing

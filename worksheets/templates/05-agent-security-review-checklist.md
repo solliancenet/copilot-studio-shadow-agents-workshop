@@ -24,8 +24,8 @@ it is promoted to production.
 - [ ] Named **technical owner**.
 - [ ] Named **security reviewer** — all three roles named at registration. The maker who built the
       agent is not the security reviewer by default.
-- [ ] Agent owner is an enabled account.
-- [ ] Each connection's owner is recorded, enabled and known — separately from the agent owner.
+- [ ] Agent owner is a current employee (no leave date) with an enabled account.
+- [ ] Each connection's owner is recorded, current, enabled and known — separately from the agent owner.
 - [ ] No departed or disabled owner, and no unreviewed shared-mailbox or service-account owner, on the agent or any
       connection it uses. Either one is an automatic fail until a live, named person is accountable.
 

@@ -189,10 +189,12 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Purpose:** Help new hires with onboarding.
 - **Connectors / tools:** SharePoint + Office 365 Outlook (**send mail**), via a **shared connection Tom
   created** that is still live.
-- **PLANTED PROBLEM A (Scenario F — lifecycle / orphan):** the owner left months ago but nobody ran the
-  leaver process: his account is still enabled, so the agent is still published, still has a live
-  connection, still can send mail as Tom. No one is accountable; nobody realizes it exists. Signals: a
-  populated `employee_leave_date` on an `account_enabled` `TRUE` row, and a last sign-in on the leave date.
+- **PLANTED PROBLEM A (Scenario F — lifecycle / orphan):** the owner left months ago but nobody ran the leaver
+  process: his account is still enabled, so the agent is still published, still has a live connection, still
+  can send mail as Tom. No one is accountable; nobody realizes it exists. Signals: a populated
+  `employee_leave_date` on an `account_enabled` `TRUE` row, and a last sign-in on the leave date in the pack.
+  (The live tenant shows provisioning sign-ins after it; sign-ins after a leave date are themselves evidence
+  the account is still in use.)
 - **Trust boundary crossed:** the lifecycle assumption "an owner exists and reviews this" no longer holds.
 - **Impact:** an unowned agent with live mail-send persists indefinitely.
 
@@ -346,7 +348,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 ### Scenario F — Lifecycle (orphan / test→prod / surviving connections)
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
-| Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix: connections and agent identities die with the owner. |
+| Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix for the *access*: disabling the leaver stops his OAuth connections at their next token refresh (AADSTS50057, seen on the live estate). The agent and its Agent ID survive until someone reassigns or retires them, so JML closes the authority, not the orphan. |
 | Agent 365 / CoE governance (ownership, orphaned-resource detection, lifecycle policy) | CLOSES IT → DENTS IT **[verify]** | Inventory + orphan detection + owner reassignment is where governance genuinely helps. |
 | Environment strategy | DENTS IT | Ephemeral test envs + gated promotion prevent test→prod drift; doesn't fix existing orphans. |
 | Least privilege | DENTS IT | Shrinks blast radius of the survivor. |
