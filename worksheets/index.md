@@ -26,7 +26,7 @@ across them to answer *how many agents, who owns them, what can they reach*.
 | `agents-export.csv` | Every agent, environment, owner, status, dates | [download]({% link worksheets/artifact-pack/blank/agents-export.csv %}) | [download]({% link worksheets/artifact-pack/agents-export.csv %}) |
 | `connections-export.csv` | Connections, connectors, connection owners, sharing, auth type | [download]({% link worksheets/artifact-pack/blank/connections-export.csv %}) | [download]({% link worksheets/artifact-pack/connections-export.csv %}) |
 | `agent-identities-export.csv` | Each agent's auto-created Entra identity. The pack labels it `cs-agent-<slug>-<env>`; in Entra it is named `<agent name> (Microsoft Copilot Studio)`, and the app ids won't match the tenant's | [download]({% link worksheets/artifact-pack/blank/agent-identities-export.csv %}) | [download]({% link worksheets/artifact-pack/agent-identities-export.csv %}) |
-| `users-export.csv` | Accounts: enabled/disabled, last sign-in, service/shared | [download]({% link worksheets/artifact-pack/blank/users-export.csv %}) | [download]({% link worksheets/artifact-pack/users-export.csv %}) |
+| `users-export.csv` | Accounts: enabled/disabled, leave date, last sign-in, service/shared | [download]({% link worksheets/artifact-pack/blank/users-export.csv %}) | [download]({% link worksheets/artifact-pack/users-export.csv %}) |
 | `environments-export.csv` | Environments, type, DLP applied, managed | [download]({% link worksheets/artifact-pack/blank/environments-export.csv %}) | [download]({% link worksheets/artifact-pack/environments-export.csv %}) |
 
 ### Where each column comes from
@@ -47,7 +47,7 @@ agent has none.
 
 {: .tip }
 > The clues are all here, but no single file tells the whole story. The findings live in the **joins** —
-> an agent whose owner is disabled, a connection owned by someone who left, an agent in an environment
+> an agent whose owner has left, a connection owned by someone who left, an agent in an environment
 > with no DLP.
 
 ## The deliverables

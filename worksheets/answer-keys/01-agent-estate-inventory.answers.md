@@ -12,7 +12,7 @@
 | Policy Lookup Bot | Prod | it.helpdesk (shared mbx) | PII (full-scope Policy API key reaches `/customer/{id}`) | | | | | ✅ | |
 | Underwriting Assistant | Prod | priya.nair (ok) | Internal (pricing DB via `run_query`) | | | | | | |
 | Expense Helper | Default | sam.olsen (ok) | Internal (expense records) | | | | | | |
-| Onboarding Guide | Default | **tom.dean (DISABLED)** | Internal (SharePoint + mail send) | ✅ | | | ✅ (tom.dean) | | ✅ |
+| Onboarding Guide | Default | **tom.dean (LEFT 2026-01-30, still enabled)** | Internal (SharePoint + mail send) | ✅ | | | ✅ (tom.dean) | | ✅ |
 | Team Wiki | Sandbox | dev.kim (ok) | Internal (every site Dev can read — not `Leadership/`) | | ✅ | | | | ✅ |
 | Sales Nudge | Prod | lena.ford (ok) | PII (CRM/Dataverse under Tom Dean's broad CRM access) | | | | ✅ (tom.dean CRM) | ✅ (conn≠agent owner) | |
 | HR FAQ v2 (copy) | Prod | marcus.webb (ok) | Internal (`HR FAQ` library only) | | | | | | (decoy — clean) |
@@ -25,9 +25,12 @@ grounding data, so Benefits Buddy may be classified from its SharePoint connecti
 ## The joins that reveal the findings
 
 - **Onboarding Guide orphan:** `agents-export` owner = `tom.dean`; `users-export` shows `tom.dean` →
-  `account_enabled = FALSE`, last sign-in 2026-01-30. Connection still live in `connections-export`.
+  `employee_leave_date = 2026-01-30`, last sign-in 2026-01-30, yet `account_enabled = TRUE`: nobody ran the
+  leaver process, which is why the connection in `connections-export` is still live. (A disabled owner's
+  connections stop at the next token refresh — disabling him is the fix, not the planted state.) Live, his
+  sign-in activity will postdate the leave date (provisioning); accept either reading.
 - **Sales Nudge hidden owner:** agent owner `lena.ford` (enabled) but `connections-export` shows
-  `DV-CRM-Shared` owned by `tom.dean` (disabled). The effective authority is a ghost.
+  `DV-CRM-Shared` owned by `tom.dean` (left; still enabled). The effective authority is a ghost.
 - **Claims Copilot:** environment `Claims-Test` (type Sandbox in `environments-export`, no DLP) but doing
   production work; connection `DV-Claims-Shared` owned by `svc-claims` (service account) shared with the
   Claims-Adjusters group.
@@ -36,7 +39,7 @@ grounding data, so Benefits Buddy may be classified from its SharePoint connecti
 - **Expense Helper (not flagged):** hunt 4's group-share check surfaces `PA-Expense-AutoApprove`, shared
   with `All-Employees`, running as owner. Expect attendees to raise it. It doesn't take the Shared
   connection flag: it runs as `sam.olsen`, the agent's own enabled owner. Carry the share into Exercise 03.
-- **Onboarding Guide is not Unknown / ambiguous owner:** its owner is a known, named, disabled person.
+- **Onboarding Guide is not Unknown / ambiguous owner:** its owner is a known, named person who has left.
   That is the Orphan flag.
 - **Team Wiki:** `Maker-Sandbox`, personal env, not in any sanctioned list — pure shadow.
 - **Decoys:** HR FAQ v2 and Meeting Notes Summarizer look risky by name/location but have least-privilege,

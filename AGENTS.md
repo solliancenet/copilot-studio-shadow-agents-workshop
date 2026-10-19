@@ -66,7 +66,7 @@ fixed identifiers; `05_export_artifact_pack.ps1 -Canonicalize` maps a live estat
 | Sam Olsen | `sam.olsen@halcourtmutual.onmicrosoft.com` | Finance approver + maker | Owns Expense Helper; a real expense approver. |
 | Lena Ford | `lena.ford@halcourtmutual.onmicrosoft.com` | Sales manager | *Maker* owner of Sales Nudge. |
 | Dev Kim | `dev.kim@halcourtmutual.onmicrosoft.com` | Developer (broad SharePoint) | Owns Team Wiki, Meeting Notes Summarizer. |
-| **Tom Dean** | `tom.dean@halcourtmutual.onmicrosoft.com` | **Departed admin — account DISABLED** | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. |
+| **Tom Dean** | `tom.dean@halcourtmutual.onmicrosoft.com` | **Departed admin — left 2026-01-30, account still ENABLED** (Entra leave date set; nobody ran the leaver process) | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. Stays enabled by design: a disabled user's connections stop refreshing (AADSTS50057), and that is the Scenario F fix, not the planted state. |
 | Jordan Blake | `jordan.blake@halcourtmutual.onmicrosoft.com` | Low-privilege employee | The "requesting user" for confused-deputy demos. Can chat with agents; personally entitled to almost nothing. |
 | svc-claims | `svc-claims@halcourtmutual.onmicrosoft.com` | **Service account** | Owns the shared Dataverse connection Claims Copilot runs on. Over-permissioned. |
 | IT Helpdesk | `it.helpdesk@halcourtmutual.onmicrosoft.com` | **Shared mailbox** | Ambiguous "owner" of Policy Lookup Bot — nobody personally accountable. Sign-in **enabled** (a shared mailbox is created disabled) so it can own the agent — itself a finding. |
@@ -184,14 +184,17 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Impact:** any employee auto-approves their own expenses via the agent.
 
 ### 6. Onboarding Guide — `cs-agent-onboarding-default`
-- **Env / Owner:** Halcourt (default) / **Tom Dean (DISABLED account) → orphaned.**
+- **Env / Owner:** Halcourt (default) / **Tom Dean (left 2026-01-30; account still enabled) → orphaned.**
 - **Data sensitivity (by reach):** **Internal** — SharePoint onboarding content, plus mail send.
 - **Purpose:** Help new hires with onboarding.
 - **Connectors / tools:** SharePoint + Office 365 Outlook (**send mail**), via a **shared connection Tom
   created** that is still live.
-- **PLANTED PROBLEM A (Scenario F — lifecycle / orphan):** owner disabled, yet the agent is still
-  published, still has a live connection, still can send mail as the connection. No one is accountable;
-  nobody realizes it exists.
+- **PLANTED PROBLEM A (Scenario F — lifecycle / orphan):** the owner left months ago but nobody ran the leaver
+  process: his account is still enabled, so the agent is still published, still has a live connection, still
+  can send mail as Tom. No one is accountable; nobody realizes it exists. Signals: a populated
+  `employee_leave_date` on an `account_enabled` `TRUE` row, and a last sign-in on the leave date in the pack.
+  (The live tenant shows provisioning sign-ins after it; sign-ins after a leave date are themselves evidence
+  the account is still in use.)
 - **Trust boundary crossed:** the lifecycle assumption "an owner exists and reviews this" no longer holds.
 - **Impact:** an unowned agent with live mail-send persists indefinitely.
 
@@ -254,7 +257,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 What a complete inventory must surface (attendees start from the exported artifact pack + tenant read):
 
-- **Orphaned:** Onboarding Guide (owner Tom Dean disabled; connection live).
+- **Orphaned:** Onboarding Guide (owner Tom Dean left 2026-01-30, account never disabled; connection live).
 - **Shadow:** Team Wiki (Maker-Sandbox; unknown to IT).
 - **Test-became-prod:** Claims Copilot (Claims-Test doing prod work).
 - **Shared connection:** Claims Copilot (svc-claims), Sales Nudge (Tom Dean's CRM connection),
@@ -345,7 +348,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 ### Scenario F — Lifecycle (orphan / test→prod / surviving connections)
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
-| Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix: connections and agent identities die with the owner. |
+| Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix for the *access*: disabling the leaver stops his OAuth connections at their next token refresh (AADSTS50057, seen on the live estate). The agent and its Agent ID survive until someone reassigns or retires them, so JML closes the authority, not the orphan. |
 | Agent 365 / CoE governance (ownership, orphaned-resource detection, lifecycle policy) | CLOSES IT → DENTS IT **[verify]** | Inventory + orphan detection + owner reassignment is where governance genuinely helps. |
 | Environment strategy | DENTS IT | Ephemeral test envs + gated promotion prevent test→prod drift; doesn't fix existing orphans. |
 | Least privilege | DENTS IT | Shrinks blast radius of the survivor. |
