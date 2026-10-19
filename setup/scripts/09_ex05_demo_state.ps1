@@ -156,7 +156,13 @@ function Makers-Diff { $w = Load 'default-makers'; $h = Makers-Read
   if ($d.Count) { $d | ForEach-Object { Write-Host "  $(if ($_.SideIndicator -eq '=>') {'ADDED  '} else {'REMOVED'}) $($_.InputObject)" } } else { Write-Host '  Environment Maker (and the facilitator''s roles): same as the snapshot' }
   $d.Count }
 function Makers-Restore { $E = DefaultEnv; $w = Load 'default-makers'; $h = Makers-Read; $rid = $h.role; $ref = @{ '@odata.id' = "$($E.Org)/api/data/v9.2/roles($rid)" }
-  foreach ($u in @($w.users) | Where-Object { $_ -notin $h.users }) { Dv $E POST "systemusers($u)/systemuserroles_association/`$ref" $ref | Out-Null }
+  # One failure must not stop the rest. A DISABLED user can't be given a role back (0x80048d35, unless the org
+  # setting AllowRoleAssignmentOnDisabledUsers is on) - e.g. the stale record of a recreated persona. Report it.
+  $script:Skipped = @()
+  foreach ($u in @($w.users) | Where-Object { $_ -notin $h.users }) {
+    try { Dv $E POST "systemusers($u)/systemuserroles_association/`$ref" $ref | Out-Null }
+    catch { $script:Skipped += $u; Write-Warning "  could not give Environment Maker back to $u : $(($_.ErrorDetails.Message | ConvertFrom-Json -ErrorAction SilentlyContinue).error.message)" }
+  }
   foreach ($u in @($h.users) | Where-Object { $_ -notin $w.users }) { Dv $E DELETE "systemusers($u)/systemuserroles_association($rid)/`$ref" | Out-Null }
   foreach ($t in @($w.teams) | Where-Object { $_ -notin $h.teams }) { Dv $E POST "teams($t)/teamroles_association/`$ref" $ref | Out-Null }
   foreach ($t in @($h.teams) | Where-Object { $_ -notin $w.teams }) { Dv $E DELETE "teams($t)/teamroles_association($rid)/`$ref" | Out-Null }
@@ -164,7 +170,9 @@ function Makers-Restore { $E = DefaultEnv; $w = Load 'default-makers'; $h = Make
     try { Dv $E DELETE "teams($t)" | Out-Null; Write-Host "  deleted group team $t (created by the demonstration)" } catch { Write-Warning "  could not delete team $t : $($_.Exception.Message.Split([char]10)[0])" }
   }
   Self-Restore $E $w.self
-  (Makers-Diff) -eq 0 }
+  $left = Makers-Diff
+  if ($left -and $left -eq @($script:Skipped).Count) { Write-Warning "  only the $left user(s) above differ - disabled records that can't hold a role; harmless, but not exact." }
+  $left -eq 0 }
 
 # ---- ClaimsRoles -------------------------------------------------------------------------------------
 function Claims-Read { $E = Env (Get-EstateName 'Claims-Test' $Estate)

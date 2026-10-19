@@ -1332,3 +1332,15 @@ default-environment agents after another estate.
 **Fix.** The workspaces use tokens; 06 resolves them at push: `${ESTATE}`, `${SP_HOST}` / `${SP_MY_HOST}`
 (from the tenant's initial domain), `${UPN_PATH:<alias>}` (a persona's OneDrive path segment). Verified: the
 substitution reproduces every committed file exactly for estate mgray.
+
+### Exercise 05 · a role can't be given back to a disabled user (2026-10-19)
+
+**Symptom.** Restoring the default environment's Environment Maker after a 05-02 lockdown stopped at the first
+re-add: `0x80048d35 ... User ... is disabled. User must be enabled or Organization setting
+AllowRoleAssignmentOnDisabledUsers must be turned on`.
+**Evidence.** The default environment keeps a **disabled** record for every persona deleted and recreated
+(username `<32 hex><upn>`): 12 of them held Environment Maker. Removing a role from them works; adding it
+back doesn't.
+**Fix.** `09` re-adds each user separately and reports the ones it can't; a lockdown demonstration removes only
+enabled, current accounts. The 12 stale records lost the role (harmless: they can't sign in) and the
+snapshot was retaken.
