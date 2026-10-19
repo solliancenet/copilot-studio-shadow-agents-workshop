@@ -9,7 +9,10 @@
 # and 02) had their live path blocked because the role had been sized for 01-02 and grown reactively. A
 # privilege nobody can tie to a step does not belong here.
 #
-# Everything here is prvRead*. The reviewer stance - observe the shared estate, change nothing - holds.
+# Every DATAVERSE privilege here is prvRead*. The directory roles are not all read-only: Power Platform
+# Administrator (standing - the /scopes/admin/ connection reads need it) can self-elevate to System
+# Administrator in any environment, edit tenant DLP and delete environments. The read-only stance is a rule
+# the lab pages set ("look but don't change until a task says so"), not something these roles enforce.
 #
 # The model needs a LICENCE to take effect. An unlicensed account runs in Dataverse Administrative access
 # mode, which filters a custom role's privileges; only System Administrator survives. Verified 2026-10-17:
@@ -19,10 +22,11 @@
 #   - Opening an agent in Copilot Studio needs bot reads at GLOBAL depth, because the estate's agents belong
 #     to the personas, not to the attendee. `Bot Viewer` grants them at BASIC depth (own records only), so
 #     on its own it reads nothing and the page says "You need additional access".
-#   - It ALSO needs reads `Bot Viewer` supplies and this role does not try to - connectionreference,
-#     AIPlugin(Operation), Workflow, Solution, Publisher, EnvironmentVariableDefinition - at the depths
-#     Copilot Studio expects. Microsoft maintains that set as the product changes; this role should not.
-#   So: the lab role carries the Global-depth bot reads and the Copilot* set; `Bot Viewer` carries the rest.
+#   - It ALSO needs reads `Bot Viewer` supplies - AIPlugin(Operation), Solution, Publisher,
+#     EnvironmentVariableDefinition - at the depths Copilot Studio expects. Microsoft maintains that set as the
+#     product changes; this role adds one only where Bot Viewer's depth (Basic) fails a step: Workflow and
+#     connectionreference, which the attendee reads on other people's agents (see their rows below).
+#   So: the lab role carries the Global-depth reads and the Copilot* set; `Bot Viewer` carries the rest.
 #   Tested one combination at a time: role alone fails, `Bot Viewer` alone fails, together they work.
 
 $DvRoleName   = 'Lab Reviewer (read-only)'
@@ -45,14 +49,19 @@ $DvRoleName   = 'Lab Reviewer (read-only)'
 $DirectoryRoles = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader')
 # PIM-ELIGIBLE roles: not held, but activatable by the attendee, for the Exercise 05 steps that WRITE where
 # no narrower lever exists. Activation is time-boxed (attendees pick 1-2 hours), needs a justification,
-# and is logged. Resource scoping doesn't help either: both roles act on tenant-wide objects.
+# and is logged. Resource scoping doesn't help: the agent block acts on tenant-wide objects.
 #   AI Administrator      - 05-05 KT06: Block / assign owner / Delete an agent in Agent 365.
-#   Security Administrator - 05-07 KT01/KT06: turn on Defender real-time protection for agents.
-# Not here, deliberately: Conditional Access Administrator (05-04 KT03 writes the policy down - one wrong
-# edit to CA-Require-MFA-Admins locks every account out) and Dataverse System Administrator (attendees
-# self-elevate per environment with Power Platform Administrator, as 05-05 KT06 already says).
+# Not here, deliberately - each can edit Conditional Access, and one wrong edit to CA-Require-MFA-Admins
+# locks every account out, across every estate in the tenant:
+#   Conditional Access Administrator (05-04 KT03 writes the policy down instead), and
+#   Security Administrator (it manages CA policies too), so 05-07's Defender real-time protection is a
+#   FACILITATOR step; attendees observe it with Security Reader.
+# Nor Dataverse System Administrator: attendees self-elevate per environment with Power Platform
+# Administrator (05-05 KT06), and remove it after.
 # 07 creates these with the kit's app-only identity (_labapp.ps1); the az token lacks the PIM scopes.
-$EligibleRoles = @('AI Administrator', 'Security Administrator')
+$EligibleRoles = @('AI Administrator')
+# Eligibility an older kit granted; 07 withdraws it on its next run.
+$RetiredEligibleRoles = @('Security Administrator')
 
 # Estate groups every attendee joins (plain names; 07 adds the estate suffix). Membership is what lets a
 # lab account CHAT with the published agents: 06 restricts chat on each agent to one security group

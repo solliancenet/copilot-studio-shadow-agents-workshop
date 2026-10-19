@@ -807,9 +807,10 @@ Why this role and not something weaker:
 
 
 **Exercise 05 roles are PIM-eligible, not held.** 07 also makes every attendee *eligible* for AI Administrator
-(05-05: block an agent) and Security Administrator (05-07: Defender real-time protection). Tell attendees at
-the start of Exercise 05: Entra admin center > *Privileged Identity Management* > *My roles* > *Activate*, a
-justification, 1-2 hours. Dataverse writes use Power Platform Administrator's per-environment self-elevation
+(05-05: block an agent). Tell attendees at the start of Exercise 05: Entra admin center > *Privileged Identity
+Management* > *My roles* > *Activate*, a justification, 1-2 hours. **Defender real-time protection (05-07) is
+yours to turn on**, before Exercise 05: the only role that can is Security Administrator, which can also edit
+Conditional Access, so attendees don't get it (they watch the setting with Security Reader). Dataverse writes use Power Platform Administrator's per-environment self-elevation
 instead. Why: [errata](../reference/runbook-errata.md#phase-8b--exercise-05s-write-steps-pim-eligible-roles-and-per-environment-self-elevation-2026-10-18).
 
 ### Phase 8c — Per-student slices (needed from Exercise 03)

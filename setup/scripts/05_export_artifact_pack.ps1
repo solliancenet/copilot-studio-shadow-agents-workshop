@@ -107,9 +107,10 @@ function Get-DlpPolicy {
   Invoke-Pp "$bapRoot/providers/PowerPlatform.Governance/v1/policies?api-version=2016-11-01"
 }
 # AuditLog.Read.All: users-export reads signInActivity, which Graph refuses without it.
-# User-LifeCycleInfo.Read.All: and employeeLeaveDateTime (the departed owner's leave date).
+# employeeLeaveDateTime needs no scope of its own on the reused az token (Directory.AccessAsUser.All covers
+# it for the admin); naming User-LifeCycleInfo.Read.All here would force device code on every run.
 . (Join-Path $PSScriptRoot '_auth.ps1')
-Connect-LabGraph -Scopes 'User.Read.All','Application.Read.All','AuditLog.Read.All','User-LifeCycleInfo.Read.All'
+Connect-LabGraph -Scopes 'User.Read.All','Application.Read.All','AuditLog.Read.All'
 if (-not (Get-MgContext)) { throw 'Connect-MgGraph did not establish a session.' }
 
 Write-Host "Writing artifact pack to $OutDir"

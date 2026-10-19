@@ -1221,7 +1221,7 @@ resources:
 |---|---|---|
 | 05-02, 05-03, 05-05 b, 05-07 auditing - Dataverse / Copilot Studio writes | **System Administrator, self-elevated per environment** | Power Platform Administrator's own *Membership > Add me*, one environment at a time; 05-05 KT06 already says so. No standing grant, and none in Claims-Test during Exercise 04 - a standing one there would let attendees read claims directly and void Scenario D. |
 | 05-05 KT06 - Block / Delete / assign owner in Agent 365 | **AI Administrator, PIM-eligible** | Entra > *Privileged Identity Management* > *My roles* > *Activate*, justification, 1-2 hours |
-| 05-07 KT01/KT06 - Defender real-time protection for agents | **Security Administrator, PIM-eligible** | as above |
+| 05-07 KT01/KT06 - Defender real-time protection for agents | ~~Security Administrator, PIM-eligible~~ **facilitator** (2026-10-19) | Security Administrator can edit Conditional Access - the lockout this table exists to prevent. Withdrawn from the five lab accounts; 07 withdraws it on re-run |
 | 05-04 KT03 - workload-identity CA policy | *not granted* | the step writes the policy down; one wrong edit to `CA-Require-MFA-Admins` locks every account out |
 
 Neither role can be scoped to resources: the agent block and the Defender setting are tenant-wide objects.
@@ -1277,3 +1277,22 @@ fixed it at once (Details then show *Maker-provided credentials*).
 also re-license student01-05). Also confirmed as a viewer: Settings (Connection Settings, Advanced →
 Metadata) is closed at every address; Knowledge, Tools and Topics open at `/knowledge`, `/actions`, `/topics`;
 the bots table's `synchronizationstatus.applicationId` equals the agent identity's Application ID.
+
+### Review fixes to this branch (2026-10-19)
+
+A review of PR #10 found, and this commit fixes:
+- **Security Administrator was PIM-eligible** for 05-07, but it can create, update and delete Conditional
+  Access policies - the CA-Require-MFA-Admins lockout the access model refuses CA Administrator for. Removed
+  from `$EligibleRoles`; 07 withdraws it (`$RetiredEligibleRoles`); withdrawn live from all five accounts.
+  Defender real-time protection is a facilitator step (RUNBOOK Phase 8b).
+- **`Ensure-LabApp` returned early** once app and certificate existed, so an app made by 03c before 07 needed
+  PIM never got `RoleEligibilitySchedule.ReadWrite.Directory`, and the certificate was never renewed. It now
+  checks every step on every call and renews a certificate within 30 days of expiry; 07 retries a 403 while
+  a fresh grant propagates and skips the billing link (`-NoBilling`).
+- **01 and 05 asked for `User-LifeCycleInfo.*`,** which the az token never carries, forcing device code on
+  every run. Dropped: Directory.AccessAsUser.All on the reused az token already reads and writes the leave
+  date. The device-code fallback in `_auth.ps1` is now pinned to the az tenant and checked afterwards.
+- **06:** a failed temporary-role bind now warns (it was silent) and the role is created inside the `try` and
+  removed by name; the Teams channel is judged by the bot record's `channels`, not by the browser script,
+  which no longer reports "already" when it simply couldn't find the button.
+- **03c** built Marcus's UPN on the initial domain; personas use the default domain.

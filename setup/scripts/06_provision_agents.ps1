@@ -121,10 +121,12 @@ function Invoke-BindWithTempRole([object]$E, [string]$Owner, [string]$CrefId, [s
   $need = 'prvReadconnectionreference', 'prvWriteconnectionreference', 'prvReadAsyncOperation'
   $bu   = (Dv $E GET 'businessunits?$select=businessunitid&$filter=parentbusinessunitid eq null').value[0].businessunitid
   $name = "Lab-Bind-Temp-$([guid]::NewGuid().ToString('N').Substring(0,6))"
-  Dv $E POST 'roles' @{ name = $name; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
-  $rid  = (Dv $E GET "roles?`$select=roleid&`$filter=name eq '$name'").value[0].roleid
-  $su   = $null
+  $rid  = $null; $su = $null
   try {
+    # Created inside the try, so a failure at any point still reaches the cleanup below.
+    Dv $E POST 'roles' @{ name = $name; 'businessunitid@odata.bind' = "/businessunits($bu)" } | Out-Null
+    $rid  = (Dv $E GET "roles?`$select=roleid&`$filter=name eq '$name'").value[0].roleid
+    if (-not $rid) { throw "temporary role '$name' was not found after creating it" }
     $privs = foreach ($n in $need) { @{ PrivilegeId = (Dv $E GET "privileges?`$select=privilegeid&`$filter=name eq '$n'").value[0].privilegeid; Depth = 'Global' } }
     Dv $E POST "roles($rid)/Microsoft.Dynamics.CRM.AddPrivilegesRole" @{ Privileges = @($privs) } | Out-Null
     $su = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$(Get-Upn $Owner)'").value[0].systemuserid
@@ -135,8 +137,10 @@ function Invoke-BindWithTempRole([object]$E, [string]$Owner, [string]$CrefId, [s
     }
     return $false
   } finally {
-    if ($su) { try { Dv $E DELETE "systemusers($su)/systemuserroles_association($rid)/`$ref" | Out-Null } catch { } }
-    try { Dv $E DELETE "roles($rid)" | Out-Null } catch { Write-Host "    (remove the temporary role '$name' by hand)" }
+    if ($su -and $rid) { try { Dv $E DELETE "systemusers($su)/systemuserroles_association($rid)/`$ref" | Out-Null } catch { } }
+    # Look the role up by name, not by $rid: the create can succeed and the lookup still come back empty.
+    $left = @((Dv $E GET "roles?`$select=roleid&`$filter=name eq '$name'").value)
+    foreach ($r in $left) { try { Dv $E DELETE "roles($($r.roleid))" | Out-Null } catch { Write-Warning "    remove the temporary role '$name' by hand" } }
   }
 }
 function Dv([object]$E, [string]$Method, [string]$Path, $Body) {
@@ -472,10 +476,11 @@ function Provision-Agent([object]$A) {
         # (claims-copilot: svc-claims). Lend it a throwaway role for the PATCH, then take it away again so
         # the scenario role attendees inspect is unchanged. Measured 2026-10-18.
         Write-Host "    (bind as $connOwner refused - retrying with a temporary role)"
-        $bound = $false; $tmp = $null
+        $bound = $false
         try { $bound = Invoke-BindWithTempRole $E $connOwner $cref.connectionreferenceid $cid }
         catch { Write-Host "    (could not bind $cn as $connOwner`: $($_.Exception.Message.Split([char]10)[0]))" }
         if ($bound) { Write-Host "    bound $cn -> $cid (via temporary role, now removed)" }
+        else        { Write-Warning "    $cn is NOT bound - the agent's tools on it will fail (ConnectionNotFound). Bind it in Copilot Studio as $connOwner." }
       }
     }
   }
@@ -496,9 +501,19 @@ function Provision-Agent([object]$A) {
 
   # Teams channel: attendees chat with the scenario agents in Teams (Lab 04), and an agent published with
   # Microsoft authentication is reachable only through it. No headless API - added in the browser as the owner.
+  # The bot record is the judge, not the browser script: its configuration lists the channel once added.
   if ($A.teamsChannel) {
-    $r = python3 (Join-Path $PSScriptRoot 'lib/enable_teams_channel.py') --upn (Get-Upn $alias) --password $LabPassword --env $E.Id --bot $bot.botid 2>&1
-    Write-Host "    teams channel: $($r | Select-Object -Last 1)"
+    $hasTeams = {
+      $cfg = (DvAs $E $alias GET "bots($($bot.botid))?`$select=configuration").configuration
+      $cfg -and @(($cfg | ConvertFrom-Json).channels | ForEach-Object { $_.channelId }) -contains 'msteams'
+    }
+    if (& $hasTeams) { Write-Host '    teams channel: already on' }
+    else {
+      $r = python3 (Join-Path $PSScriptRoot 'lib/enable_teams_channel.py') --upn (Get-Upn $alias) --password $LabPassword --env $E.Id --bot $bot.botid 2>&1
+      $code = $LASTEXITCODE
+      if (& $hasTeams) { Write-Host '    teams channel: added' }
+      else { Write-Warning "    teams channel NOT added (exit $code): $($r | Select-Object -Last 1) - attendees can't chat with $($A.display) in Teams. Screenshot: /tmp/enable_teams_channel_error.png" }
+    }
   }
 
   # publishing right after create can be too soon; retry and confirm success.

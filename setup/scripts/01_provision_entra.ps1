@@ -9,8 +9,10 @@ nobody shut down. After his shared connections exist (Phase 6), run this script 
 -MarkDepartedOwner: it stamps his Entra leave date (employeeLeaveDateTime), the record that says he has
 gone, and leaves the account and its connections live.
 
-Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWrite.All,
-User-LifeCycleInfo.ReadWrite.All for the leave date).
+Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWrite.All). The leave date
+needs no extra scope when the az sign-in is reused: its token carries Directory.AccessAsUser.All, which
+covers it for a Global Administrator (verified 2026-10-19). Asking for User-LifeCycleInfo.* here would
+force a device-code sign-in on every run, because the az token never carries it.
 Signs in to Graph by reusing the az sign-in when it can (_auth.ps1); otherwise with a device code (the
 browser redirect of an interactive login can't reach a dev container).
 
@@ -39,7 +41,7 @@ $ErrorActionPreference = 'Stop'
 $Estate = Resolve-Estate $Estate
 
 . (Join-Path $PSScriptRoot '_auth.ps1')
-Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All','User-LifeCycleInfo.ReadWrite.All' -TenantId $TenantId
+Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All' -TenantId $TenantId
 # Connect-MgGraph can return without a session instead of throwing (e.g. sign-in timed out).
 if (-not (Get-MgContext)) { throw 'Connect-MgGraph did not establish a session.' }
 

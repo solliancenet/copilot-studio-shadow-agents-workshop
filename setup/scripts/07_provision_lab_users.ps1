@@ -302,13 +302,30 @@ $mfaRoleTemplates = @(
 )
 $templates = (Graph GET 'directoryRoleTemplates?$select=id,displayName').value
 # PIM-eligible roles need the kit's app-only identity: the az token lacks RoleEligibilitySchedule.* scopes.
-$EligibleRoleIds = [ordered]@{}; $pimToken = $null
-if ($EligibleRoles -and -not $Destroy) {
-  . (Join-Path $PSScriptRoot '_labapp.ps1'); Ensure-LabApp
+$EligibleRoleIds = [ordered]@{}; $RetiredRoleIds = [ordered]@{}; $pimToken = $null
+if (($EligibleRoles -or $RetiredEligibleRoles) -and -not $Destroy) {
+  . (Join-Path $PSScriptRoot '_labapp.ps1'); Ensure-LabApp -NoBilling
   $pimToken = Get-AppToken 'https://graph.microsoft.com'
   foreach ($n in $EligibleRoles) {
     $t = $templates | Where-Object { $_.displayName -eq $n } | Select-Object -First 1
     if ($t) { $EligibleRoleIds[$n] = $t.id } else { Write-Warning "No role template '$n' - not made eligible" }
+  }
+  foreach ($n in $RetiredEligibleRoles) {
+    $t = $templates | Where-Object { $_.displayName -eq $n } | Select-Object -First 1
+    if ($t) { $RetiredRoleIds[$n] = $t.id }
+  }
+}
+# A permission granted moments ago (Ensure-LabApp on a fresh tenant) can take minutes to reach the token
+# service: retry a 403 rather than fail every account.
+function Invoke-Pim([hashtable]$Body) {
+  for ($i = 0; ; $i++) {
+    try {
+      return Invoke-RestMethod -Method POST -Uri 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilityScheduleRequests' `
+        -Headers @{ Authorization = "Bearer $script:pimToken" } -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 5)
+    } catch {
+      if ($i -ge 5 -or "$_" -notmatch '403|Forbidden|Authorization_RequestDenied') { throw }
+      Start-Sleep 60; $script:pimToken = Get-AppToken 'https://graph.microsoft.com'
+    }
   }
 }
 $roleTargets = @()
@@ -446,12 +463,20 @@ foreach ($i in 1..$Count) {
       $b = @{ action = 'adminAssign'; principalId = $u.id; roleDefinitionId = $er.Value; directoryScopeId = '/'
               justification = 'Halcourt lab: Exercise 05 only, activated on demand'
               scheduleInfo = @{ startDateTime = (Get-Date).ToUniversalTime().ToString('o'); expiration = @{ type = 'noExpiration' } } }
-      Invoke-RestMethod -Method POST -Uri 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilityScheduleRequests' `
-        -Headers @{ Authorization = "Bearer $pimToken" } -ContentType 'application/json' -Body ($b | ConvertTo-Json -Depth 5) | Out-Null
+      Invoke-Pim $b | Out-Null
       $roleResults += "$($er.Key) (eligible)"
     } catch {
       if ("$_" -match 'RoleAssignmentExists|already exists') { $roleResults += "$($er.Key) (eligible)" }
       else { $roleResults += "$($er.Key) (eligible) FAILED"; Write-Warning "  $upn - eligibility '$($er.Key)': $($_.Exception.Message.Split([char]10)[0])" }
+    }
+  }
+  foreach ($er in $RetiredRoleIds.GetEnumerator()) {
+    try {
+      Invoke-Pim @{ action = 'adminRemove'; principalId = $u.id; roleDefinitionId = $er.Value; directoryScopeId = '/'
+                    justification = 'Halcourt lab: role retired from the access model' } | Out-Null
+      $roleResults += "$($er.Key) (eligibility removed)"
+    } catch {
+      if ("$_" -notmatch 'RoleAssignmentDoesNotExist|does not exist') { Write-Warning "  $upn - removing eligibility '$($er.Key)': $($_.Exception.Message.Split([char]10)[0])" }
     }
   }
   $row.roles = $roleResults -join '; '

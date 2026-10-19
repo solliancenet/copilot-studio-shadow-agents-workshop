@@ -14,11 +14,24 @@ if (-not $AppConfig) { $AppConfig = Join-Path (Split-Path -Parent $PSScriptRoot)
 if (-not $Pfx)       { $Pfx       = Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.pfx' }
 
 # Everything this script signs in as is created here, so a fresh tenant needs nothing done by hand.
-function Ensure-LabApp {
+# Every step checks before it acts, so this runs in full on every call: an app created by an older kit (03c
+# before 07 needed PIM) still gets each permission added since, and a certificate near expiry is replaced.
+# -NoBilling: callers that never touch the metered Graph API (07) skip the billing link.
+function Ensure-LabApp([switch]$NoBilling) {
   $name = 'halcourt-lab-compliance'
   $app  = az ad app list --display-name $name --query '[0].appId' -o tsv
   $haveCfg = (Test-Path $AppConfig) -and (Test-Path $Pfx)
-  if ($app -and $haveCfg) { return }
+  if ($haveCfg -and $app) {
+    # Replace a certificate that expires within 30 days (they are issued for a year).
+    try {
+      $labCfg = Get-Content $AppConfig -Raw | ConvertFrom-Json
+      if ($labCfg.appId -ne $app) { $haveCfg = $false }
+      else {
+        $c = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($Pfx, $labCfg.pfxPassword)
+        if ($c.NotAfter -lt (Get-Date).AddDays(30)) { Write-Host "0. certificate expires $($c.NotAfter.ToString('yyyy-MM-dd')) - renewing"; $haveCfg = $false }
+      }
+    } catch { $haveCfg = $false }
+  }
   if (-not $app) { $app = az ad app create --display-name $name --query appId -o tsv; Write-Host "0. created app $name ($app)" }
   if (-not $haveCfg) {
     # A fresh certificate; the private half stays in setup/*.local.pfx (gitignored), the public half on the app.
@@ -46,7 +59,7 @@ function Ensure-LabApp {
       az ad app permission add --id $app --api $grant[0] --api-permissions "$role=Role" --only-show-errors 2>$null | Out-Null
       $b = @{ principalId = $sp; resourceId = $res; appRoleId = $role } | ConvertTo-Json -Compress; $f = New-TemporaryFile; Set-Content $f $b
       az rest --method POST --url "https://graph.microsoft.com/v1.0/servicePrincipals/$sp/appRoleAssignments" --body "@$f" | Out-Null; Remove-Item $f
-      Write-Host "0. granted $($grant[1])"
+      Write-Host "0. granted $($grant[1]) (allow a few minutes before it takes effect)"
     }
   }
   $tpl = az rest --method GET --url 'https://graph.microsoft.com/v1.0/directoryRoleTemplates' --query "value[?displayName=='Compliance Administrator'].id | [0]" -o tsv
@@ -56,6 +69,7 @@ function Ensure-LabApp {
     az rest --method POST --url 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments' --body "@$f" | Out-Null; Remove-Item $f
     Write-Host '0. Compliance Administrator assigned'
   }
+  if ($NoBilling) { return }
   # assignSensitivityLabel is metered: link the app to this subscription for billing.
   az provider register -n Microsoft.GraphServices --wait --only-show-errors | Out-Null
   $rg = 'rg-halcourt-graph-billing'
@@ -64,7 +78,6 @@ function Ensure-LabApp {
     az resource create -g $rg -n "$name-billing" --resource-type Microsoft.GraphServices/accounts --properties "{`"appId`":`"$app`"}" --location global --only-show-errors | Out-Null
     Write-Host '0. Graph metered-API billing linked'
   }
-  Write-Host '0. (new app: allow a few minutes for its role and permissions to take effect)'
 }
 
 # ---- app-only tokens: a certificate client assertion, signed here (no MSAL dependency) ---------------

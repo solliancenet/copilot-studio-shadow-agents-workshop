@@ -39,7 +39,9 @@ if (-not $Estate) { throw 'Pass -Estate or set HALCOURT_ESTATE.' }
 Ensure-LabApp
 
 $cfg      = Get-Content $AppConfig -Raw | ConvertFrom-Json
-$domain   = $cfg.organization
+$domain   = $cfg.organization                 # the INITIAL *.onmicrosoft.com: SharePoint host, compliance sign-in
+# Persona UPNs use the tenant's DEFAULT domain, as 01 and 06 build them; it differs on a custom-domain tenant.
+$personaDomain = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv
 $tenantId = az account show --query tenantId -o tsv
 $tenant   = $domain.Split('.')[0]
 
@@ -61,7 +63,9 @@ function Graph([string]$Method, [string]$Path, $Body, [string]$ContentType = 'ap
 
 # ---- 1. the group -------------------------------------------------------------------------------------
 Write-Host "1. Group $groupName"
-$marcus = az ad user show --id "$(Get-EstateAlias 'marcus.webb' $Estate)@$domain" --query id -o tsv
+$marcusUpn = "$(Get-EstateAlias 'marcus.webb' $Estate)@$personaDomain"
+$marcus = az ad user show --id $marcusUpn --query id -o tsv
+if (-not $marcus) { throw "$marcusUpn not found - run Phase 2 (01) for estate '$Estate' first." }
 $g = az rest --method get --url "https://graph.microsoft.com/v1.0/groups?`$filter=displayName eq '$groupName'&`$select=id,mail" --query 'value[0]' -o json | ConvertFrom-Json
 if (-not $g) {
   $body = @{ displayName = $groupName; mailNickname = $groupName; mailEnabled = $true; securityEnabled = $true
@@ -91,7 +95,7 @@ if (-not (Get-LabelPolicy -Identity $policy -ErrorAction SilentlyContinue)) {
   # A brand-new Microsoft 365 group isn't an Exchange recipient for a while ("couldn't be found"), so fall
   # back to its one member; a later run adds the group. Encryption rights already name the group either way.
   try   { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation $g.mail -ErrorAction Stop | Out-Null; Write-Host '   created (group)' }
-  catch { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation "$(Get-EstateAlias 'marcus.webb' $Estate)@$domain" | Out-Null
+  catch { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation $marcusUpn | Out-Null
           Write-Host '   created (Marcus only - group not yet an Exchange recipient; rerun to add it)' }
 } else {
   $pol = Get-LabelPolicy -Identity $policy

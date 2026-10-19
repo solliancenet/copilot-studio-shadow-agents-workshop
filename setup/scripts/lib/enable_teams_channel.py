@@ -9,7 +9,9 @@ through the owner's sign-in and the agent's Channels page.
 
   python3 enable_teams_channel.py --upn <owner-upn> --password <pw> --env <environment-id> --bot <bot-id>
 
-Prints OK=added | OK=already | ERROR=<message> (exit 1). Idempotent. The caller publishes afterwards.
+Prints OK=added | NOTFOUND=<what> (exit 2) | ERROR=<message> (exit 1). It never reports success it didn't
+see: a missing "Add channel" button may mean the channel is on, or that the page didn't load, so the caller
+(06) checks the bot record's channels instead. The caller publishes afterwards.
 Lab-only: the password is the shared lab password, passed by the engine; never use against a real tenant.
 
 Requires: playwright with Chromium.
@@ -79,7 +81,8 @@ def main():
             step = "add the channel"
             add = page.get_by_role("button", name=re.compile(r"^\s*Add channel\s*$"))
             if not add.count():
-                print("OK=already"); return 0
+                page.screenshot(path="/tmp/enable_teams_channel_error.png")
+                print("NOTFOUND=no Add channel button (already on, or the panel didn't open)"); return 2
             add.first.click()
             for _ in range(30):
                 page.wait_for_timeout(3000)
@@ -88,7 +91,8 @@ def main():
             print("ERROR=Add channel did not complete"); return 1
         except Exception as e:
             page.screenshot(path="/tmp/enable_teams_channel_error.png")
-            print(f"ERROR=({locals().get('step', 'sign in')}) " + str(e).splitlines()[0][:200]); return 1
+            msg = (str(e).splitlines() or [type(e).__name__])[0][:200]
+            print(f"ERROR=({locals().get('step', 'sign in')}) " + msg); return 1
         finally:
             browser.close()
 
