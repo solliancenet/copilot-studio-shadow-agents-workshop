@@ -838,7 +838,7 @@ pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at
 |---|---|---|
 | 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
 | 05-02 | default environment: Environment Maker members → the `Halcourt-Makers-<estate>` group; a default-environment data policy named `Halcourt-Default-DLP-<estate>` | `-Action Restore -Control DefaultMakers`, then `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
-| 05-03 | Benefits Buddy's knowledge narrowed (as Marcus, Copilot Studio) **or** the reader's permission on `Leadership/` removed; a scoped role for svc-claims in Claims-Test | knowledge / SharePoint permission: **by hand**, then republish Benefits Buddy; the role: `-Action Restore -Control ClaimsRoles` |
+| 05-03 | Benefits Buddy's Knowledge URL narrowed from the whole site to the open-enrollment FAQ, as its owner (Marcus) - the facilitator account can't open another person's agent - then published; a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | knowledge: `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
 | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
 | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
 | 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
@@ -927,6 +927,7 @@ agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision 
 | `scripts/03c_provision_purview.ps1` | Phase 4c: the encrypting label and the labelled comp copy |
 | `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
 | `scripts/07b_provision_facilitator.ps1` | The facilitator's Exercise 05 demonstration account |
+| `scripts/09b_ex05_scoped_claims_role.ps1` | Exercise 05-03 demonstration: svc-claims' scoped role and fixed subset |
 | `scripts/09_ex05_demo_state.ps1` | Exercise 05 demonstrations: snapshot / diff / restore the shared estate |
 | `scripts/99_teardown.ps1` | Remove the estate |
 | `agents/manifest.json` | Phase 6 control data: agents, connections and flows (estate-agnostic) |
