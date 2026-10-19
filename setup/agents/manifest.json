@@ -1,5 +1,5 @@
 {
-  "_comment": "FACILITATOR-ONLY. Estate-agnostic metadata for Phase 6 agent provisioning (06_provision_agents). The committed pac workspace under 'workspace/' holds each agent's instructions, knowledge and tools; this manifest holds what the workspace YAML does NOT: owner, environment, the connections to bind, and the chat audience. The engine resolves canonical names to this estate's live ids at run time (see _estate.ps1). 'capture' = how the workspace is obtained: 'authored' (benign, committed here) or 'clone' (build once in the portal, then `pac copilot clone` into setup/agents/ and commit - used for the planted agents whose config is not authored here). coOwners = personas made co-owners of the agent (added to its <botid>_1 team), e.g. the service account whose connection the agent's tools run on.",
+  "_comment": "FACILITATOR-ONLY. Estate-agnostic metadata for Phase 6 agent provisioning (06_provision_agents). The committed pac workspace under 'workspace/' holds each agent's instructions, knowledge and tools; this manifest holds what the workspace YAML does NOT: owner, environment, the connections to bind, and the chat audience. The engine resolves canonical names to this estate's live ids at run time (see _estate.ps1). 'capture' = how the workspace is obtained: 'authored' (benign, committed here) or 'clone' (build once in the portal, then `pac copilot clone` into setup/agents/ and commit - used for the planted agents whose config is not authored here). coOwners = personas made co-owners of the agent (added to its <botid>_1 team), e.g. the service account whose connection the agent's tools run on. teamsChannel = add the Microsoft 365 and Teams channel (Lab 04 chats in Teams); done in the browser as the owner by lib/enable_teams_channel.py.",
   "environments": {
     "Halcourt-Prod": "estate-suffixed",
     "Claims-Test": "estate-suffixed",
@@ -86,7 +86,8 @@
       ],
       "chatAudience": "All-Employees",
       "planted": true,
-      "capture": "clone"
+      "capture": "clone",
+      "teamsChannel": true
     },
     {
       "slug": "claims-copilot",
@@ -102,7 +103,8 @@
       "capture": "authored",
       "coOwners": [
         "svc-claims"
-      ]
+      ],
+      "teamsChannel": true
     },
     {
       "slug": "policy-lookup-bot",
@@ -113,7 +115,8 @@
       "connections": [],
       "chatAudience": "All-Employees",
       "planted": true,
-      "capture": "authored"
+      "capture": "authored",
+      "teamsChannel": true
     },
     {
       "slug": "underwriting-assistant",
@@ -126,7 +129,8 @@
       ],
       "chatAudience": "Halcourt-Makers",
       "planted": true,
-      "capture": "authored"
+      "capture": "authored",
+      "teamsChannel": true
     },
     {
       "slug": "expense-helper",
@@ -138,7 +142,8 @@
       "chatAudience": "All-Employees",
       "planted": true,
       "capture": "authored",
-      "estateSuffixName": true
+      "estateSuffixName": true,
+      "teamsChannel": true
     },
     {
       "slug": "onboarding-guide",

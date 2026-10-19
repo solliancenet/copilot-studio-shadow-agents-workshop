@@ -494,6 +494,13 @@ function Provision-Agent([object]$A) {
     } catch { Write-Host "    (co-owner ${co} not added: $($_.Exception.Message.Split([char]10)[0]))" }
   }
 
+  # Teams channel: attendees chat with the scenario agents in Teams (Lab 04), and an agent published with
+  # Microsoft authentication is reachable only through it. No headless API - added in the browser as the owner.
+  if ($A.teamsChannel) {
+    $r = python3 (Join-Path $PSScriptRoot 'lib/enable_teams_channel.py') --upn (Get-Upn $alias) --password $LabPassword --env $E.Id --bot $bot.botid 2>&1
+    Write-Host "    teams channel: $($r | Select-Object -Last 1)"
+  }
+
   # publishing right after create can be too soon; retry and confirm success.
   $published = $false
   for ($i = 0; $i -lt 5 -and -not $published; $i++) {
@@ -514,8 +521,8 @@ if (-not $SkipPrereqs) {
   # Dataverse will not add a sign-in-disabled user to an environment; it fails with an opaque Kepler
   # 'instanceNotFound' rather than saying so. it.helpdesk hits this every build: it is a SHARED MAILBOX, and
   # Exchange creates those disabled, so enable it here (RUNBOOK Phase 6, prereq 2). Any OTHER disabled owner
-  # is reported, never auto-enabled - after Phase 6.5 tom.dean is disabled deliberately, and quietly turning
-  # him back on would undo the departed-owner scenario.
+  # is reported, never auto-enabled: a disabled persona is a decision someone made (tom.dean is departed but
+  # stays ENABLED - see Phase 6.5 - so a disabled Tom means someone ran the Ex05 fix and didn't undo it).
   Write-Host "`n== Owner sign-in =="
   foreach ($alias in ($targets.owner | Select-Object -Unique)) {
     $upn = Get-Upn $alias
@@ -529,7 +536,7 @@ if (-not $SkipPrereqs) {
       Write-Host "{0,-12} -> enabled (shared mailbox; Exchange creates it disabled)" -f $alias
       Start-Sleep 10   # let the sign-in change reach Dataverse before addUser
     } else {
-      Write-Warning "$alias is sign-in disabled - Dataverse cannot add it. Enable it, or (if this is after Phase 6.5) run Phase 6 before disabling Tom."
+      Write-Warning "$alias is sign-in disabled - Dataverse cannot add it. Enable it (tom.dean stays enabled by design - Phase 6.5)."
     }
   }
 
