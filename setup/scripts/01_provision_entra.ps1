@@ -3,10 +3,14 @@ FACILITATOR-ONLY. Phase 2 — Entra identities & personas for the Halcourt Mutua
 Creates the personas, the service account, and the groups from AGENTS.md, and prints the command for the
 shared mailbox (Exchange Online creates that, not Graph).
 
-IMPORTANT ordering: create tom.dean ENABLED now. Only AFTER his shared connections exist (Phase 6),
-run this script again with -DisableDepartedOwner to orphan him. That timing makes the orphan real.
+Tom Dean is the departed owner, and he stays ENABLED. Disabling him would kill his connections (Entra
+refuses a disabled user's token refresh - AADSTS50057), and the orphan is precisely a leaver whose account
+nobody shut down. After his shared connections exist (Phase 6), run this script again with
+-MarkDepartedOwner: it stamps his Entra leave date (employeeLeaveDateTime), the record that says he has
+gone, and leaves the account and its connections live.
 
-Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWrite.All).
+Requires: Microsoft.Graph (Connect-MgGraph with User.ReadWrite.All, Group.ReadWrite.All,
+User-LifeCycleInfo.ReadWrite.All for the leave date).
 Signs in to Graph by reusing the az sign-in when it can (_auth.ps1); otherwise with a device code (the
 browser redirect of an interactive login can't reach a dev container).
 
@@ -26,7 +30,8 @@ param(
   [string]$TenantId,                                 # optional; target lab tenant (id or *.onmicrosoft.com)
   [string]$DomainSuffix,                             # default: the tenant's default verified domain
   [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only
-  [switch]$DisableDepartedOwner
+  [switch]$MarkDepartedOwner,
+  [datetime]$DepartedOn = '2026-01-30T17:00:00Z'      # Tom's leave date (canon: users-export)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,7 +39,7 @@ $ErrorActionPreference = 'Stop'
 $Estate = Resolve-Estate $Estate
 
 . (Join-Path $PSScriptRoot '_auth.ps1')
-Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All' -TenantId $TenantId
+Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All','User-LifeCycleInfo.ReadWrite.All' -TenantId $TenantId
 # Connect-MgGraph can return without a session instead of throwing (e.g. sign-in timed out).
 if (-not (Get-MgContext)) { throw 'Connect-MgGraph did not establish a session.' }
 
@@ -52,11 +57,11 @@ $usageLocation = if ($org.countryLetterCode) { $org.countryLetterCode } else { '
 
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 
-if ($DisableDepartedOwner) {
+if ($MarkDepartedOwner) {
   $tom = Get-Upn 'tom.dean'
-  Write-Host "Disabling departed owner $tom (run this ONLY after his connections exist)..."
-  Update-MgUser -UserId $tom -AccountEnabled:$false
-  Write-Host "$tom disabled. Onboarding Guide + Sales Nudge connections must remain live."
+  Write-Host "Marking departed owner $tom (leave date $($DepartedOn.ToUniversalTime().ToString('yyyy-MM-dd')); account stays enabled)..."
+  Update-MgUser -UserId $tom -AccountEnabled:$true -EmployeeLeaveDateTime $DepartedOn.ToUniversalTime()
+  Write-Host "$tom marked departed. Leave him ENABLED: disabling him kills the Onboarding Guide + Sales Nudge connections."
   return
 }
 
@@ -68,7 +73,7 @@ $people = @(
   @{ Alias='sam.olsen';    Name='Sam Olsen';              Note='Finance approver + maker' }
   @{ Alias='lena.ford';    Name='Lena Ford';              Note='Sales manager' }
   @{ Alias='dev.kim';      Name='Dev Kim';                Note='Developer (broad SharePoint)' }
-  @{ Alias='tom.dean';     Name='Tom Dean';               Note='Departed admin (disable in Phase 6.5)' }
+  @{ Alias='tom.dean';     Name='Tom Dean';               Note='Departed admin (leave date in Phase 6.5; stays enabled)' }
   @{ Alias='jordan.blake'; Name='Jordan Blake';           Note='Low-privilege employee (confused-deputy path)' }
   @{ Alias='svc-claims';   Name='Claims Service Account'; Note='Service account for the shared Dataverse connection' }
 )
@@ -137,4 +142,4 @@ foreach ($canon in $membership.Keys) {
   Write-Host "Group $($g.DisplayName): $($membership[$canon].Count) members ($added added)"
 }
 
-Write-Host "Phase 2 complete for estate '$Estate'. Remember Phase 6.5: re-run with -Estate $Estate -DisableDepartedOwner after Tom's connections exist."
+Write-Host "Phase 2 complete for estate '$Estate'. Remember Phase 6.5: re-run with -Estate $Estate -MarkDepartedOwner after Tom's connections exist."

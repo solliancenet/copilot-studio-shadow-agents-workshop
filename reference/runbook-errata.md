@@ -358,8 +358,8 @@ agents (Benefits Buddy, HR FAQ v2) were never affected; only agents with a conne
 - **All bot-record ops run AS THE OWNER, not admin.** Bot lookup, chat-audience PATCH and connection binding
   fail as admin in the default env (no `bots` read); and a connection reference can only be bound by the
   **connection's** owner (`ConnectionAuthorizationFailed` otherwise). The agent owner binds its own agent's
-  refs; the connection owner (a SysAdmin in that env, e.g. Tom in Prod) binds connections it owns — **before**
-  Phase 6.5 disables Tom.
+  refs; the connection owner (a SysAdmin in that env, e.g. Tom in Prod) binds connections it owns — so Tom must be
+  enabled (he now always is; see *Phase 6.5: a disabled owner's connections die*).
 - **Publisher prefix is stable per agent, not per env.** Don't rewrite it to the env's CDS Default Publisher
   (that duplicated an agent and mutated the committed source). Keep the committed prefix; ensure a publisher
   with it exists in the env (create on a fresh rebuild).
@@ -860,7 +860,7 @@ student who queries an environment's `systemusers` table directly on the day a s
 one who would see the stale value.
 
 **Operationally** it joins the other lags in this kit - Conditional Access group membership, and `az`
-settling a token for a brand-new org. Build the slices, and disable `tom.dean`, well before the delivery
+settling a token for a brand-new org. Build the slices well before the delivery
 rather than minutes before it. Nothing here is fast-path safe.
 
 
@@ -1232,3 +1232,36 @@ active assignment.
 The az token can't create eligibility (`PermissionScopeNotGranted: RoleEligibilitySchedule.ReadWrite.Directory`),
 so 07 uses the kit's app-only identity (`_labapp.ps1`, shared with 03c), which now also holds that permission.
 Doc impact: 05-05 KT06 and 05-07 should tell attendees to activate the role first.
+
+### Phase 6.5 · a disabled owner's connections die - Tom stays enabled (2026-10-19)
+
+**Symptom.** Onboarding Guide's `O365-Outlook-Onboarding` reference was unbound and Sales Nudge's
+`DV-CRM-Shared` reference too; Tom's Prod Dataverse connection showed `Error`.
+**Evidence.** The connection's status: `Failed to refresh access token ... AADSTS50057: The user account is
+disabled` (2026-10-17, two days after Phase 6.5 disabled him). Entra issues no token to a disabled user, so
+every OAuth connection he owns goes to `Error` at its next refresh. The planted state "owner disabled,
+connection still live" can't exist. And the answer key already says so: *Identity lifecycle / JML -
+CLOSES IT: connections die with the owner.*
+**Fix (decided 2026-10-19: "departed, still enabled").** Tom is a leaver nobody shut down. Phase 6.5 is now
+`01_provision_entra.ps1 -MarkDepartedOwner`: it sets his `employeeLeaveDateTime` (Entra's leaver record,
+which Lifecycle Workflows act on) and leaves the account enabled. `users-export` gains `employee_leave_date`.
+Disabling Tom is the Exercise 05 fix to test, never a build step.
+**Also found.** Tom had **no licence** (he lost it when recreated), so `Ensure-Connection` failed with
+`InvalidUserPlan`; the Phase 6 seat loop covers him on a fresh build. And Onboarding Guide was still owned
+by the *deleted* Tom's Dataverse record (renamed `<objectid>tom.dean...`), which 06 can't clone as the live
+Tom: reassign the bot, its components and its connection reference to the live record first (as for Sam's
+Expense Helper, whose SubmitExpense topic also pointed at the deleted Sam's flow until a 06 re-run resolved
+`${FLOW:...}` again).
+**Doc impact.** 02-03 hunts 1/4/5, 02-04, 05-05, 05-07, 06-01 ("whose account is disabled. The connection
+is still live") and the inventory key say "disabled"; they need "departed (leave date), still enabled".
+
+### All phases · a shell without `scripts/env.sh` uses your OTHER tenant (2026-10-19)
+
+**Symptom.** `06_provision_agents.ps1` printed `Estate 'mgray' on <a different company's domain>` and failed
+looking up a persona.
+**Evidence.** It ran in a detached background shell that hadn't picked up `AZURE_CONFIG_DIR`, so `az` used
+`~/.azure` - the facilitator's day-job tenant. It got as far as listing environments and one user lookup
+(reads; the 404 stopped it). A run with the persona names already in place there would have written.
+**Fix.** `_estate.ps1` (loaded by every Phase 1-9 script) now points an unset `AZURE_CONFIG_DIR` at the
+repo's `.azure/` and **throws** if it is set anywhere else. `00_conditional_access_baseline.ps1` doesn't load
+it but requires `-TenantId`.

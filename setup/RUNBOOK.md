@@ -129,7 +129,7 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 ```
 0. Provision isolated tenant   → fresh *.onmicrosoft.com, licensing, security defaults → CA baseline
 1. Azure infra (Bicep)        → Policy API + Underwriting MCP endpoints
-2. Entra identities/personas  → users, groups, DISABLE tom.dean
+2. Entra identities/personas  → users, groups (tom.dean: leave date in 6.5, stays enabled)
 3. Environments + DLP          → 4 environments, prod DLP, PAYG billing plan
 4. SharePoint seed             → HR-Benefits + Claims-Knowledge, PLANT the poisoned doc
 4b. Maker OneDrive             → provision + seed dev.kim's OneDrive (Meeting Notes grounding)
@@ -305,8 +305,9 @@ users to an environment. A sandbox has 25 and the sample users hold most. If you
 unassigning sample users in **M365 admin center → Billing → Licenses**; don't repurpose them as personas,
 the aliases are canon.
 
-**Tom Dean stays enabled now.** In Phase 6.5 — only *after* his shared connections exist — disable him
-with `-DisableDepartedOwner` (below). Doing it earlier means the orphan isn't real.
+**Tom Dean stays enabled — always.** He is the departed owner, but disabling him kills his connections
+(Entra refuses a disabled user's token refresh, AADSTS50057), and the orphan *is* a leaver whose account
+nobody shut down. Phase 6.5 records his departure as an Entra leave date instead (below).
 
 Why the tenant domain, how the shared mailbox is created:
 [decisions → Phase 2](../reference/runbook-decisions.md#phase-2--identities).
@@ -630,14 +631,16 @@ and how to build one agent by hand:
 [decisions → Phase 6](../reference/runbook-decisions.md#phase-6--agents) and
 [`agent-authoring-guide.md`](agent-authoring-guide.md).
 
-**Phase 6.5 — orphan Tom Dean.** After Onboarding Guide and Sales Nudge exist **and their shared
+**Phase 6.5 — mark Tom Dean departed.** After Onboarding Guide and Sales Nudge exist **and their shared
 connections are owned by `tom.dean.<estate>`**:
 
 ```powershell
-pwsh setup/scripts/01_provision_entra.ps1 -DisableDepartedOwner    # same estate
+pwsh setup/scripts/01_provision_entra.ps1 -MarkDepartedOwner    # same estate; sets employeeLeaveDateTime
 ```
 
-The agents and connections must remain live — that is the orphan.
+It stamps his `employeeLeaveDateTime` and leaves the account **enabled**. The agents and connections must
+remain live — that is the orphan. **Do not disable Tom**: both connections go to Error within the hour and
+Scenario F stops reproducing. (Disabling him is the fix attendees test in Exercise 05.)
 
 ### Phase 7 — Export the artifact pack
 
@@ -674,8 +677,8 @@ Walk `AGENTS.md` and confirm, in the live tenant:
 - Every **PLANTED PROBLEM** reproduces (A–F fire; discovery targets are findable).
 - Every **CONTROL EFFICACY** verdict holds; resolve any `[verify]` items and update `AGENTS.md`.
 - Guest (Ana) read access works; the Jordan Blake confused-deputy path works.
-- **Phase 6.5 has run** — Tom must be disabled *after* his connections exist, or the departed-owner thread
-  reads wrong and `users-export` disagrees with the canon.
+- **Phase 6.5 has run** — Tom has a leave date and is still **enabled**, and both of his connections
+  show `Connected`; otherwise the departed-owner thread reads wrong and `users-export` disagrees with the canon.
 - Re-run Phase 7 and **review** `git diff worksheets/artifact-pack`. It will not be empty; look for
   *unexpected* drift — an agent missing, an owner that changed, a connection that lost its sharing, an
   environment that lost its DLP.
@@ -840,7 +843,7 @@ creating a scoped role gets `204` in their slice and `403` in the shared estate.
 
 > {: .important }
 > **The slice is not finished.** It still needs the SharePoint grounding site and the two agents, including
-> the orphaned-connection agent owned by the disabled `tom.dean`. Those need a per-environment override in
+> the orphaned-connection agent owned by the departed `tom.dean`. Those need a per-environment override in
 > `03_provision_sharepoint.ps1` and `06_provision_agents.ps1`, which is the next piece of work.
 
 Two things learned building it, both verified: a new environment's Dataverse was **Ready in about 30

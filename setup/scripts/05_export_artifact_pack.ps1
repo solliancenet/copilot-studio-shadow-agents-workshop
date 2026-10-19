@@ -107,8 +107,9 @@ function Get-DlpPolicy {
   Invoke-Pp "$bapRoot/providers/PowerPlatform.Governance/v1/policies?api-version=2016-11-01"
 }
 # AuditLog.Read.All: users-export reads signInActivity, which Graph refuses without it.
+# User-LifeCycleInfo.Read.All: and employeeLeaveDateTime (the departed owner's leave date).
 . (Join-Path $PSScriptRoot '_auth.ps1')
-Connect-LabGraph -Scopes 'User.Read.All','Application.Read.All','AuditLog.Read.All'
+Connect-LabGraph -Scopes 'User.Read.All','Application.Read.All','AuditLog.Read.All','User-LifeCycleInfo.Read.All'
 if (-not (Get-MgContext)) { throw 'Connect-MgGraph did not establish a session.' }
 
 Write-Host "Writing artifact pack to $OutDir"
@@ -277,7 +278,7 @@ ConvertTo-Canon $identities |
   Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'agent-identities-export.csv')
 
 # --------------------------------------------------------------------------------------------------
-# 4) users-export.csv  (reveals the disabled owner + service/shared accounts)
+# 4) users-export.csv  (reveals the departed-but-enabled owner + service/shared accounts)
 # --------------------------------------------------------------------------------------------------
 Write-Host 'Exporting users -> users-export.csv'
 $mailboxTypeByUpn = @{}
@@ -286,7 +287,7 @@ try {
   Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize Unlimited -ErrorAction Stop |
     ForEach-Object { $mailboxTypeByUpn[$_.UserPrincipalName] = $true }
 } catch { }
-$users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled,signInActivity' |
+$users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled,employeeLeaveDateTime,signInActivity' |
   Where-Object { Test-EstatePrincipal $_.UserPrincipalName } |   # this estate's accounts only
   ForEach-Object {
     $last = $_.SignInActivity.LastSignInDateTime
@@ -294,6 +295,8 @@ $users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled
       upn               = $_.UserPrincipalName
       display_name      = $_.DisplayName
       account_enabled   = ([string]$_.AccountEnabled).ToUpper()
+      # Entra's leaver record (Lifecycle Workflows act on it). Tom Dean has one and is still enabled.
+      employee_leave_date = if ($_.EmployeeLeaveDateTime) { ([datetime]$_.EmployeeLeaveDateTime).ToString('yyyy-MM-dd') } else { '' }
       last_sign_in_utc  = if ($last) { ([datetime]$last).ToString('yyyy-MM-dd') } else { '' }
       # Heuristic classification — the estate uses svc-* / *service* for service accounts.
       is_service_account = (($_.UserPrincipalName -like 'svc-*') -or ($_.DisplayName -match 'Service Account')).ToString().ToUpper()
@@ -301,7 +304,7 @@ $users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled
     }
   }
 ConvertTo-Canon $users |
-  Select-Object upn,display_name,account_enabled,last_sign_in_utc,is_service_account,is_shared_mailbox |
+  Select-Object upn,display_name,account_enabled,employee_leave_date,last_sign_in_utc,is_service_account,is_shared_mailbox |
   Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'users-export.csv')
 
 # --------------------------------------------------------------------------------------------------
