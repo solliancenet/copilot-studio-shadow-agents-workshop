@@ -776,12 +776,13 @@ Two things that bite here, both verified:
 Buddy, Claims Copilot and Expense Helper with their own account. The agents authenticate with Microsoft,
 so the only channel is **Microsoft 365 and Microsoft Teams** (the *Make agent available in Microsoft 365
 Copilot* option is greyed out on this tenant) - and Teams refuses an unlicensed account outright (*"You
-don't have the required permissions to access this org"*, verified 2026-10-17). Phase 6 publishes the
-agents but does **not** add that channel, so until someone does, nobody but the maker can reach them. As
-each agent's owner: Copilot Studio → the agent → **Channels** → *Microsoft 365 and Microsoft Teams* →
-**Add channel** → **Availability options** → **Copy link**. That link is the one Exercise 04 says the
-facilitator hands out; it works for users the agent is shared with, which 07 arranges by adding attendees
-to `All-Employees-<estate>`. Done by hand for Benefits Buddy on 2026-10-17; not yet scripted.
+don't have the required permissions to access this org"*, verified 2026-10-17). Phase 6 adds that channel
+for every agent marked `teamsChannel` in the manifest and reads each agent's **install link** (Channels →
+*Microsoft 365 and Microsoft Teams* → **Availability options** → **Copy link**) into
+`setup/teams-links-<estate>.local.csv`. Those are the links Exercise 04 says the facilitator hands out. They
+work for users the agent is shared with, which 07 arranges by adding attendees to `All-Employees-<estate>`;
+the attendee sees an **Add** dialog, then the chat. A plain chat link (`/l/chat/0/0?users=28:<app id>`) is
+refused: *"You do not have permission to use this app here"* (verified as student03, 2026-10-19).
 
 **Licences are best effort, but the access model needs one.** Verified 2026-10-17 with three accounts holding
 the identical access model: the one with an E5 seat (`accessmode=0`) opened the PPAC role editor and the
