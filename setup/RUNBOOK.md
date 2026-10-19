@@ -814,7 +814,16 @@ Why: [errata](../reference/runbook-errata.md#phase-8b--review-fixes-to-this-bran
 ### Exercise 05 demonstrations (during delivery)
 
 Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
-the estate back. Snapshot everything before the session, restore each control as soon as its retests are
+the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
+(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator /
+Security Administrator only as PIM-eligible - activate one for the step that needs it (05-05, 05-07) and
+let it lapse. Create it once, after the attendee accounts:
+
+```powershell
+pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv
+```
+
+Sign in with it once before the delivery to enrol MFA (it is an admin, so `CA-Require-MFA-Admins` applies). Snapshot everything before the session, restore each control as soon as its retests are
 done, and finish with a diff.
 
 ```powershell
@@ -916,6 +925,7 @@ agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision 
 | `scripts/lib/enable_teams_channel.py` | Adds the Teams channel to an agent as its owner (browser step in Phase 6) |
 | `scripts/03c_provision_purview.ps1` | Phase 4c: the encrypting label and the labelled comp copy |
 | `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
+| `scripts/07b_provision_facilitator.ps1` | The facilitator's Exercise 05 demonstration account |
 | `scripts/09_ex05_demo_state.ps1` | Exercise 05 demonstrations: snapshot / diff / restore the shared estate |
 | `scripts/99_teardown.ps1` | Remove the estate |
 | `agents/manifest.json` | Phase 6 control data: agents, connections and flows (estate-agnostic) |
