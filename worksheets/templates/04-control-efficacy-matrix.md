@@ -32,6 +32,10 @@ Fill a verdict in each cell you test (leave blank if not applicable / not tested
 | E — HTTP / MCP boundary |  |  |  |  |  |  |  |
 | F — Lifecycle |  |  |  |  |  |  |  |
 
+Where one cell covers two results, such as Defender real-time protection and audit, put the stronger verdict
+in the cell and name the control that earned it, for example "DENTS IT (Defender RTP)". Put the other result
+in the remaining-risk note or the retest log.
+
 ## Retest log (Attack → Control → Retest)
 
 Copy per test.

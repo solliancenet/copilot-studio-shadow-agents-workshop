@@ -56,12 +56,16 @@ working without it — because they already tell you which environment carries w
 credential each connection carries. Label those offline verdicts as reasoned conclusions, not retest
 results.
 
+Some controls are tenant-wide and shared by every estate in the lab tenant: the default-environment changes
+in Task 05-02, and the Conditional Access policy in Task 05-04 unless the facilitator agrees otherwise. For
+those, you specify the control rather than apply it, and label the verdict as reasoned, like an offline one.
+
 ## Objectives
 
 After this exercise you will be able to:
 
 - Configure (or, where unavailable, evaluate) the core Microsoft controls — DLP, environment strategy,
-  Dataverse least privilege, Conditional Access, Agent 365 governance, Purview, and Defender /
+  Dataverse least privilege, Conditional Access for agents, Agent 365 governance, Purview, and Defender /
   audit — against a live Copilot Studio estate.
 - Re-run a reproduced attack against a configured control and reach a defensible **CLOSES IT / DENTS IT /
   MISSES IT** verdict rather than assuming the control worked.
