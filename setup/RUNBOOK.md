@@ -567,6 +567,26 @@ pwsh setup/scripts/04_provision_dataverse.ps1                                  #
 Why a license is required, why E5 suffices, and the non-interactive route that gives the seat back:
 [decisions → Phase 5](../reference/runbook-decisions.md#phase-5--dataverse).
 
+### Phase 5b — Auditing (Lab 05-07)
+
+05-07 reconstructs Exercise 04 from the logs, and a log only holds what happened after it was switched on.
+Run this **at least an hour before Exercise 04** - well before, on the build day. A developer tenant ships
+with all of it off (found 2026-10-20). Needs Phase 4c's lab app and Phase 5's tables.
+
+```bash
+pwsh setup/scripts/04b_provision_audit.ps1     # rerun-safe; ends with a Check line, all True
+```
+
+| What | Where it shows in 05-07 |
+|---|---|
+| Purview Audit: unified audit log ingestion (up to **60 minutes** to start recording) | `CopilotInteraction` events (KT02, KT05); the Dataverse read logs |
+| `Claims-Test-<estate>`: auditing, read logs, user access logging | the environment's audit settings (KT01) |
+| `mm_claim`, `mm_customer`: changes, single reads, list reads | a claim's audit history (changes); Purview Audit (reads - Scenario D's lookups) |
+
+**Not scripted yet - Defender real-time protection for agents** (KT01, KT06). It needs the Microsoft 365
+app connector in Defender for Cloud Apps and an Entra app registered for the agents' runtime protection;
+PLANNING item 16 tracks it. Until it's set up, 05-07 KT06 has nothing to turn on.
+
 ### Phase 6 — Author the agents
 
 Builds all ten agents (eight planted + two decoys) per `AGENTS.md`, each **as its owner** in the
@@ -1020,6 +1040,7 @@ anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 | `scripts/03_provision_sharepoint.ps1` | Sites + clean FAQ library + **plant poisoned doc** |
 | `scripts/03b_provision_onedrive.ps1` | Provision + seed dev.kim's OneDrive (Meeting Notes grounding) |
 | `scripts/04_provision_dataverse.ps1` | Claim/Customer tables, PII rows, over-broad role |
+| `scripts/04b_provision_audit.ps1` | Phase 5b: Purview Audit and Claims-Test auditing for 05-07 |
 | `scripts/05_export_artifact_pack.ps1` | Regenerate the artifact-pack CSVs |
 | `scripts/06_provision_agents.ps1` | Provision the agents from committed workspaces, as each owner |
 | `scripts/lib/consent_browser.py` | Headless connection-consent helper (browser step in Phase 6) |
