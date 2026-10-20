@@ -41,7 +41,7 @@ If you're working in the tenant, you fill in each blank CSV at the task that fir
 | `users-export.csv` | Microsoft Entra admin center: **Users**, and the users query (`az rest`) for leave dates and sign-ins. Exchange admin center: **Mailboxes**, filtered to shared mailboxes | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
 | `connections-export.csv` | The Power Platform admin API, through `az rest`. Copilot Studio: each agent's **Tools** and **Topics**. Power Platform admin center: each environment's **Flows** | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
 | `agent-identities-export.csv` | Microsoft Entra admin center: **Agent identities** (or Graph Explorer) | [Task 01-02]({% link docs/01_the_agent_estate/01_02.md %}) |
-| `files-export.csv` | SharePoint: each knowledge site's libraries, with the **Sensitivity** column showing. You can't open `Leadership/`, so your facilitator shows that folder | [Task 05-06]({% link docs/05_test_the_controls/05_06.md %}) |
+| `files-export.csv` | SharePoint: each knowledge site's libraries; a file's **Details** panel shows its **Sensitivity**. You can't open `Leadership/`, so your facilitator shows that folder | [Task 05-06]({% link docs/05_test_the_controls/05_06.md %}) |
 
 A few columns have no field in the tenant, so you write them yourself: `maker_access` (who holds the maker
 roles), `is_service_account`, `auth_type` (whose credential a call carries), and `description` where an
