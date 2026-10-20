@@ -897,7 +897,7 @@ pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at
 | 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
 | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
 | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-| 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
+| 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
 
 The default environment and the tenant's Defender setting are shared with every estate in the tenant:
 coordinate with any other facilitator delivering at the same time.
@@ -972,8 +972,8 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
 - [ ] **Purview Audit is on** - also Phase 5b. It is **not** always on by default: on this developer tenant
       unified audit ingestion was off (2026-10-20), and only activity after it is switched on (allow up to an
       hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
-- [ ] **Defender real-time protection for agents** is not a pre-delivery step: you switch it on during
-      05-07 and back afterwards, per the demonstration table (Exercise 05 demonstrations, above).
+- [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
+      2026 it needs a Microsoft Agent 365 licence, and a developer tenant offers no trial.
 - [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
       summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
       `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
