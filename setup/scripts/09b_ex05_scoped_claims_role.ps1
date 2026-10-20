@@ -75,8 +75,16 @@ Write-Host ("2. svc-claims now holds: " + (((Dv GET "systemusers($su)/systemuser
 
 # 4. the fixed subset: svc-claims owns N claims and their customers
 $claims = @((Dv GET "mm_claims?`$select=mm_claimid,_mm_customer_value&`$orderby=createdon&`$top=$SubsetSize").value)
+# A new owner must hold read on the table, and Dataverse can take a while to see a role assigned seconds ago
+# (0x80040299 "Principal user ... is missing prvReadmm_claim privilege"): retry rather than fail.
+function Set-Owner([string]$Path) {
+  for ($i = 0; ; $i++) {
+    try { Dv PATCH $Path @{ 'ownerid@odata.bind' = "/systemusers($su)" } | Out-Null; return }
+    catch { if ($i -ge 8 -or "$_" -notmatch '0x80040299|is missing') { throw }; Start-Sleep 15 }
+  }
+}
 foreach ($c in $claims) {
-  Dv PATCH "mm_claims($($c.mm_claimid))" @{ 'ownerid@odata.bind' = "/systemusers($su)" } | Out-Null
-  if ($c._mm_customer_value) { Dv PATCH "mm_customers($($c._mm_customer_value))" @{ 'ownerid@odata.bind' = "/systemusers($su)" } | Out-Null }
+  Set-Owner "mm_claims($($c.mm_claimid))"
+  if ($c._mm_customer_value) { Set-Owner "mm_customers($($c._mm_customer_value))" }
 }
 Write-Host "3. fixed subset: svc-claims owns $($claims.Count) claim(s) and their customer(s)"
