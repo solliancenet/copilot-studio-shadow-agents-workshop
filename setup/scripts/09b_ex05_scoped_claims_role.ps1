@@ -17,7 +17,8 @@ What it does in Claims-Test-<estate>:
   2. gives svc-claims that role and the built-in Basic User (it needs Basic User to call Dataverse at all);
   3. removes "svc-claims Dataverse Full Access" (the organization-wide read/write from Phase 5);
   4. the fixed subset: makes svc-claims the owner of -SubsetSize claims and their customers. User depth reads
-     only what svc-claims owns, so the agent sees exactly those.
+     only what svc-claims owns, so the agent sees exactly those;
+  5. gives the facilitator account System Administrator there, so the admin center will list its users.
 Isolated training tenants only. ASCII only.
 #>
 param(
@@ -88,3 +89,15 @@ foreach ($c in $claims) {
   if ($c._mm_customer_value) { Set-Owner "mm_customers($($c._mm_customer_value))" }
 }
 Write-Host "3. fixed subset: svc-claims owns $($claims.Count) claim(s) and their customer(s)"
+
+# 5. the facilitator can show it: PPAC's Users page needs a role in the environment ("You don't have any role
+# in this organization"). System Administrator, as Membership > Add me would give; the ClaimsRoles restore
+# strips it again.
+$fu = (Dv GET "systemusers?`$select=systemuserid&`$filter=startswith(domainname,'$(Get-EstateAlias 'facilitator' $Estate)@')").value | Select-Object -First 1
+if ($fu) {
+  $sa = RoleId 'System Administrator'
+  if ($sa -notin @((Dv GET "systemusers($($fu.systemuserid))/systemuserroles_association?`$select=roleid").value).roleid) {
+    Dv POST "systemusers($($fu.systemuserid))/systemuserroles_association/`$ref" @{ '@odata.id' = "$Org/api/data/v9.2/roles($sa)" } | Out-Null
+  }
+  Write-Host "4. the facilitator holds System Administrator in Claims-Test (for the admin center view)"
+} else { Write-Warning 'No facilitator user in Claims-Test - run 07b_provision_facilitator.ps1; the admin center will show no users.' }
