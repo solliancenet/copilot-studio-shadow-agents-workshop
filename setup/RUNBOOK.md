@@ -542,8 +542,8 @@ pwsh setup/scripts/04b_provision_audit.ps1     # rerun-safe; ends with a Check l
 It deliberately leaves **read logs off**: reads reach Purview only for production environments, and
 `Claims-Test` is a sandbox, so there is nothing to turn on (see the pre-delivery audit checklist).
 
-**Defender real-time protection for agents (KT01, KT06) - blocked on this tenant.** Two prerequisites
-are missing (checked 2026-10-20 as the facilitator with Security Administrator active):
+**Defender real-time protection for agents - not used; 05-07 KT06 reasons it through.** On this tenant two
+prerequisites are missing (checked 2026-10-20 as the facilitator with Security Administrator active):
 
 - **A Microsoft Agent 365 licence.** Since 1 July 2026 Copilot Studio agent protection in Defender requires
   it; E5 alone is not enough. The tenant has only `DEVELOPERPACK_V2_E5`, and **Settings → Security for AI**
@@ -565,7 +565,7 @@ Once both are in place (Learn: *Real-time protection for AI agents*, *External s
    Administrator. Portal only, per environment.
 4. Paste the app ID back into the Defender pane and save; it should show **Connected**.
 
-On and off for the demonstration: the PPAC checkbox in step 3. Only generative-orchestration agents are
+If a future build has the licence and wants KT06 live again, on and off is the PPAC checkbox in step 3. Only generative-orchestration agents are
 checked, and only their tool calls. PLANNING item 16 tracks it.
 
 ### Phase 6 — Author the agents
