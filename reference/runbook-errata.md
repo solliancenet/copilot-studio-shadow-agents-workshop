@@ -1360,8 +1360,9 @@ Benefits Buddy disclosing it proved nothing, and Scenario B's asymmetry was gone
 **Evidence.** 03 created both sites' M365 groups through Graph without `visibility`, so they were **Public**,
 and SharePoint put `Everyone except external users` in each site's Members group. `Leadership/` keeps
 Members. Claims-Knowledge had the same grant: every employee could edit the claims knowledge base.
-**Fix.** Groups are created `Private`; `Grant-SiteAccess` strips the Everyone claim from Members (so a re-run
-repairs an existing site). Live: both groups set Private, the claim removed from both sites. After the fix
+**Fix.** Groups are created `Private`; on a site that already exists 03 sets the backing group `Private` (a
+public group lets any employee join and become a member), and `Grant-SiteAccess` strips the Everyone claim
+from Members - both, so a re-run repairs an existing site. Live: both groups set Private, the claim removed from both sites. After the fix
 student03 gets SharePoint's access-denied page for the file, and Benefits Buddy, asked in Teams as student03,
 **still** returns the comp table - re-asked 35 minutes later, after the index had time to catch up, with
 the same result. The agent reads what the employee can't: Scenario B's asymmetry is real once the site is

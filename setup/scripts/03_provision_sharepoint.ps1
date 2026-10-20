@@ -302,6 +302,23 @@ foreach ($site in @(
     @{ Alias = $claimsAlias; Url = $claimsUrl; Title = (Get-EstateDisplayName 'Claims Knowledge' $Estate) })) {
   if (Test-SiteExists $site.Url) {
     Write-Host "  $($site.Alias) already exists — skipping create."
+    # A site built before the groups were created Private still has a PUBLIC group, which any employee can
+    # join without approval - and a member opens Leadership/ (see Grant-SiteAccess). Make it Private too.
+    if ($AppOnly) {
+      $g = az rest --method GET --url "https://graph.microsoft.com/v1.0/groups?`$filter=mailNickname eq '$($site.Alias)'&`$select=id,visibility" --query 'value[0]' -o json | ConvertFrom-Json
+      if ($g -and $g.visibility -ne 'Private') {
+        $gf = New-TemporaryFile; '{"visibility":"Private"}' | Set-Content $gf -Encoding utf8
+        az rest --method PATCH --url "https://graph.microsoft.com/v1.0/groups/$($g.id)" --headers 'Content-Type=application/json' --body "@$gf" -o none
+        Remove-Item $gf
+        Write-Host "  $($site.Alias): backing group was $($g.visibility) - now Private"
+      }
+    } else {
+      $g = Get-PnPMicrosoft365Group -Identity $site.Alias -ErrorAction SilentlyContinue
+      if ($g -and $g.Visibility -ne 'Private') {
+        Set-PnPMicrosoft365Group -Identity $g.Id -IsPrivate:$true
+        Write-Host "  $($site.Alias): backing group was $($g.Visibility) - now Private"
+      }
+    }
     continue
   }
   Write-Host "  Creating team site $($site.Url)"
