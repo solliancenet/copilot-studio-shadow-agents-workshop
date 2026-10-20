@@ -693,6 +693,11 @@ tenant. The run prints a handout table and writes `setup/lab-users-<estate>.loca
 passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone and their passwords are carried forward from the
 previous handout (the script cannot read one back from Entra).
 
+It also consents **Graph Explorer** tenant-wide for a few read scopes (`User.Read.All`, `AuditLog.Read.All`,
+`Application.Read.All`, `AgentIdentity.Read.All`; the list is `$GraphExplorerScopes` in `_access_model.ps1`).
+01-02, 02-01 and 06-01 send attendees there, and each of those reads is admin-consent-only: without the grant
+the query answers `Authorization_RequestDenied`. The grant is shared by every estate, so `-Destroy` leaves it.
+
 **Attendees get four Entra directory roles (`$DirectoryRoles` in `_access_model.ps1`), and enrol MFA at
 first sign-in:**
 

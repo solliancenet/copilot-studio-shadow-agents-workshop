@@ -1384,3 +1384,13 @@ in-session verdict is DENTS IT at best ("the change is right, but its effect is 
 lab"), or the lab should scope the reader's SharePoint permission instead - the route 05-03 also offers - and
 retest that. **Decision for the exercise owner.** Not root-caused: whether the answer comes from a retained
 index, a cached published version, or another grounding path is open.
+
+### Phase 8b · Graph Explorer refused every lab query (2026-10-20)
+
+**Symptom.** As student03, with Graph Explorer's sign-in consent accepted, both lab queries failed:
+`users?$select=…,signInActivity` (06-01) and `servicePrincipals/microsoft.graph.agentIdentity` (01-02, 02-01)
+returned `Authorization_RequestDenied` (before consent: `Authentication_MSGraphPermissionMissing: AuditLog.Read.All`).
+**Evidence.** The only grant for Graph Explorer was student03's own `openid profile User.Read offline_access`;
+`User.Read.All`, `AuditLog.Read.All`, `Application.Read.All` and `AgentIdentity.Read.All` are all
+admin-consent-only. **Fix.** Decided 2026-10-20 (Matt): 07 consents Graph Explorer for all principals with
+exactly those read scopes (`$GraphExplorerScopes`). After the grant both queries return data as student03.

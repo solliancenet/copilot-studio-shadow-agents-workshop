@@ -65,6 +65,14 @@ $RetiredEligibleRoles = @('AI Administrator', 'Security Administrator')
 # Scenario B: the agent reaches Leadership/, the attendee cannot.
 #   NOT Halcourt-Makers: it carries maker rights, so Underwriting Assistant and Sales Nudge stay out of chat.
 $AudienceGroups = @('All-Employees')
+
+# Graph Explorer, consented tenant-wide for these READ scopes, so the Graph Explorer steps work: 01-02 KT01 s2
+# and 02-01 KT01 s4 (servicePrincipals/microsoft.graph.agentIdentity), 06-01 KT02 note and KT03 s1 (users with
+# signInActivity). Each is admin-consent-only: without the grant an attendee's query returns
+# Authorization_RequestDenied (verified as student03, 2026-10-20). Decided 2026-10-20 (Matt): consent the app
+# rather than drop the steps. Tenant-wide and shared by every estate, so -Destroy leaves it.
+$GraphExplorerAppId  = 'de8bc8b5-d9f9-48b1-a8ad-b748da725064'
+$GraphExplorerScopes = @('openid', 'profile', 'offline_access', 'User.Read', 'User.Read.All', 'AuditLog.Read.All', 'Application.Read.All', 'AgentIdentity.Read.All')
 # The Conditional Access policy attendees enrol MFA against (00_conditional_access_baseline.ps1 creates it).
 $CaPolicyName = 'CA-Require-MFA-Admins'
 

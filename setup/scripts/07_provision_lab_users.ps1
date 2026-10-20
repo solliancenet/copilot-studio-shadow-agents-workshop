@@ -539,6 +539,25 @@ if ($report.Count) {
   }
 }
 
+# --- Graph Explorer: tenant-wide consent for the lab's read queries ------------------------------------------
+# $GraphExplorerScopes (_access_model.ps1) says which steps need it. An AllPrincipals grant; the app's
+# service principal appears on first sign-in, so create it if nobody has signed in yet.
+$geSp = @((Graph GET "servicePrincipals?`$filter=appId eq '$GraphExplorerAppId'&`$select=id").value) | Select-Object -First 1
+if (-not $geSp) { $geSp = Graph POST 'servicePrincipals' @{ appId = $GraphExplorerAppId } }
+$msGraph = @((Graph GET "servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=id").value)[0]
+$want = $GraphExplorerScopes -join ' '
+$grant = @((Graph GET "oauth2PermissionGrants?`$filter=clientId eq '$($geSp.id)' and consentType eq 'AllPrincipals' and resourceId eq '$($msGraph.id)'").value) | Select-Object -First 1
+if (-not $grant) {
+  Graph POST 'oauth2PermissionGrants' @{ clientId = $geSp.id; consentType = 'AllPrincipals'; resourceId = $msGraph.id; scope = $want } | Out-Null
+  Write-Host "Graph Explorer: consented for all users ($want)"
+} else {
+  $missing = @($GraphExplorerScopes | Where-Object { $_ -notin ($grant.scope -split ' ') })
+  if ($missing) {
+    Graph PATCH "oauth2PermissionGrants/$($grant.id)" @{ scope = ((@($grant.scope -split ' ' | Where-Object { $_ }) + $missing) -join ' ') } | Out-Null
+    Write-Host "Graph Explorer: consent extended with $($missing -join ' ')"
+  } else { Write-Host 'Graph Explorer: consent already in place' }
+}
+
 # --- Dataverse read-only role -------------------------------------------------------------------------------
 # Lab 03-02 and 03-04 send attendees to read the acting identity's SECURITY ROLE inside an environment. Power
 # Platform Administrator is a TENANT role and grants nothing in Dataverse, so without this the read fails with
