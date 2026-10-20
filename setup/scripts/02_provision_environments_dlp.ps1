@@ -28,7 +28,7 @@ Estate (setup/scripts/_estate.ps1): pass -Estate or set HALCOURT_ESTATE. Safe to
 the DLP policy that already exist are reported, not recreated.
 #>
 param(
-  [string]$Estate = $env:HALCOURT_ESTATE,      # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$Estate = $env:HALCOURT_ESTATE,      # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$MacroRegion = 'north-america',      # asia-pacific, emea, eu-efta, europe-uk, north-america, the-americas
   [string]$CurrencyName = 'USD',
   [int]$LanguageCode = 1033,                   # 1033 = English

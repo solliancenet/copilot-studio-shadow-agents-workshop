@@ -9,7 +9,7 @@ Reads only. Needs az signed in to the lab tenant (source scripts/env.sh in any s
 terminal on this repo or the dev container).
 
   pwsh setup/scripts/00b_preflight.ps1 -Attendees 20
-  pwsh setup/scripts/00b_preflight.ps1 -Estate mgray -Attendees 1
+  pwsh setup/scripts/00b_preflight.ps1 -Estate jsmith -Attendees 1
 
 Why this exists: three modules in a row had their live path blocked by something the kit assumed and nobody
 checked - a Dataverse privilege, a licence, a service plan the tenant never had. The access model

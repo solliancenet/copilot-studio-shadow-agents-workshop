@@ -9,15 +9,9 @@
 > tradeoffs, manual alternatives) and [`../reference/runbook-errata.md`](../reference/runbook-errata.md)
 > (what goes wrong, troubleshooting, open `[verify]` risks). Each phase links to its own section there.
 
-A single **shared demo tenant** hosts the live estate for Exercise 04 (BREAK) and Exercise 05 (CONTROL).
-Attendees sign in with native lab accounts (Phase 8b) and use their own lab account as the low-privilege
-requester; **Jordan Blake** is only the offline stand-in for that requester. In Exercise 05 the facilitator
-demonstrates each control on the shared estate and attendees retest. An **artifact pack** (five CSVs in
-`../worksheets/artifact-pack/`) is exported from that estate so every task can be completed offline from the
-pack if the tenant is unavailable; the tenant is the preferred path. The committed pack is the **canonical**
-one; re-run [Phase 7](#phase-7--export-the-artifact-pack) after the estate changes to see what has drifted —
-but read the caveat there before regenerating it, because parts of the pack are hand-written and an export
-cannot reproduce them.
+Attendees share one live estate for Exercise 04 and 05; Exercise 05 is demonstrated by the facilitator.
+The artifact pack is the offline fallback. Why:
+[ADR-0002](../reference/adr/0002-shared-vs-individual-estates.md).
 
 {: .important }
 > The estate is deliberately broken. Provision it in an **isolated training tenant** you control. Never
@@ -25,35 +19,28 @@ cannot reproduce them.
 
 ## Estates: several builds in one tenant
 
-Each build is an **estate** with its own id, and every name it creates carries that id — so several
-facilitators can build Halcourt Mutual in one tenant without colliding.
+Every name your build creates carries your estate id — with the id `jsmith`, `Claims-Test` becomes
+`Claims-Test-jsmith` and Marcus becomes `marcus.webb.jsmith@<domain>`.
+What an estate is and what stays shared: [ADR-0001](../reference/adr/0001-estates.md).
 
-| What | Canonical (AGENTS.md, lab pages, artifact pack) | Live, estate `mgray` |
-|---|---|---|
-| Accounts | `marcus.webb@halcourtmutual.onmicrosoft.com` | `marcus.webb.mgray@<tenant domain>`, "Marcus Webb (mgray)" |
-| Groups, environments, DLP, sites | `Halcourt-Makers`, `Claims-Test`, `Halcourt-Prod-DLP`, `HR-Benefits` | `Halcourt-Makers-mgray`, `Claims-Test-mgray`, `Halcourt-Prod-DLP-mgray`, `HR-Benefits-mgray` |
-| Agents in the default environment | `Expense Helper`, `Onboarding Guide` | `Expense Helper (mgray)`, `Onboarding Guide (mgray)` |
-| Azure (Phase 1) | — | azd environment `halcourt-mgray-lab` |
+1. Pick an estate id: your alias, 2–12 lowercase letters or digits.
+2. Check nobody in the tenant uses it:
 
-**Shared, not renamed:** the tenant's default environment (`Halcourt (default)`) and the Conditional
-Access baseline (Phase 0). The rule is in `AGENTS.md` → *Live estate naming*; `setup/scripts/_estate.ps1`
-implements it.
+   ```bash
+   az ad user list --filter "startswith(userPrincipalName,'ana.reyes.')" --query "[].userPrincipalName" -o tsv
+   ```
 
-**Pick your id once** — your alias, 2–12 lowercase letters or digits — check nobody uses it, then set it in
-every shell you build from. Each script reads it, takes `-Estate <id>` instead, and refuses to run with
-neither:
+3. Set it in every shell you build from (or pass `-Estate <id>` to each script):
 
-```bash
-az ad user list --filter "startswith(userPrincipalName,'ana.reyes.')" --query "[].userPrincipalName" -o tsv
-export HALCOURT_ESTATE=mgray          # bash / the dev container
-```
+   ```bash
+   export HALCOURT_ESTATE=jsmith         # your id; bash / the dev container
+   ```
 
-```powershell
-$env:HALCOURT_ESTATE = 'mgray'       # PowerShell
-```
+   ```powershell
+   $env:HALCOURT_ESTATE = 'jsmith'      # your id; PowerShell
+   ```
 
-Give attendees the estate id along with the tenant domain — Task 00-01 shows them how names carry it.
-Why: [decisions → Estates](../reference/runbook-decisions.md#estates).
+4. Give attendees the estate id along with the tenant domain.
 
 ## Prerequisites (technician)
 
@@ -308,8 +295,8 @@ Accounts are `<alias>.<estate>@<tenant domain>` — **the tenant's own domain, n
 prints the mapping before it creates anything:
 
 ```text
-Estate: mgray   Persona domain: 0zwdt94t.onmicrosoft.com
-  canon <alias>@halcourtmutual.onmicrosoft.com  ->  live <alias>.mgray@0zwdt94t.onmicrosoft.com
+Estate: jsmith   Persona domain: <tenant domain>
+  canon <alias>@halcourtmutual.onmicrosoft.com  ->  live <alias>.jsmith@<tenant domain>
 ```
 
 Give attendees the live domain and estate id with their sign-ins — Task 00-01 shows them how the names carry
@@ -362,7 +349,7 @@ agents (targeting agent identities) — that omission is the gap Task 05-04 has 
 so it must match where they landed):
 
 ```bash
-pwsh setup/scripts/02b_provision_billing.ps1 -Estate mgray
+pwsh setup/scripts/02b_provision_billing.ps1 -Estate jsmith
 ```
 
 It resolves this estate's Prod and Claims-Test and their region, finds a plan in that region with the
@@ -468,7 +455,7 @@ SharePoint serves it — so the run is its own evidence.
 
 {: .note }
 > App-only site creation waits up to 15 min for a fresh tenant to provision each group site. If a prior
-> run left a **soft-deleted** site at `/sites/<alias>`, the new site lands at a suffixed URL (`…-mgray9`)
+> run left a **soft-deleted** site at `/sites/<alias>`, the new site lands at a suffixed URL (`…-jsmith9`)
 > and the wait times out — purge it first with `Remove-PnPTenantDeletedSite` (errata).
 
 What the app registration grants and why it carries two identities:

@@ -28,7 +28,7 @@ verified domain; -DomainSuffix overrides it and must be a verified domain of the
 Safe to re-run: users and groups that already exist are left as they are.
 #>
 param(
-  [string]$Estate = $env:HALCOURT_ESTATE,            # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$Estate = $env:HALCOURT_ESTATE,            # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$TenantId,                                 # optional; target lab tenant (id or *.onmicrosoft.com)
   [string]$DomainSuffix,                             # default: the tenant's default verified domain
   [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only

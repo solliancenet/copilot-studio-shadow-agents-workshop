@@ -8,21 +8,8 @@
 
 ## Estates
 
-### Why every name carries an estate id
-
-More than one facilitator can build Halcourt Mutual in the same tenant, and the scripts find everything
-they create **by name**. Under the canonical names a second build adopts or overwrites the first: its
-Phase 3 skips creating `Claims-Test` because one exists, its Phase 5 seeds someone else's Dataverse, and
-both share Marcus, Tom and the rest — so one person's Phase 6.5 orphans Tom for everyone.
-
-Scoping every created name with an estate id makes the builds independent. Two things stay shared because
-a tenant has exactly one of each: the default environment (`Halcourt (default)`) and the Conditional
-Access baseline. The full rule is in `AGENTS.md` → *Live estate naming*; `setup/scripts/_estate.ps1`
-implements it.
-
-Attendees get the estate id along with the tenant domain. The lab pages use the canonical names and Lab 00
-tells them to expect the suffix — the alternative, regenerating the published pages per build, would put
-the artifact pack and the answer key out of sync with every estate but one.
+Moved to [ADR-0001: Every live build is an estate](adr/0001-estates.md) and
+[ADR-0002: Attendees share one estate; facilitators build individual estates](adr/0002-shared-vs-individual-estates.md).
 
 ## Phase 0 — tenant
 

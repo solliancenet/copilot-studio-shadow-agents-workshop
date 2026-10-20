@@ -18,7 +18,7 @@ region like "north-america" auto-lands in e.g. "canada"). Safe to re-run.
 Lines marked [verify] are the create-a-new-plan path, unconfirmed on a tenant that already had a plan.
 #>
 param(
-  [string]$Estate = $env:HALCOURT_ESTATE,               # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$Estate = $env:HALCOURT_ESTATE,               # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$SubscriptionId,                              # default: az's current subscription
   [string]$ResourceGroup,                               # default: rg-halcourt-billing-<estate>
   [string]$ResourceGroupLocation = 'eastus',            # AZURE region for the RG; unrelated to the plan's region

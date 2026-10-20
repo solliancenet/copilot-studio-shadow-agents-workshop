@@ -19,7 +19,7 @@ has none, everything else is still built and the role assignment is left for a r
 Estate (setup/scripts/_estate.ps1): pass -Estate or set HALCOURT_ESTATE. Safe to re-run.
 #>
 param(
-  [string]$Estate = $env:HALCOURT_ESTATE,                          # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$Estate = $env:HALCOURT_ESTATE,                          # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$ClaimsTestEnvUrl,                                       # default: Claims-Test-<estate>'s org URL
   [string]$PublisherPrefix = 'mm',                                 # customization prefix -> mm_* schema names
   [string]$OverBroadRoleName = 'svc-claims Dataverse Full Access'  # the intentional god-mode role

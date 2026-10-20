@@ -14,7 +14,7 @@ that snapshot afterwards. RUNBOOK -> "Exercise 05 demonstrations" has the order;
 Controls the script can restore exactly:
   Dlp           every data policy (05-01 Prod blocks, 05-02 default-environment policy). Restore PATCHes changed
                 policies back and deletes policies created since the snapshot whose name carries this estate's
-                id - name a demo policy <something>-<estate> (e.g. Halcourt-Default-DLP-mgray).
+                id - name a demo policy <something>-<estate> (e.g. Halcourt-Default-DLP-jsmith).
   DefaultMakers the default environment's Environment Maker role: its users AND teams (05-02 lockdown).
   ClaimsRoles   svc-claims' security roles and team memberships in Claims-Test, and custom roles created there
                 since the snapshot (05-03 scoped role).

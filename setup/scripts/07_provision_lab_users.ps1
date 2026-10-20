@@ -58,7 +58,7 @@ ASCII only.
 #>
 param(
   [int]$Count                = 10,                     # how many attendee accounts
-  [string]$Estate            = $env:HALCOURT_ESTATE,   # this build's estate id, e.g. mgray (_estate.ps1)
+  [string]$Estate            = $env:HALCOURT_ESTATE,   # this build's estate id, e.g. jsmith (_estate.ps1)
   [string]$Prefix            = 'student',              # student01.<estate>, student02.<estate>, ...
   [string]$TenantId,                                   # default: the tenant az is signed in to
   [string]$DomainSuffix,                               # default: the tenant's default verified domain

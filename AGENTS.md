@@ -33,15 +33,15 @@
 
 Every identifier in this file is **canonical** — it is what the artifact pack, the answer keys and the lab
 pages use. A live build is an **estate**: several facilitators can build one in the same tenant, each under
-a short **estate id** (their alias, e.g. `mgray`), and every tenant-scoped name it creates is derived from
+a short **estate id** (their alias, e.g. `jsmith`), and every tenant-scoped name it creates is derived from
 the canonical one so estates never collide (`setup/scripts/_estate.ps1`; RUNBOOK → *Estates*):
 
-| Canonical | Live (estate `mgray`, tenant domain `0zwdt94t.onmicrosoft.com`) | Rule |
+| Canonical | Live (estate `jsmith`) | Rule |
 |---|---|---|
-| `marcus.webb@halcourtmutual.onmicrosoft.com` | `marcus.webb.mgray@0zwdt94t.onmicrosoft.com` | `<alias>.<estate>@<tenant domain>` |
-| Marcus Webb | Marcus Webb (mgray) | `<name> (<estate>)` |
-| `Claims-Test`, `Halcourt-Prod-DLP`, `HR-Benefits`, `Halcourt-Makers` | `Claims-Test-mgray`, `Halcourt-Prod-DLP-mgray`, `HR-Benefits-mgray`, `Halcourt-Makers-mgray` | `<name>-<estate>` |
-| Agents in `Halcourt (default)` | `Expense Helper (mgray)`, `Onboarding Guide (mgray)` | `<name> (<estate>)` — the environment is shared |
+| `marcus.webb@halcourtmutual.onmicrosoft.com` | `marcus.webb.jsmith@<tenant domain>` | `<alias>.<estate>@<tenant domain>` |
+| Marcus Webb | Marcus Webb (jsmith) | `<name> (<estate>)` |
+| `Claims-Test`, `Halcourt-Prod-DLP`, `HR-Benefits`, `Halcourt-Makers` | `Claims-Test-jsmith`, `Halcourt-Prod-DLP-jsmith`, `HR-Benefits-jsmith`, `Halcourt-Makers-jsmith` | `<name>-<estate>` |
+| Agents in `Halcourt (default)` | `Expense Helper (jsmith)`, `Onboarding Guide (jsmith)` | `<name> (<estate>)` — the environment is shared |
 
 Shared by every estate in a tenant, so **not** renamed: the `Halcourt (default)` environment and the
 Conditional Access baseline. The aliases (`ana.reyes`, `svc-claims`, `it.helpdesk`, …) and names stay the

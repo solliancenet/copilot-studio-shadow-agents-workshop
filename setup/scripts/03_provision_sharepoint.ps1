@@ -26,7 +26,7 @@ HALCOURT_ESTATE.
 Lines marked [verify] depend on tenant specifics or unconfirmed 2026 cmdlet/param surface.
 #>
 param(
-  [string]$Estate = $env:HALCOURT_ESTATE,                # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$Estate = $env:HALCOURT_ESTATE,                # this build's estate id, e.g. jsmith (see _estate.ps1)
   [Parameter(Mandatory=$true)][string]$RootSiteUrl,      # https://<tenant>.sharepoint.com
   [string]$ClientId = $env:ENTRAID_APP_ID,               # PnP app registration (RUNBOOK Phase 4)
   [string]$CertPath = $env:HALCOURT_PNP_CERT_PFX,        # app-only .pfx (Sites.FullControl.All) -> headless, no device code

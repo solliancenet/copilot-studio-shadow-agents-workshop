@@ -10,7 +10,7 @@ plus agents/connections in the shared default environment owned by its <alias>.<
 those accounts (no admins or sample users). -Canonicalize rewrites live names to the canon's (strips the
 estate id, restores @halcourtmutual.onmicrosoft.com), so the output diffs cleanly against the committed pack:
 
-  pwsh setup/scripts/05_export_artifact_pack.ps1 -Estate mgray -Canonicalize
+  pwsh setup/scripts/05_export_artifact_pack.ps1 -Estate jsmith -Canonicalize
   git diff worksheets/artifact-pack
 
 Without -Canonicalize it refuses to write into the committed (published) pack - pass -OutDir.
@@ -20,7 +20,7 @@ Dataverse bot reads both go through az, so this no longer needs the Windows-only
 Lines marked [verify] depend on evolving 2026 admin/Graph surfaces (agent + workload identity listings).
 #>
 param(
-  [string]$Estate = $env:HALCOURT_ESTATE,     # this build's estate id, e.g. mgray (see _estate.ps1)
+  [string]$Estate = $env:HALCOURT_ESTATE,     # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$OutDir,                            # default: the committed pack (needs -Canonicalize)
   [switch]$Canonicalize                       # live names -> canon names (for diffing / regenerating the pack)
 )
