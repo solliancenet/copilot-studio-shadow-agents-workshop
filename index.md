@@ -85,7 +85,7 @@ first-week starting list and further reading are in the [Appendix]({% link appen
   - Install the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"}
     for the few facts only an API returns.
   - The account can inspect the whole estate, and administers **your own lab environment**. Observe the
-    shared estate; open and change only your own. In Exercise 05, your facilitator configures each control
+    shared estate; make changes only in your own. In Exercise 05, your facilitator configures each control
     on the shared estate, and you retest it.
   - You gather the estate's data into blank CSVs from the
     [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).

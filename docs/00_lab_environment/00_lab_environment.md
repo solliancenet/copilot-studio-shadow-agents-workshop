@@ -33,11 +33,12 @@ You work in two places, and the difference matters all day:
   shared by everyone in the room. You *observe* it. Where Exercise 05 configures a control on it, your
   facilitator makes the change once, for the room, and you retest.
 - **Your own lab environment:** an environment provisioned for you alone, named `Lab-<estate_id>-NN`. It
-  carries a copy of the estate's Dataverse set-up: the `Claim` and `Customer` tables with their seeded rows,
-  and the same over-broad role on the same service account. You are its **administrator**. Exercise 03 sends
-  you there to open a security role and read its scope, which the shared estate won't let a reviewer do.
+  carries a copy of the Claims Dataverse set-up: the `Claim` and `Customer` tables with their seeded rows,
+  and the same role on the same service account. You are its **administrator**. Exercise 03 sends you there
+  to open that security role and read its scope, which works whether or not your lab account has a
+  licence.
 
-The rule that follows: **observe the shared estate; open and change only your own environment.** Over the day you will build a running **Estate Binder** that answers all three
+The rule that follows: **observe the shared estate; make changes only in your own environment.** Over the day you will build a running **Estate Binder** that answers all three
 questions and says whether each of Microsoft's controls **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
 
 This exercise gets you access and oriented. No findings yet — just terrain. If live tenant access is
