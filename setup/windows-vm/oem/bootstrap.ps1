@@ -1,5 +1,5 @@
 <#
-Windows build VM — install the provisioning toolchain from setup/RUNBOOK.md → Prerequisites.
+Windows build VM — install the provisioning toolchain listed in reference/toolchain.md.
 
 Runs once, automatically, at the end of Windows setup (install.bat). Safe to re-run: every step skips
 what is already installed. If the first run failed (check C:\OEM\bootstrap.log), re-run it from an

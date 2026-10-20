@@ -17,5 +17,7 @@ re-verified as products change.
 |---|---|
 | `copilot-studio-billing.md` | Copilot Studio billing/licensing models, trial limits, workshop implications |
 | `runbook-decisions.md` | Why the provisioning runbook is built the way it is — decisions, tradeoffs, manual alternatives |
+| `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
+| `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |
 | `adr/` | Architecture decision records — one decision per file (estates so far) |
 | `runbook-errata.md` | Errata, known issues & troubleshooting for the provisioning runbook |

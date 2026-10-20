@@ -1,7 +1,7 @@
 {
   "name": "Shadow Agents Workshop — authoring + provisioning",
   "build": { "dockerfile": "Dockerfile" },
-  // Provisioning tooling from setup/RUNBOOK.md → Prerequisites. pac is a .NET tool (on-create.sh).
+  // Provisioning tooling from reference/toolchain.md. pac is a .NET tool (on-create.sh).
   // Not installed: Microsoft.Xrm.Data.PowerShell refuses to load outside Windows PowerShell 5.1, and no
   // script uses Microsoft.PowerApps.PowerShell (it also clashes with the admin module's MSAL in one session).
   "features": {

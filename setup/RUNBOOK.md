@@ -30,86 +30,15 @@ tool the scripts need already installed.
    **Dev Containers: Reopen in Container**. The first build takes about 15 minutes; later opens take
    seconds. The bottom-left corner of the window shows **Dev Container** when it is done.
 4. Open a terminal: **Terminal → New Terminal**. Run every command in this runbook in that terminal unless
-   a step says otherwise.
+   a step says otherwise, and sign in to `az` and `pac` only from it — a sign-in made outside the container
+   isn't seen by the scripts ([ADR-0003](../reference/adr/0003-project-local-sign-in.md)).
+5. Make sure you hold **Owner** on an Azure subscription (or Contributor + User Access Administrator) —
+   Phase 1 creates role assignments, which Contributor alone can't.
 
-## Prerequisites (technician)
+The container's tools and what each phase uses them for: [toolchain](../reference/toolchain.md). Want a
+real Windows desktop browser for interactive sign-in and MFA? See
+[`windows-vm/README.md`](windows-vm/README.md) — optional.
 
-**The dev container (`.devcontainer/`) installs all of it, and every phase runs there.**
-
-- Azure CLI (`az`) + Bicep and the Azure Developer CLI (`azd`) for Phase 1, plus an Azure subscription for
-  the Container Apps.
-- Power Platform CLI (`pac`) — the .NET tool build, which needs the .NET 10 SDK.
-- PowerShell 7 with `Microsoft.Graph`, `PnP.PowerShell` and `ExchangeOnlineManagement`.
-- `pandoc` — Phase 4 builds the planted `.docx` from Markdown; without it the script uploads the raw `.md`
-  with the payload visible.
-- **Playwright + Chromium** for Phase 6's headless connection consent. Outside the container:
-  `pip install playwright && python3 -m playwright install --with-deps chromium`.
-
-When you sign in with `az` or `pac` in the dev container terminal, the sign-in is saved in the repo
-(`.azure/`, `.pac/`), not your home folder. A sign-in made in a terminal outside the container doesn't
-count. Why, and how to work outside the container:
-[ADR-0003](../reference/adr/0003-project-local-sign-in.md).
-
-### Tenant capabilities the exercises assume
-
-Some things the exercises reach for cannot be provisioned by any script in this kit: the tenant either has
-them or it does not. You check them the day before a delivery, in
-[Before delivery](#before-delivery--preflight-audit-and-exercise-04-notes).
-
-| Capability | Without it | Fallback |
-|---|---|---|
-| **Agent 365** (M365 admin center → Agents) | 01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1 and 05-05 KT01 read the agent registry there. Present in the build tenant on `DEVELOPERPACK_V2_E5`, but the page appears only for an admin role that can read it: attendees get **AI Reader** (Phase 8b) - without it the Agents page is simply missing from the nav, which looks exactly like a tenant without Agent 365. | each step falls back to `agents-export.csv`, inline |
-| **A Dataverse-capable licence per attendee** (E5) | The access model in the *shared* estate. Unlicensed accounts run in Administrative mode, which filters the custom role: the PPAC role editor (03-02 KT01 s2, 03-04 KT01 s3, 04-03 KT02 s2) and the Copilot Studio agent pages (01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2, 03-04, 04-01..06, 05-01 KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2) refuse them. | the role editor in 03-02 and 03-04: the attendee's own slice, where System Administrator survives the filter; everything else: the artifact pack |
-| **A Microsoft 365 licence per attendee** (E5): Exercise 04 chat | The tenant route of Exercise 04: chatting with the published agents in Teams (04-01, 04-02, 04-04, and 04-05 KT02 s2's one Policy Lookup Bot lookup). Teams is the agents' only working channel and refuses an unlicensed account outright. | the reveal blocks and the artifact pack |
-| **A Microsoft 365 licence per attendee** (E5): `CopilotInteraction` audit | 05-07 KT02: Copilot Studio records `CopilotInteraction` events only for licensed users, so an unlicensed attendee's Exercise 04 chat leaves nothing to find in Purview Audit. | the artifact pack for the Dataverse side (KT03 s3); the pack holds no audit events, so KT02 itself has no offline substitute |
-| **Container Apps endpoints** (Policy API, Underwriting MCP) | 04-03, 04-05 and the 05-01 retests have nothing to call. | none - Phase 1 |
-| **SharePoint site** `HR-Benefits-<estate>` | 04-01 / 04-02 grounding, 05-03, 05-06. | none - Phase 4 |
-
-The access model itself - every Dataverse privilege an attendee holds and the exercise step it serves - is
-`setup/scripts/_access_model.ps1`. Phase 8b enforces it; the preflight verifies it.
-
-#### Student licences
-
-**A Microsoft 365 licence (E5) per attendee is a delivery requirement**, not a nice-to-have. Without one, an
-attendee loses the tenant route of Exercise 04 (Teams refuses them, so they cannot chat with the published
-agents), produces no `CopilotInteraction` audit events for 05-07, and runs Dataverse in Administrative mode
-(the row above). That attendee works those tasks from the artifact pack. Plan the delivery around the seats
-you have: up to 14 in the build tenant (Phase 8b), so size `-Attendees` / `-Count` to the seats available,
-not to the room. No separate Copilot Studio licence is needed; chatting with a published agent draws on
-tenant capacity. Licensing is documented here, not automated: 07 attempts an assignment and reports who
-got one. Open item: [PLANNING item 15](../PLANNING.md).
-
-### Windows build VM (optional)
-
-Only needed if you want a desktop browser for interactive sign-in and MFA — every script itself runs on
-Linux. `setup/windows-vm/` runs Windows 11 in Docker ([dockur/windows](https://github.com/dockur/windows),
-QEMU/KVM) and installs the whole toolchain on first boot. It always runs on the **host's** Docker; the dev
-container only drives it.
-
-| Host | Needs |
-|---|---|
-| Linux | Docker Engine + Compose v2; CPU virtualization on in BIOS; `/dev/kvm` present (`sudo kvm-ok`) |
-| Windows 11 | Docker Desktop, WSL 2 backend, **Linux containers** mode; nested virtualization (on by default) |
-
-Not supported: Windows 10 hosts and macOS. Budget 8 GB RAM, 4 cores, 64 GB disk.
-
-```bash
-docker run --rm --device /dev/kvm alpine ls -l /dev/kvm       # check KVM first; prints a /dev/kvm line
-docker compose -f setup/windows-vm/compose.yaml up -d         # start, from the repo root
-docker compose -f setup/windows-vm/compose.yaml stop          # shut down, keep the disk
-docker compose -f setup/windows-vm/compose.yaml down -v       # delete the VM and its disk
-```
-
-Watch the install at http://localhost:8006 or RDP to `localhost:3389` (user `halcourt`, password
-`Lab-Only-Passw0rd!`) — both bound to localhost only. The first start downloads Windows 11 Enterprise
-evaluation (~7 GB, 90 days) and installs it unattended: allow 20–40 minutes, then
-`setup/windows-vm/oem/bootstrap.ps1` installs the toolchain and logs to `C:\OEM\bootstrap.log`. Re-run it
-from an elevated prompt if it failed (usually network).
-
-The repo is drive `Z:`. Sign-in state lives in the Windows user profile, separate from the dev container's
-`.azure/` and `.pac/`, so sign in to the lab tenant again inside the VM; `azd` environments live in the
-repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `WINVM_DISK_SIZE`,
-`WINVM_USERNAME`, `WINVM_PASSWORD` or `WINVM_VERSION` in `setup/windows-vm/.env` before the first start.
 
 ## Phase order (do NOT reorder)
 
@@ -736,8 +665,12 @@ Per *delivery*, not per estate: attendees sign in to the lab tenant with a nativ
 they review the estate from inside the tenant rather than as guests. Run it shortly before the delivery and
 tear it down after.
 
+First count your free E5 seats (M365 admin center → **Billing → Licenses**). That number is the most
+attendees you can run: use it for `-Count` and `-Attendees`
+([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)).
+
 ```bash
-# N = the attendees you can license (see "Student licences" under Prerequisites) - 14 here
+# N = your free E5 seats (ADR-0004) - 14 here
 pwsh setup/scripts/00b_preflight.ps1 -Attendees 14                           # the day before: seats, service plans, endpoints, the access model
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14                      # student01.<estate> .. student14.<estate>
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14 -UniquePasswords     # a distinct password each
@@ -838,7 +771,7 @@ work for users the agent is shared with, which 07 arranges by adding attendees t
 the attendee sees an **Add** dialog, then the chat. A plain chat link (`/l/chat/0/0?users=28:<app id>`) is
 refused: *"You do not have permission to use this app here"* (verified as student03, 2026-10-19).
 
-**Each attendee needs a licence** (see *Student licences* under Prerequisites; [PLANNING item
+**Each attendee needs a licence** ([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md); [PLANNING item
 15](../PLANNING.md)): Exercise 04's Teams chat, 05-07's `CopilotInteraction` events and the access model all
 depend on one. Verified 2026-10-17 with three accounts holding the identical access model: the one with an E5
 seat (`accessmode=0`) opened the PPAC role editor and the Copilot Studio agent pages; the two without
@@ -949,13 +882,13 @@ on its own, so the script retries rather than failing the slice.
 ### Before delivery — preflight, audit and Exercise 04 notes
 
 **The day before the delivery, run the preflight.** It checks the tenant capabilities in
-[Prerequisites](#tenant-capabilities-the-exercises-assume), the estate and the attendee access model, and
+[tenant capabilities](../reference/tenant-capabilities.md), the estate and the attendee access model, and
 names the exercise steps each failed check would break.
 
 1. In the dev container terminal, sign in as the tenant's global admin and set your estate id, as in
    [Estates](#estates--choose-your-estate-id) steps 2 and 4.
 2. Run it with the attendee count — no more attendees than you have Microsoft 365 seats to give them
-   (see *Student licences* in Prerequisites):
+   (count your free E5 seats; [ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)):
 
    ```bash
    pwsh setup/scripts/00b_preflight.ps1 -Attendees 14     # one per seat available: up to 14 in the build tenant
