@@ -1,7 +1,7 @@
 <#
 FACILITATOR-ONLY. Phase 7 — Export the artifact pack.
 
-Pulls the estate from the Power Platform admin APIs + Microsoft Graph and writes the five canonical CSVs
+Pulls the estate from the Power Platform admin APIs + Microsoft Graph and writes the six canonical CSVs
 that attendees analyze offline. The committed files in ../worksheets/artifact-pack/ ARE the expected
 output for the canonical estate — diff against them after any change.
 
@@ -15,7 +15,7 @@ estate id, restores @halcourtmutual.onmicrosoft.com), so the output diffs cleanl
 
 Without -Canonicalize it refuses to write into the committed (published) pack - pass -OutDir.
 
-Requires: Microsoft.Graph, and az signed in to the lab tenant (the Power Platform admin APIs and the
+Requires: Microsoft.Graph, the lab app 03c makes (files-export.csv), and az signed in to the lab tenant (the Power Platform admin APIs and the
 Dataverse bot reads both go through az, so this no longer needs the Windows-only PowerApps admin module).
 Lines marked [verify] depend on evolving 2026 admin/Graph surfaces (agent + workload identity listings).
 #>
@@ -342,6 +342,40 @@ $typeOrder = @{ Default = 0; Production = 1; Sandbox = 2; Developer = 3 }
 ConvertTo-Canon ($envRows | Sort-Object @{ Expression = { $typeOrder[[string]$_.type] } }, environment) |
   Select-Object environment,type,dlp_policy,managed,maker_access |
   Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'environments-export.csv')
+
+# --------------------------------------------------------------------------------------------------
+# 6) files-export.csv  (the knowledge sites' files and their sensitivity labels - 05-06)
+# --------------------------------------------------------------------------------------------------
+# Attendees can't open Leadership/ (it drops the visitors - that is Scenario B), so the labelled and
+# unlabelled comp copies are listed here. The label is the library's Sensitivity column (_DisplayName):
+# the items API refuses to $select it, RenderListDataAsStream returns it. Read with the lab app 03c makes
+# (Sites.FullControl.All), so Phase 4c has to have run.
+Write-Host 'Exporting knowledge-site files -> files-export.csv'
+. (Join-Path $PSScriptRoot '_labapp.ps1')          # its default paths: setup/lab-compliance-app.local.*
+$spRoot = ([uri](Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root').webUrl).GetLeftPart('Authority')
+$spHeaders = @{ Authorization = "Bearer $(Get-AppToken $spRoot)"; Accept = 'application/json;odata=nometadata' }
+$view = '<View Scope="RecursiveAll"><ViewFields><FieldRef Name="FileRef"/><FieldRef Name="FSObjType"/><FieldRef Name="_DisplayName"/></ViewFields><RowLimit>1000</RowLimit></View>'
+$fileRows = foreach ($canon in 'HR-Benefits', 'Claims-Knowledge') {
+  $site = "$spRoot/sites/$(Get-EstateName $canon $Estate)"
+  $libs = (Invoke-RestMethod -Uri "$site/_api/web/lists?`$select=Title,RootFolder/ServerRelativeUrl&`$expand=RootFolder&`$filter=BaseTemplate eq 101 and Hidden eq false" -Headers $spHeaders).value |
+    Where-Object { $_.Title -notin 'Form Templates', 'Site Assets', 'Style Library' }
+  foreach ($lib in $libs) {
+    $body = @{ parameters = @{ RenderOptions = 2; ViewXml = $view } } | ConvertTo-Json -Depth 5
+    $root = $lib.RootFolder.ServerRelativeUrl.TrimEnd('/') + '/'
+    (Invoke-RestMethod -Method POST -Uri "$site/_api/web/lists/getbytitle('$($lib.Title)')/RenderListDataAsStream" -Headers $spHeaders -ContentType 'application/json' -Body $body).Row |
+      Where-Object { "$($_.FSObjType)" -eq '0' } | ForEach-Object {
+        [pscustomobject]@{
+          site              = Get-EstateName $canon $Estate
+          library           = $lib.Title
+          path              = $_.FileRef.Substring($root.Length)
+          sensitivity_label = "$($_._DisplayName)"
+        }
+      }
+  }
+}
+ConvertTo-Canon ($fileRows | Sort-Object site, library, path) |
+  Select-Object site,library,path,sensitivity_label |
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'files-export.csv')
 
 if ($Canonicalize -and $OutDir -eq $committedPack) {
   Write-Host 'Phase 7 complete. Review the drift with: git diff worksheets/artifact-pack'

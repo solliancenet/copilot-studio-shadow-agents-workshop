@@ -626,7 +626,8 @@ git diff worksheets/artifact-pack
 
 Pulls **this estate** — its environments, its agents and connections in the shared default environment,
 and its accounts (no admins, no sample users) — from the PPAC admin APIs + Microsoft Graph, and writes the
-five CSVs. `-Canonicalize` maps live names back to the canon's so the export lands on the committed pack
+six CSVs. `files-export.csv` (the knowledge sites' files and their sensitivity labels) reads SharePoint with
+the lab app Phase 4c creates, so run Phase 4c first. `-Canonicalize` maps live names back to the canon's so the export lands on the committed pack
 and `git diff` shows the drift. Without it the script refuses to write into the committed pack; pass
 `-OutDir` for a live-named export.
 
@@ -847,6 +848,7 @@ pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at
 | 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
 | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
 | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
+| 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership), with the library's **Sensitivity** column showing the labelled and unlabelled copies; attendees can't open the folder | - |
 | 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
 
 The default environment and the tenant's Defender setting are shared with every estate in the tenant:
