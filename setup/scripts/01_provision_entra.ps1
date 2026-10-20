@@ -41,7 +41,7 @@ $ErrorActionPreference = 'Stop'
 $Estate = Resolve-Estate $Estate
 
 . (Join-Path $PSScriptRoot '_auth.ps1')
-Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All' -TenantId $TenantId
+Connect-LabGraph -Scopes 'User.ReadWrite.All','Group.ReadWrite.All' -TenantId $TenantId -FallbackScopes 'User-LifeCycleInfo.ReadWrite.All'
 # Connect-MgGraph can return without a session instead of throwing (e.g. sign-in timed out).
 if (-not (Get-MgContext)) { throw 'Connect-MgGraph did not establish a session.' }
 

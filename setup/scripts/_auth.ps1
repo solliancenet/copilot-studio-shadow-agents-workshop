@@ -7,11 +7,16 @@ and its Graph token already carries the scopes these scripts need (User/Group.Re
 User.Read.All, Application.ReadWrite.All, AuditLog.Read.All). So: reuse the az sign-in when it covers the
 requested scopes and tenant; otherwise fall back to a device-code sign-in.
 
+-FallbackScopes are requested only by the device-code sign-in: permissions the reused az token already
+covers through Directory.AccessAsUser.All (the leave date, User-LifeCycleInfo.*), which a device-code
+session would otherwise lack. They are not checked against the az token, so naming them doesn't force
+device code on every run.
+
 Not usable for Conditional Access (the Azure CLI app has no Policy.* scopes) - 00_ signs in itself.
 ASCII only.
 #>
 
-function Connect-LabGraph([string[]]$Scopes, [string]$TenantId) {
+function Connect-LabGraph([string[]]$Scopes, [string]$TenantId, [string[]]$FallbackScopes = @()) {
   if (Get-Command az -ErrorAction SilentlyContinue) {
     $token = az account get-access-token --resource-type ms-graph --query accessToken -o tsv 2>$null
     if ($LASTEXITCODE -eq 0 -and $token) {
@@ -36,7 +41,7 @@ function Connect-LabGraph([string[]]$Scopes, [string]$TenantId) {
   # the repo's az sign-in is on (the tenant _estate.ps1's guard vouches for), and check it afterwards.
   if (-not $TenantId -and (Get-Command az -ErrorAction SilentlyContinue)) { $TenantId = az account show --query tenantId -o tsv 2>$null }
   if (-not $TenantId) { throw 'No tenant to pin the Graph sign-in to: pass -TenantId, or sign az in to the lab tenant (scripts/env.sh).' }
-  Connect-MgGraph -Scopes $Scopes -UseDeviceCode -NoWelcome -TenantId $TenantId
+  Connect-MgGraph -Scopes (@($Scopes) + @($FallbackScopes) | Select-Object -Unique) -UseDeviceCode -NoWelcome -TenantId $TenantId
   $ctx = Get-MgContext
   if ($ctx -and $TenantId -match '^[0-9a-f-]{36}$' -and $ctx.TenantId -ne $TenantId) {
     Disconnect-MgGraph | Out-Null

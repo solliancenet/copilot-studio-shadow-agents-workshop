@@ -46,8 +46,9 @@ it is promoted to production.
 > requester-specific access needs on-behalf-of authorization.
 
 {: .note }
-> What an MCP server advertises, what the agent calls, and what the token can invoke are three different
-> lists. Scope is set by the widest.
+> What an MCP server advertises, what the agent has switched on, and what the token is authorized to invoke
+> are three different lists. What the agent can actually do is where all three overlap: check them together.
+> A token authorized for more than the agent's job is its own finding, even if no tool calls it yet.
 
 ## CONTROL IT — environment, DLP, identity, authorization, data controls
 - [ ] Lives in an environment whose DLP policy matches its inventoried **Data sensitivity**.
@@ -89,9 +90,11 @@ it is promoted to production.
 
 ## Gate record
 
-**Production promotion gate.** Every box above is checked — or the failure is covered by a layered
-control, an accepted residual risk signed by the security reviewer, or a valid, unexpired formal temporary
-exception, recorded in the Gate record below.
+**Production promotion gate.** Every box above is checked — or the failure is covered by one of these,
+recorded in the Gate record below. A required control that is in place but can't remove all of the risk
+passes with a layered control or an accepted residual risk signed by the security reviewer. A required
+control that isn't in place passes only with a valid, unexpired formal temporary exception: residual-risk
+sign-off can't stand in for a control that was never implemented.
 
 One row per agent you run through the gate. **Production?** applies the exposure definition (others use
 it, it reaches PII or Compensation, or it acts). **Stalls at** is the first stage that fails, or *passes*.

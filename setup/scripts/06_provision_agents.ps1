@@ -407,6 +407,15 @@ function Provision-Agent([object]$A) {
     $src = Join-Path $ws $item
     if (Test-Path $src) { Copy-Item $src (Join-Path $wsdir $item) -Recurse -Force }
   }
+  # The merge keeps any topic the clone has, so a custom topic that left the committed workspace survives a
+  # re-provision. Name retired ones here: Underwriting Assistant's three MCP-call topics became one MCP tool
+  # (actions/UnderwritingMCP.mcs.yml), and an estate built before that would otherwise keep both.
+  $retiredTopics = @{ 'underwriting-assistant' = @('GetQuote', 'GetRiskScore', 'RunQuery') }
+  foreach ($t in @($retiredTopics[(Split-Path $ws -Leaf)])) {
+    if (-not $t) { continue }
+    $p = Join-Path $wsdir "topics/$t.mcs.yml"
+    if (Test-Path $p) { Remove-Item $p -Force; Write-Host "    removed retired topic $t" }
+  }
   # Inject Phase 1 endpoints/secrets from azd into ${VAR} tokens, and resolve ${FLOW:<name>} to a live flow
   # id (as the owner - flows are estate-specific record ids, not secrets, so they stay out of git too).
   Get-ChildItem $wsdir -Recurse -Include *.mcs.yml | ForEach-Object {
