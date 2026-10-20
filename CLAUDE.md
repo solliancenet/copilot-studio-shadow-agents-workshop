@@ -45,7 +45,7 @@ bundle exec jekyll build       # production build into _site/
 
 Dev container: `.devcontainer/` (Jekyll image + the `setup/RUNBOOK.md` provisioning tooling — az/Bicep,
 azd, pac, PowerShell 7 + modules, pandoc, Playwright/Chromium) runs `bundle install` on create. **Every
-provisioning phase runs in it** — no phase needs Windows. `setup/windows-vm/` is an *optional* Windows 11
+provisioning phase runs in it**. `setup/windows-vm/` is an *optional* Windows 11
 desktop, useful only when you want a real browser for interactive sign-in and MFA; it always runs on the
 host's Docker daemon, which the container's `docker` CLI drives (`setup/windows-vm/compose.yaml`).
 

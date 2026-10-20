@@ -1,6 +1,6 @@
 # Windows build VM — a full Windows desktop running inside Docker (dockur/windows: QEMU/KVM).
-# For the provisioning steps that need Windows: Add-PowerAppsAccount (Phases 3, 7, teardown) and
-# Microsoft.Xrm.Data.PowerShell (Phase 5). See setup/RUNBOOK.md → "Windows build VM".
+# Optional: a real desktop browser for interactive sign-in and MFA. Every provisioning phase runs in the
+# dev container. See setup/RUNBOOK.md → "Windows build VM".
 #
 # It always runs on the HOST's Docker (Linux, or Windows 11 with Docker Desktop on WSL2). Start it from a
 # host terminal (bash or PowerShell) or from the dev container terminal, which drives the host's daemon:

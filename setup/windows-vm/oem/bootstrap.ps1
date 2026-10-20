@@ -65,17 +65,7 @@ if (-not (Test-Tool 'azd')) {
 Set-ExecutionPolicy Bypass -Scope LocalMachine -Force
 & $pwsh -NoProfile -Command 'Set-ExecutionPolicy Bypass -Scope LocalMachine -Force'
 
-# Windows PowerShell 5.1 — Phase 5 only.
-if (-not (Get-PackageProvider -ListAvailable -Name NuGet -ErrorAction SilentlyContinue)) {
-  Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-}
-Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-if (-not (Get-Module -ListAvailable Microsoft.Xrm.Data.PowerShell)) {
-  Write-Host 'Installing Microsoft.Xrm.Data.PowerShell (Windows PowerShell 5.1)...'
-  Install-Module Microsoft.Xrm.Data.PowerShell -Scope AllUsers -Force
-}
-
-# PowerShell 7 — every other phase. PnP.PowerShell 3.x needs 7.4+, so install these from pwsh.
+# PowerShell 7 — every phase. PnP.PowerShell 3.x needs 7.4+, so install these from pwsh.
 & $pwsh -NoProfile -Command {
   $ErrorActionPreference = 'Stop'
   Set-PSRepository -Name PSGallery -InstallationPolicy Trusted

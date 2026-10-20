@@ -34,8 +34,7 @@ tool the scripts need already installed.
 
 ## Prerequisites (technician)
 
-**The dev container (`.devcontainer/`) installs all of it, and every phase runs there** — no step needs
-Windows any more.
+**The dev container (`.devcontainer/`) installs all of it, and every phase runs there.**
 
 - Azure CLI (`az`) + Bicep and the Azure Developer CLI (`azd`) for Phase 1, plus an Azure subscription for
   the Container Apps.

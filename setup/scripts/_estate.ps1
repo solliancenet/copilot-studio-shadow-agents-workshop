@@ -11,7 +11,6 @@ lab pages) keeps the plain names; the rule below derives the live ones (AGENTS.m
   other names    <name>-<estate>           Claims-Test-jsmith, HR-Benefits-jsmith, Halcourt-Makers-jsmith
 
 Shared by every estate in the tenant: the default environment and the Conditional Access baseline.
-ASCII only: Windows PowerShell 5.1 (Phase 5) reads files without a BOM as ANSI.
 #>
 
 # Tenant guard. The lab's az sign-in lives in the repo's .azure/ (scripts/env.sh). A shell that never
