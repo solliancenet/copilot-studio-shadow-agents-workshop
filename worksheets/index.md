@@ -14,7 +14,7 @@ pack** (exported estate data), so you are never blocked when the tenant is slow 
 
 ## The artifact pack
 
-Six CSVs that describe the Halcourt Mutual estate. If you can reach the tenant, start from the blank
+Five CSVs that describe the Halcourt Mutual estate, plus `files-export.csv`, which only Task 05-06 uses. If you can reach the tenant, start from the blank
 copies and fill them in from the portal and APIs as you go. If you can't, use the filled-in set: exports
 of the estate, tidied for the lab. Its connectors carry friendly names, the agent descriptions were written
 by hand, and `connections-export.csv` also lists three integrations that aren't Power Platform connections

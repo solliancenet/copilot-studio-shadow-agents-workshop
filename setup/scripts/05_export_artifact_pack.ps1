@@ -1,7 +1,7 @@
 <#
 FACILITATOR-ONLY. Phase 7 — Export the artifact pack.
 
-Pulls the estate from the Power Platform admin APIs + Microsoft Graph and writes the six canonical CSVs
+Pulls the estate from the Power Platform admin APIs + Microsoft Graph and writes the five canonical estate CSVs, plus files-export.csv for 05-06,
 that attendees analyze offline. The committed files in ../worksheets/artifact-pack/ ARE the expected
 output for the canonical estate — diff against them after any change.
 

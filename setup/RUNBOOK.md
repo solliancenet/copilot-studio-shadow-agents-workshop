@@ -626,8 +626,8 @@ git diff worksheets/artifact-pack
 
 Pulls **this estate** — its environments, its agents and connections in the shared default environment,
 and its accounts (no admins, no sample users) — from the PPAC admin APIs + Microsoft Graph, and writes the
-six CSVs. `files-export.csv` (the knowledge sites' files and their sensitivity labels) reads SharePoint with
-the lab app Phase 4c creates, so run Phase 4c first. `-Canonicalize` maps live names back to the canon's so the export lands on the committed pack
+five estate CSVs, plus `files-export.csv` for 05-06 (the knowledge sites' files and their sensitivity labels).
+That one reads SharePoint with the lab app Phase 4c creates, so run Phase 4c first. `-Canonicalize` maps live names back to the canon's so the export lands on the committed pack
 and `git diff` shows the drift. Without it the script refuses to write into the committed pack; pass
 `-OutDir` for a live-named export.
 
