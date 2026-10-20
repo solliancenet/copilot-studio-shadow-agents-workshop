@@ -87,6 +87,13 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadPosition';               Needs = '03-02 KT01 s2, 04-04 KT01 s1: PPAC Settings > Users list - its systemusers query (named in its 403; without it the list shows "something went wrong")' }
   @{ Privilege = 'prvReadSettingDefinition';      Needs = 'PPAC Settings > Users: settingdefinitions read (named in its 403)' }
   @{ Privilege = 'prvReadWorkflow';               Needs = '03-01 KT01 s2, 04-04 KT02 s5: PPAC Resources > Flows lists another owner''s flow (Bot Viewer grants it at Basic only: the list said "No flows found")' }
+  # Dataverse audit records ........................................................................ 05-07 KT03
+  # The Audit Summary view (/tools/audit/audit_summary.aspx) lists a table's audit records WITHOUT opening the
+  # record, so attendees see that Claims Copilot's read left none while claim rows stay closed to them (claim
+  # read would break Scenario D). Verified as student03, 2026-10-20: audits readable, mm_claims still denied.
+  @{ Privilege = 'prvReadRecordAuditHistory';     Needs = '05-07 KT03: audit records (the audits API; without it 0x80040220)' }
+  @{ Privilege = 'prvReadAuditSummary';           Needs = '05-07 KT03: the Audit Summary view' }
+  @{ Privilege = 'prvReadQuery';                  Needs = '05-07 KT03: Audit Summary renders its views (named in its 403)' }
   # PPAC role editor: the per-table privilege grid ............................. 03-02 KT01 s2, 03-04 KT01 s3
   @{ Privilege = 'prvReadAttribute';              Needs = '03-02 role editor: EntityDefinitions (named in its 403)' }
   @{ Privilege = 'prvReadEntity';                 Needs = '03-02 role editor: EntityDefinitions' }

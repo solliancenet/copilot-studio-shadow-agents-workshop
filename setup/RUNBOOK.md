@@ -928,9 +928,10 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
       recording if it is not).
 - [ ] **Defender real-time protection for agents** is not a pre-delivery step: you switch it on during
       05-07 and back afterwards, per the demonstration table (Exercise 05 demonstrations, above).
-- [ ] **Open item: attendees cannot read audit history yet.** 05-07 KT03 has each attendee open a claim's
-      Audit History in `Claims-Test` to see that it shows no read, which needs read access to audit records.
-      The access model in `_access_model.ps1` grants none today, so that step fails live until it does.
+- [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
+      summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
+      `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
+      so the attendee can't open the claim itself - Scenario D depends on that.
 
 **04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
 instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the
