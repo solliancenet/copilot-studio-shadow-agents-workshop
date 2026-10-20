@@ -17,30 +17,20 @@ The artifact pack is the offline fallback. Why:
 > The estate is deliberately broken. Provision it in an **isolated training tenant** you control. Never
 > point these scripts at a production tenant.
 
-## Estates: several builds in one tenant
+## Before you start
 
-Every name your build creates carries your estate id — with the id `jsmith`, `Claims-Test` becomes
-`Claims-Test-jsmith` and Marcus becomes `marcus.webb.jsmith@<domain>`.
-What an estate is and what stays shared: [ADR-0001](../reference/adr/0001-estates.md).
+You run this runbook from VS Code, inside the repo's **dev container** — a Linux container that has every
+tool the scripts need already installed.
 
-1. Pick an estate id: your alias, 2–12 lowercase letters or digits.
-2. Check nobody in the tenant uses it:
-
-   ```bash
-   az ad user list --filter "startswith(userPrincipalName,'ana.reyes.')" --query "[].userPrincipalName" -o tsv
-   ```
-
-3. Set it in every shell you build from (or pass `-Estate <id>` to each script):
-
-   ```bash
-   export HALCOURT_ESTATE=jsmith         # your id; bash / the dev container
-   ```
-
-   ```powershell
-   $env:HALCOURT_ESTATE = 'jsmith'      # your id; PowerShell
-   ```
-
-4. Give attendees the estate id along with the tenant domain.
+1. Install [VS Code](https://code.visualstudio.com/), its
+   [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+   and [Docker Desktop](https://www.docker.com/products/docker-desktop/). Start Docker Desktop.
+2. Clone this repo and open its folder in VS Code.
+3. Open the Command Palette (**⇧⌘P** on a Mac, **Ctrl+Shift+P** on Windows) and run
+   **Dev Containers: Reopen in Container**. The first build takes about 15 minutes; later opens take
+   seconds. The bottom-left corner of the window shows **Dev Container** when it is done.
+4. Open a terminal: **Terminal → New Terminal**. Run every command in this runbook in that terminal unless
+   a step says otherwise.
 
 ## Prerequisites (technician)
 
@@ -56,9 +46,10 @@ Windows any more.
 - **Playwright + Chromium** for Phase 6's headless connection consent. Outside the container:
   `pip install playwright && python3 -m playwright install --with-deps chromium`.
 
-`az` and `pac` sign-in state is project-local (`.azure/`, `.pac/` in the repo root). That applies
-automatically in a VS Code terminal on this repo and in the dev container; in any other shell run
-`source scripts/env.sh` first, or the scripts won't see your login.
+When you sign in with `az` or `pac` in the dev container terminal, the sign-in is saved in the repo
+(`.azure/`, `.pac/`), not your home folder. A sign-in made in a terminal outside the container doesn't
+count. Why, and how to work outside the container:
+[ADR-0003](../reference/adr/0003-project-local-sign-in.md).
 
 ### Tenant capabilities the exercises assume
 
@@ -131,6 +122,7 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 
 ```
 0. Provision isolated tenant   → fresh *.onmicrosoft.com, licensing, security defaults → CA baseline
+   Choose your estate id        → once per build, in a tenant that already exists
 1. Azure infra (Bicep)        → Policy API + Underwriting MCP endpoints
 2. Entra identities/personas  → users, groups (tom.dean: leave date in 6.5, stays enabled)
 3. Environments + DLP          → 4 environments, prod DLP, PAYG billing plan
@@ -151,7 +143,8 @@ repo's `.azure/` and are shared. Override `WINVM_RAM_SIZE`, `WINVM_CPU_CORES`, `
 
 ### Phase 0 — Provision the isolated training tenant
 
-Once per lab tenant. Mostly a portal flow.
+Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else already set up?** Skip to
+[Estates](#estates--choose-your-estate-id); you need its global admin sign-in.
 
 {: .important }
 > This tenant **must not** be linked to any production or corporate tenant. Sign up with a **personal or
@@ -243,6 +236,49 @@ Once per lab tenant. Mostly a portal flow.
    If a device-code sign-in fails with *AADSTS530035*, step 4 hasn't taken effect yet; until it has, sign
    in with a browser from the **host** or the **Windows VM** by dropping `--use-device-code` /
    `--deviceCode` / `-UseDeviceCode`.
+
+### Estates — choose your estate id
+
+Once per build. Several people can build Halcourt Mutual in the same tenant; each build is an **estate**,
+and every name it creates carries its estate id. With the id `jsmith`, `Claims-Test` becomes
+`Claims-Test-jsmith` and Marcus becomes `marcus.webb.jsmith@<tenant domain>`. What an estate is and what
+stays shared: [ADR-0001](../reference/adr/0001-estates.md).
+
+1. Pick an estate id: your alias, 2–12 lowercase letters or digits.
+2. Sign in to the tenant as its global admin. If you just finished Phase 0 you already are — skip to 2b to
+   confirm it.
+
+   a. In the dev container terminal, run:
+
+      ```bash
+      az login --use-device-code --allow-no-subscriptions
+      ```
+
+      It prints a web address and a code. Open the address in your browser, enter the code, and sign in
+      with the tenant's global admin account.
+
+   b. Confirm you are in the right tenant:
+
+      ```bash
+      az account show --query tenantDefaultDomain -o tsv
+      ```
+
+      It must print the training tenant's domain (`<something>.onmicrosoft.com`), not your company's.
+
+3. Check nobody in the tenant uses your id. This lists every estate's Ana Reyes account; yours must not be
+   there:
+
+   ```bash
+   az ad user list --filter "startswith(userPrincipalName,'ana.reyes.')" --query "[].userPrincipalName" -o tsv
+   ```
+
+4. Set the id in the terminal. Every script reads it; do this again in each new terminal:
+
+   ```bash
+   export HALCOURT_ESTATE=jsmith         # your id
+   ```
+
+5. Give attendees the estate id along with the tenant domain.
 
 ### Phase 1 — Azure infrastructure (azd up)
 
