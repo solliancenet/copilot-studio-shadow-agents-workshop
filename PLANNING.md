@@ -13,13 +13,22 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | # | Item | Status | Notes |
 |---|------|--------|-------|
 | 1 | Make the workshop public and enable GitHub Pages | OPEN — deferred | Repo stays **private** for now. Decide first: making the repo public exposes `AGENTS.md`, `PLANNING.md`, `setup/`, and `worksheets/answer-keys/` in **source** — the Pages `exclude:` only affects the rendered site, not the public repo tree. |
-| 2 | Resolve the `[verify]` 2026 product-surface items | OPEN | Agent 365 admin/Graph surfaces, Conditional Access for workload identities, Purview coverage of Copilot Studio, `pac solution` agent portability, licensing. Feeds the Module 5 verdicts (see the verification list below). |
+| 2 | Resolve the `[verify]` 2026 product-surface items | OPEN | Agent 365 admin/Graph surfaces, Conditional Access for workload identities, Purview coverage of Copilot Studio, `pac solution` agent portability, licensing. Feeds the Module 5 verdicts (see the verification list below). Also confirm lab accounts can open the Microsoft 365 admin center agent registry without Agent 365 licensing; 01_01 and 02_01 rely on it. |
 | 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. |
 | 4 | Capture the 13 screenshots | OPEN | Referenced by the labs; list in `setup/screenshot-capture-list.md`. |
-| 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). |
+| 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). The Module 4 landing page says 60 minutes and also roughly 15 minutes per scenario across six scenarios. |
 | 6 | **RESOLVED — the "0 GB Dataverse" blocker was false** | RESOLVED | Live run 2026-09-08: the E5 sandbox carried **5 GB prepaid Dataverse** (not 0 GB), and a Dataverse-backed env (`Claims-Test`) created normally, no PAYG needed. Copilot Studio billing also resolved — a **region-matched PPAC billing plan** (`ppccdevcanada`, Copilot Studio meter) was linked to Claims-Test after fixing **RBAC** (Entra → Access management for Azure resources → Contributor). Lesson: billing plans are **region-locked** and must match the env region. |
 | 7 | Validate/dry-run on a **developer sandbox** tenant first (do NOT build the paid conference tenant yet) | IN PROGRESS | Sequencing decision recorded below. Fix the Azure-plan linkage, dry-run `setup/RUNBOOK.md` end-to-end on a throwaway dev sandbox, prove the estate reproduces — *then* decide on a permanent paid tenant. |
-| 8 | **Agent 365** — not a provisioning prerequisite; a govern-the-fleet concern for a future module | DEFERRED | Cut from RUNBOOK Phase 0 (not on the build/publish critical path). If a future "govern the fleet" module is added, check Agent 365 licensing (bundled vs add-on) and admin/identity surfaces then. Relevant to the GUARD "what's next" governance story, not the estate build. |
+| 8 | **Agent 365** — required for Exercise 05 (05_05) and Conditional Access for agents (05_04) | OPEN | Agent 365 is not in E5: it's an add-on to E5 or included in E7 (Microsoft Learn, Entra licensing, Oct 2026). License it for the lab tenant; make sure the estate's agents appear in the M365 admin center registry (an agent appears after 'See agent in Microsoft 365' or admin publishing); give lab accounts AI Administrator, or have the facilitator perform the registry remediation actions. |
+| 9 | Create the attendee lab accounts | OPEN — deferred | Not until the content review is done. Give them the roles they need to gather the pack's data from the portal and APIs. For reference, the Phase 7 export uses the Power Platform admin APIs, Microsoft Graph, and a Dataverse security role in every environment. What the tenant-path steps use, and what each needs (Microsoft Learn, 2026-09-30): PPAC inventory and the M365 agent registry — Global Reader or AI Reader; data policies — Environment Admin or Power Platform Administrator (no read-only role is documented); security-role members — System Administrator in each environment; the connections admin API via `az rest` — Power Platform Administrator or Environment Admin, with the Azure CLI signed in to the lab tenant; opening agents in Copilot Studio (Topics, Tools, Connection Settings) — owner, or co-author with Environment Maker; Entra users and sign-in activity — Reports Reader (Graph: `User.Read.All`, `AuditLog.Read.All`; sign-in activity needs Entra ID P1/P2); agent identities — no admin role for the portal list (Graph: `AgentIdentity.Read.All`); Exchange mailboxes — View-Only Management. 04_04 needs lab accounts to chat with Claims Copilot and Expense Helper, with no rights to Claim/Customer rows and no approver rights. Module 4 now has attendees chat with each published agent using their own lab account: lab accounts need membership in each agent's access-control group (the agents use group-membership access control) and must be able to reach the published channel without a licence — verify both. |
+| 10 | Blank-CSV path through Modules 1–2 | IN PROGRESS | Steps written in the tenant-first pass: 00_02 fills `environments-export.csv`, 01_01 fills agents, users and connections, 01_02 fills agent identities, and later pages read "your CSVs". Still to do: screenshots for the filled set, showing where each value comes from. |
+| 11 | Make the pack match the tenant | OPEN | The pack may hold only what the portal and APIs show, plus analyst-written fields. It doesn't yet: identity names (`cs-agent-*`; Entra's are `<agent name> (Microsoft Copilot Studio)`) and placeholder app ids; March–May 2026 created dates (the tenant shows build dates); `SP-Onboarding` listed as used by Onboarding Guide, which binds only Outlook; `used_by_agent` and the HTTP, MCP and flow rows written by hand; Meeting Notes Summarizer's description differs from the agent's. Once fixed, drop the Estate Binder's note on identity labels. Also: add an agent-audience column (who each agent is shared with) to `agents-export.csv`, since 03_04 asks for each agent's actual audience; and consider renaming the `User (delegated)` auth_type to say it's maker-provided (e.g. `Maker-provided (user)`), which touches the export script, the pack and the answer keys. |
+| 12 | Verify the Entra Agent ID field | OPEN | 01_02 step 2 tells attendees to keep the agent identity whose ID matches Copilot Studio's **Settings → Advanced → Metadata → Entra Agent ID**. Confirm which identifier that field shows (Object ID or Application ID), and where the Entra admin center shows an agent identity's Application ID, which `app_id` records. Microsoft Learn says Settings → Advanced → Metadata shows the Entra Agent ID GUID used to locate the identity in Entra. |
+| 13 | Terminology sweep: "row-level security" | DONE | No "row-level" or "RLS" left in docs/, index.md, appendix.md or worksheets/templates (2026-10-18, 01_03 was the last). Original note: Dataverse has no row-level-security switch; Module 3 now says "record-level access" (security-role privilege depth, ownership, business units, teams, sharing, hierarchy/column security). Bring 01_03, 04_02, the rest of 04_03, 05_03, the 06 landing page (SCOPE IT paragraph) and `worksheets/templates/05-agent-security-review-checklist.md` in line. |
+| 14 | Provision the Purview label for Exercise 05 | OPEN | No script or runbook phase creates `Confidential-PII`. Create it as an encrypting label with VIEW and EXTRACT only for HR leadership; seed `Leadership/2026-comp-bands-labeled.xlsx` in `HR-Benefits`, labeled well before delivery so SharePoint search has indexed it; leave `2026-comp-bands.xlsx` unlabeled (Exercise 04 needs it); confirm the SSN sensitive-information type. 05_06 depends on it. |
+| 15 | Student licensing | OPEN | Every lab account is unlicensed today, and the tenant has 0 free E5 seats (25/25 used). Per student (plus the facilitator): (1) **Microsoft 365 E5** or another license that includes Microsoft 365 — Copilot Studio records `CopilotInteraction` audit events only for licensed users (05_07), and it's likely needed to open the published agents in Teams / Microsoft 365 Copilot / SharePoint (Exercise 04's published-agent route); (2) **Microsoft Agent 365** — not in E5; an add-on to E5 or included in E7 — for registry risk signals (05_05) and Conditional Access for agents (05_04), licensed per user. No separate Copilot Studio license: chatting with a published agent draws on tenant capacity. Seats = students per delivery + facilitator. Supersedes the licensing notes in items 8 and 9. |
+| 16 | Audit and Defender provisioning for Exercise 05 | OPEN | 05_07 reconstructs Exercise 04 from the logs, so auditing must be on before Exercise 04 runs: turn on Dataverse auditing in `Claims-Test` (environment + `Claim` and `Customer` tables); confirm Purview Audit is on (on by default); set up Defender real-time protection for the estate's agents (needs a Defender admin, an Entra app and the Microsoft 365 app connector). `CopilotInteraction` events need licensed lab accounts — see item 15. |
+| 17 | Remove non-lab exercises (old Exercise 07 and the wrap-up) | DONE | Both were lecture content dressed as labs. The lab ends at Exercise 06's promotion gate. The tenant crosswalk, first-week quick wins, ranking rule, leadership tip and further reading moved to `appendix.md`, next to `index.md`; the Own-Estate Assessment worksheet stays in the Estate Binder. |
 
 _Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
 
@@ -225,6 +234,15 @@ before delivery and update `AGENTS.md` if reality differs:
    [`reference/copilot-studio-billing.md`](reference/copilot-studio-billing.md). **Dataverse capacity is NOT
    a hard gate** — a live run found the E5 sandbox carried **5 GB prepaid** and a Dataverse env created
    normally; `[verify]` actual prepaid capacity per tenant (don't assume 0).
+7. **Agent deletion vs Agent ID:** Microsoft Learn (govern-agents-identities-overview, Oct 2026) says
+   deleting an agent removes its Agent ID; 02_01, the 04_06 reveal and 05_05 say identities are left
+   behind (observed across lab rebuilds). Confirm in the delivery tenant and align those pages.
+8. **AGENTS.md least-privilege × C:** its reasoning ('scoped role + RLS: only assigned…') assumes a shared
+   service account can see each adjuster's own claims; 05_03 now says a shared identity has one fixed
+   security context. Update AGENTS.md's C row and the 'least privilege, RLS… actually fix them' summary line.
+9. **AGENTS.md Conditional Access × E:** it says DENTS IT [verify] ('only if the API trusts Entra'); 05_04's
+   reveal says MISSES IT as built — Microsoft Learn (Oct 2026) says MCP servers and REST API tools add no
+   permissions to the Agent ID, and the static key never involves Entra. Update AGENTS.md's E row.
 
 ## Delivery risks
 
@@ -232,15 +250,17 @@ before delivery and update `AGENTS.md` if reality differs:
   `_site/`. Re-verify after any `_config.yml` change. Never screenshot this file's content into `docs/`.
 - **Tenant/wifi fragility.** Hybrid model exists for this reason — the exported **artifact pack** must be
   downloadable so DISCOVER/MAP/BREAK-analysis/ASSESS continue offline. Only the live BREAK and CONTROL
-  demos strictly need the tenant.
+  demos strictly need the tenant. Pre-record the BREAK and CONTROL demos, in case nobody can reach the
+  tenant on delivery day.
 - **Feature drift.** Copilot Studio / Agent 365 move fast; re-run the verifications above per delivery.
 - **Over-running Module 4.** It's the centerpiece and the time sink. Keep a hard stop; push spillover
   into the Module 5 retest.
 
 ## Numbering rationale
 
-Exercises `00`–`08`; `00` is environment/orientation (not counted in the six hours), `08` is wrap-up.
-Modules `01`–`07` map 1:1 to the outline's seven modules. Task pages are numeric `NN_MM.md`, title in
+Exercises `00`–`06`; `00` is environment/orientation (not counted in the six hours). Exercises `01`–`06`
+map 1:1 to the outline's first six modules. The outline's Module 7 (own-estate assessment) and the wrap-up
+are lecture, not lab: their take-home material and further reading live in `appendix.md`. Task pages are numeric `NN_MM.md`, title in
 front matter (matches `github-workshop` / TWL400).
 
 ## Pre-delivery checklist

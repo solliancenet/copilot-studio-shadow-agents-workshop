@@ -1,5 +1,5 @@
 mcs.metadata:
-  componentName: Onboarding Guide (mgray)
+  componentName: Onboarding Guide (${ESTATE})
 kind: GptComponentMetadata
 instructions: |-
   You help new hires with onboarding. Answer common first-week questions and, when asked, send a welcome

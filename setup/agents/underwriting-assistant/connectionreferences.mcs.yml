@@ -1,0 +1,3 @@
+connectionReferences:
+  - connectionReferenceLogicalName: cr3f5_UnderwritingAssistant.${CONNECTOR:MCP-Underwriting}.MCPUnderwriting
+    connectorId: /providers/Microsoft.PowerApps/apis/${CONNECTOR:MCP-Underwriting}

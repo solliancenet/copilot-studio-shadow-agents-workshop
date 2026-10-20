@@ -8,9 +8,9 @@ nav_order: 1
 {: .fs-9 }
 
 Your makers are shipping Copilot Studio agents faster than anyone is tracking them. Each one gets an
-identity. Each one carries permissions for every connector it touches. Each one can reach Dataverse,
-SharePoint, and whatever that HTTP action points at. This workshop teaches you to find out what your
-agents can actually access, reach, and do — and whether the controls around them are enough.
+identity of its own, but what it can reach comes from its grounding, its tools, and whose credentials sit
+behind its connections. This workshop teaches you to find out what your agents can actually reach and
+do — and whether the controls around them are enough.
 {: .fs-6 .fw-300 }
 
 [Get started]({% link docs/00_lab_environment/00_lab_environment.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
@@ -26,9 +26,10 @@ Ask most organizations three simple questions and nobody has the answers:
 2. **Who owns them?**
 3. **What can they access?**
 
-Since March 2026, Copilot Studio has created an Entra identity for every new agent automatically. Agent
-365 went GA in May. **The governance surface arrived faster than the governance did.** By the end of the
-day you will be able to answer all three questions for a real estate — and know which controls actually
+Every new Copilot Studio agent now gets its own Entra Agent ID, and Microsoft Agent 365 (generally
+available since May 1, 2026) gives admins a registry of their agents: owners and, where available,
+knowledge sources and tools. That list is where a review starts. By the end of the day you will be able to
+determine whose credentials each tool runs on, what access those credentials allow, and which controls
 reduce the risk.
 
 ## The through-line
@@ -47,7 +48,7 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 
 ## Agenda
 
-| # | Module | Focus | Est. |
+| # | Exercise | Focus | Est. |
 |---|--------|-------|------|
 | 0 | [Lab environment]({% link docs/00_lab_environment/00_lab_environment.md %}) | Access the estate + orient | — |
 | 1 | [The agent estate you didn't know you had]({% link docs/01_the_agent_estate/01_the_agent_estate.md %}) | The security model & trust boundaries | 20 min |
@@ -57,14 +58,7 @@ assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 | 4 | [Break the agents]({% link docs/04_break_the_agents/04_break_the_agents.md %}) | Failure modes & attack paths | 60 min |
 | — | _Lunch / longer break_ | | 30 min |
 | 5 | [Put the controls to the test]({% link docs/05_test_the_controls/05_test_the_controls.md %}) | CLOSES IT / DENTS IT / MISSES IT | 60 min |
-| 6 | [Build an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 25 min |
-| 7 | [Assess your own estate]({% link docs/07_assess_your_estate/07_assess_your_estate.md %}) | Your tenant, Monday morning | 20 min |
-| 8 | [Wrap-up & hand-off]({% link docs/08_wrap_up_and_handoff/08_wrap_up_and_handoff.md %}) | Resources & next steps | — |
-
-{: .note }
-> The exercises (Modules 1–7) total ~270 minutes (~4.5 hours). The remaining ~90 minutes of the six-hour
-> day is reserved for the opening and orientation, brief lecture segments between modules, and the
-> wrap-up. Breaks are in addition to instructional time.
+| 6 | [Apply an agent security baseline]({% link docs/06_security_baseline/06_security_baseline.md %}) | KNOW → OWN → SCOPE → CONTROL → WATCH | 10 min |
 
 ## Your Estate Binder (deliverables)
 
@@ -79,15 +73,26 @@ You leave with a completed binder, one artifact per phase:
 | OPERATIONALIZE | Agent Security Review Checklist |
 | Take-home | Own-Estate Assessment Worksheet + top-3 actions |
 
-Templates are in the [Estate Binder]({% link worksheets/index.md %}).
+Templates are in the [Estate Binder]({% link worksheets/index.md %}). Where to look in your own tenant, a
+first-week starting list and further reading are in the [Appendix]({% link appendix.md %}).
 
 ## Prerequisites
 
-- A modern browser and the lab access details handed out at the start of Module 0.
-- The downloadable **artifact pack** (exported inventory + screenshots) — used whenever you are working
-  offline or tenant access is slow.
-- Read access to the shared **Halcourt Mutual** demo tenant (guest account provided by the facilitator).
-- Optional: a Copilot-enabled editor for the analysis tasks (see `.github/copilot-instructions.md`).
+- A modern browser.
+- For the preferred, hands-on path:
+  - At the start of Exercise 00 the facilitator hands you a lab account (username and password), the lab
+    tenant's domain and your estate id.
+  - Install the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli){:target="_blank"}
+    for the few facts only an API returns.
+  - The account can inspect the whole estate, and administers **your own lab environment**. Observe the
+    shared estate; make changes only in your own. In Exercise 05, your facilitator configures each control
+    on the shared estate, and you retest it.
+  - You gather the estate's data into blank CSVs from the
+    [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
+- Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
+- Optional: a Copilot-enabled editor for the analysis tasks — see
+  [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
+  in the workshop repo.
 
 {: .warning }
 > Everything you do runs against a **training estate that was deliberately built to be broken**. Do not

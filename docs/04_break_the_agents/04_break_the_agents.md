@@ -9,25 +9,25 @@ has_children: true
 
 ## Scenario
 
-You have inventoried the estate (Module 2) and mapped effective access (Module 3). You already know, on
-paper, that some of these agents can reach more than the people who talk to them. This module makes that
+You have inventoried the estate (Exercise 02) and mapped effective access (Exercise 03). You already know, on
+paper, that some of these agents can reach more than the people who talk to them. This exercise makes that
 concrete. Instead of a slide deck about "prompt injection" and "the confused deputy," you drive six
 Halcourt Mutual agents into six distinct failure modes and watch each one happen.
 
 Every scenario returns to the same two questions: **whose authority is this agent exercising, and what
 can it reach when it does?** You are not here to build attack tools. You are here to observe controlled
-failures on a training estate and write down what you saw, so that in Module 5 you can test whether any
+failures on a training estate and write down what you saw, so that in Exercise 05 you can test whether any
 Microsoft control actually removes each one.
 
 > **This is a deliberately-broken TRAINING estate.** Every agent, connection, key, and grounded document
-> in `halcourtmutual.onmicrosoft.com` was provisioned by the facilitator to fail in a specific, contained
+> in this estate was provisioned by the facilitator to fail in a specific, contained
 > way against safe, facilitator-controlled Azure Container Apps training endpoints and `example` hosts. The techniques you observe here —
 > indirect prompt injection, data exfiltration, confused-deputy escalation, credential exposure — are
 > real and are damaging against systems you do not own. **Never apply them to any tenant, agent, API, or
 > data you are not explicitly authorized to test.** Observe and record; do not weaponize.
 {: .warning }
 
-### How this module works
+### How this exercise works
 
 Each scenario is one task page. For each, you will:
 
@@ -35,15 +35,15 @@ Each scenario is one task page. For each, you will:
 2. **Observe** the failure — either in the live tenant, or by reasoning it out from the exported artifact
    pack. Both paths are always provided.
 3. **Record** exactly one row in your **Agent Threat Model**: *Attack → Asset → Trust boundary → Impact →
-   Existing control.*
+   Existing control.* Then compare it with the suggested row in that task's reveal.
 
 You record what actually happened, not what you expected. You do **not** decide yet whether a control
-"closes" or "misses" the failure — that verdict is Module 5's job. Here you are only building the row.
+"closes" or "misses" the failure — that verdict is Exercise 05's job. Here you are only building the row.
 
 ```mermaid
 flowchart LR
-  U["Chat user<br/>(e.g. Jordan Blake, low-priv)"] -->|asks a question| A["Copilot Studio agent"]
-  subgraph reach["What the AGENT can reach — not necessarily what the USER can"]
+  U["Chat user<br/>(your lab account, low-priv)"] -->|asks a question| A["Copilot Studio agent"]
+  subgraph reach["What the agent could reach — its configured reach, not necessarily the user's"]
     direction TB
     G["Grounding sources<br/>SharePoint / Dataverse"]
     C["Connectors<br/>Dataverse rows, mail"]
@@ -56,8 +56,9 @@ flowchart LR
   A --> P
 ```
 
-The gap between the small circle around the user and the large circle around the agent is the whole
-subject of this module.
+Everything inside that box is the agent's configured reach. Whether a given user can actually get it
+depends on who can invoke the agent, the credential each call carries, what the downstream system
+authorizes, and what you observe. That gap is the whole subject of this exercise.
 
 ### The six scenarios
 
@@ -70,9 +71,9 @@ subject of this module.
 | [E]({% link docs/04_break_the_agents/04_05.md %}) | The HTTP / MCP / tool boundary | Policy Lookup Bot; Underwriting Assistant |
 | [F]({% link docs/04_break_the_agents/04_06.md %}) | Lifecycle (orphan / test-became-prod) | Onboarding Guide; Claims Copilot |
 
-> Every scenario is completable **offline** from the five CSVs in the artifact pack plus the provided
-> screenshots — you are never blocked when the tenant is slow or the demo queue is long. The live path is
-> better theater; the offline path is the one that will still work at your desk on Monday.
+> The live tenant is the preferred path: you drive the agents and read their configuration yourself.
+> Every scenario is also completable **offline** from the five filled-in CSVs in the artifact pack plus
+> the provided screenshots, so you are never blocked when the tenant is slow or the demo queue is long.
 {: .note }
 
 ## Objectives
@@ -85,21 +86,21 @@ After this exercise you will be able to:
   agent follows.
 - **Show data exfiltration** as an access problem: the agent relays data it can read but the user cannot.
 - **Quantify excessive connector and tool permissions** as a blast-radius multiplier (need X, granted X+Y+Z).
-- **Name the confused deputy precisely** — answer, for a given action, *who authorized it* and *whose
-  identity actually performed it*.
+- **Name the confused deputy precisely** — answer, for a given action, *who requested it*, *which
+  credential the call carried*, and *whether anything checked the requester's entitlement*.
 - **Interrogate an HTTP / MCP / tool boundary** with four questions: what authentication, what
   authorization, what inputs cross, what comes back — including credentials exposed in configuration.
 - **Trace a lifecycle failure** — an orphaned owner or a test-became-production agent whose permissions and
   connections outlived the assumptions that created them.
-- **Populate the Agent Threat Model** with one defensible row per scenario, ready to test in Module 5.
+- **Populate the Agent Threat Model** with one defensible row per scenario, ready to test in Exercise 05.
 
 ## Duration
 
 **Estimated time:** 60 minutes.
 
-This is the centerpiece of the day and the most likely module to over-run. Roughly 15 minutes per
-scenario. If the room is tight, run A and D live and treat B, C, E, and F as guided walk-throughs from the
-artifact pack — the recorded rows are what matter.
+This is the centerpiece of the day and the most likely exercise to over-run. Roughly 15 minutes per
+scenario. If the room is tight, run A and D hands-on and take B, C, E, and F as guided walk-throughs in the
+live tenant, or from the artifact pack if you can't reach it — the recorded rows are what matter.
 
 ## Deliverable
 
@@ -108,5 +109,5 @@ Existing control*, plus the two "hard questions" for Scenarios D and E.
 
 Use the template: [03 — Agent Threat Model]({% link worksheets/templates/03-agent-threat-model.md %}).
 
-You will carry every row of this table into [Module 5]({% link docs/05_test_the_controls/05_test_the_controls.md %}),
+You will carry every row of this table into [Exercise 05]({% link docs/05_test_the_controls/05_test_the_controls.md %}),
 where you test whether each control **CLOSES IT / DENTS IT / MISSES IT**.

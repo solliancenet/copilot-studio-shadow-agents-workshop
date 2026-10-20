@@ -1,7 +1,7 @@
 mcs.metadata:
-  componentName: HR-Benefits-mgray
+  componentName: HR-Benefits-${ESTATE}
   description: The HR-Benefits team site - the whole site.
 kind: KnowledgeSourceConfiguration
 source:
   kind: SharePointSearchSource
-  site: https://0zwdt94t.sharepoint.com/sites/HR-Benefits-mgray
+  site: https://${SP_HOST}/sites/HR-Benefits-${ESTATE}

@@ -15,9 +15,12 @@ The day follows one arc: **DISCOVER → MAP → BREAK → CONTROL → RETEST →
 
 ## Where things live
 
-- `docs/` — the lab content (published site). Exercises are numbered `00`–`08`; each folder has a
+- `docs/` — the lab content (published site). Exercises are numbered `00`–`06`; each folder has a
   landing page plus numbered `NN_MM.md` task pages.
-- `worksheets/` — the take-home deliverable templates ("Estate Binder") attendees fill in as they go.
+- `appendix.md` — take-home material and further reading: where to look in your own tenant, a first-week
+  starting list, and links.
+- `worksheets/` — the take-home deliverable templates ("Estate Binder") attendees fill in as they go, and
+  the artifact pack (`worksheets/artifact-pack/`: the filled-in estate CSVs, with blank copies in `blank/`).
 - `media/` — screenshots referenced by the labs.
 
 ## How to help an attendee

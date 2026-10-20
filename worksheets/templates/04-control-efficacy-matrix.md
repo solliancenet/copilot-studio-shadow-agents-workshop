@@ -8,7 +8,7 @@ search_exclude: true
 
 # Control Efficacy Matrix
 
-**Deliverable for Module 5 (CONTROL / RETEST).** Return to every failure from Module 4. Configure the
+**Deliverable for Exercise 05 (CONTROL / RETEST).** Return to every failure from Exercise 04. Configure the
 control, **re-run the attack**, and record the honest verdict.
 
 **The verdicts:**
@@ -16,6 +16,8 @@ control, **re-run the attack**, and record the honest verdict.
 - **CLOSES IT** — after the control, the attack no longer works.
 - **DENTS IT** — harder or lower-impact, but a real gap remains.
 - **MISSES IT** — the control does not address this failure at all.
+
+Decide each verdict before you open a task's reveal.
 
 ## Matrix
 
@@ -30,6 +32,10 @@ Fill a verdict in each cell you test (leave blank if not applicable / not tested
 | E — HTTP / MCP boundary |  |  |  |  |  |  |  |
 | F — Lifecycle |  |  |  |  |  |  |  |
 
+Where one cell covers two results, such as Defender real-time protection and audit, put the stronger verdict
+in the cell and name the control that earned it, for example "DENTS IT (Defender RTP)". Put the other result
+in the remaining-risk note or the retest log.
+
 ## Retest log (Attack → Control → Retest)
 
 Copy per test.
@@ -41,5 +47,4 @@ Copy per test.
 **Remaining risk:** ______________________
 
 {: .important }
-> The gaps are the point. A wall of CLOSES IT is a sign you're not testing hard enough — indirect
-> injection and confused-deputy rarely fully close with a platform toggle.
+> The gaps are the point. If every cell reads CLOSES IT, re-check your retests before you trust them.

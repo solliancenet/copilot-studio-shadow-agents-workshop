@@ -35,9 +35,16 @@ Thumbs.db
 **/*.local.csv
 setup/**/secrets.*
 setup/**/*.local.json
+setup/**/*.local.pfx
 
 # compiled bicep ARM output
 infra/main.json
 
 # Windows build VM overrides (setup/windows-vm/compose.yaml)
 setup/windows-vm/.env
+
+# Python bytecode
+__pycache__/
+
+# Exercise 05 demonstration snapshots (09_ex05_demo_state.ps1)
+setup/ex05-state/

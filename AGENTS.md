@@ -66,7 +66,7 @@ fixed identifiers; `05_export_artifact_pack.ps1 -Canonicalize` maps a live estat
 | Sam Olsen | `sam.olsen@halcourtmutual.onmicrosoft.com` | Finance approver + maker | Owns Expense Helper; a real expense approver. |
 | Lena Ford | `lena.ford@halcourtmutual.onmicrosoft.com` | Sales manager | *Maker* owner of Sales Nudge. |
 | Dev Kim | `dev.kim@halcourtmutual.onmicrosoft.com` | Developer (broad SharePoint) | Owns Team Wiki, Meeting Notes Summarizer. |
-| **Tom Dean** | `tom.dean@halcourtmutual.onmicrosoft.com` | **Departed admin — account DISABLED** | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. |
+| **Tom Dean** | `tom.dean@halcourtmutual.onmicrosoft.com` | **Departed admin — left 2026-01-30, account still ENABLED** (Entra leave date set; nobody ran the leaver process) | Former owner of Onboarding Guide; owns the *shared connections* behind Onboarding Guide and Sales Nudge. Stays enabled by design: a disabled user's connections stop refreshing (AADSTS50057), and that is the Scenario F fix, not the planted state. |
 | Jordan Blake | `jordan.blake@halcourtmutual.onmicrosoft.com` | Low-privilege employee | The "requesting user" for confused-deputy demos. Can chat with agents; personally entitled to almost nothing. |
 | svc-claims | `svc-claims@halcourtmutual.onmicrosoft.com` | **Service account** | Owns the shared Dataverse connection Claims Copilot runs on. Over-permissioned. |
 | IT Helpdesk | `it.helpdesk@halcourtmutual.onmicrosoft.com` | **Shared mailbox** | Ambiguous "owner" of Policy Lookup Bot — nobody personally accountable. Sign-in **enabled** (a shared mailbox is created disabled) so it can own the agent — itself a finding. |
@@ -118,6 +118,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 1. Benefits Buddy — `cs-agent-benefits-buddy-prod`
 - **Env / Owner:** Halcourt-Prod / Marcus Webb.
+- **Data sensitivity (by reach):** **Compensation** — whole-site `HR-Benefits` grounding reaches `Leadership/2026-comp-bands.xlsx`.
 - **Purpose:** Answer employee benefits & open-enrollment questions.
 - **Connections:** SharePoint (Marcus's user connection).
 - **Connectors / tools:** SharePoint, Office 365 Users. No custom actions.
@@ -131,6 +132,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 2. Claims Copilot — `cs-agent-claims-copilot-test`
 - **Env / Owner:** Claims-Test / Priya Nair.
+- **Data sensitivity (by reach):** **PII** — Dataverse `Customer` (SSN, DOB) via svc-claims.
 - **Purpose:** Let adjusters look up and update claim status.
 - **Connections:** **Shared** Dataverse connection running as **svc-claims**.
 - **Connectors / tools:** Dataverse — `List rows` (Claim, Customer), `Update claim status`.
@@ -147,6 +149,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 3. Policy Lookup Bot — `cs-agent-policy-lookup-prod`
 - **Env / Owner:** Halcourt-Prod / **IT Helpdesk shared mailbox** (ambiguous ownership).
+- **Data sensitivity (by reach):** **PII** — the full-scope Policy API key reaches `/customer/{id}`.
 - **Purpose:** Look up policy details.
 - **Connectors / tools:** Copilot Studio **HTTP action** → Policy API. **API key hard-coded in the action
   header config.** Action calls `GET /policy/{id}` with `{id}` taken straight from user input.
@@ -160,8 +163,13 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 4. Underwriting Assistant — `cs-agent-underwriting-prod`
 - **Env / Owner:** Halcourt-Prod / Priya Nair.
+- **Data sensitivity (by reach):** **Internal** — pricing DB via `run_query`.
 - **Purpose:** Help underwriters price risk.
-- **Connectors / tools:** **MCP** server tools `get_quote`, `get_risk_score`, **and** `run_query`.
+- **Connectors / tools:** one **Model Context Protocol** tool (on the Tools page, not in a topic) whose server
+  exposes `get_quote`, `get_risk_score`, **and** `run_query`, all switched on. It runs on `MCP-Underwriting`,
+  a connection to the custom connector `Halcourt-Underwriting-MCP`, owned by Priya, with **Maker-provided
+  credentials**: the bearer token sits in that connection (a secure parameter), so every chat uses it and a
+  solution export does **not** carry it.
 - **PLANTED PROBLEM A (Scenario E — MCP boundary):** static shared bearer auth; the server advertises
   `run_query` (arbitrary pricing-DB queries) far beyond the agent's need. Broad inputs cross; the return
   includes more than a quote.
@@ -170,6 +178,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 5. Expense Helper — `cs-agent-expense-helper-default`
 - **Env / Owner:** Halcourt (default) / Sam Olsen.
+- **Data sensitivity (by reach):** **Internal** — expense records.
 - **Purpose:** Help employees submit expenses.
 - **Connectors / tools:** Power Automate flow `Submit and auto-approve expense under $500`, running as
   **Sam Olsen** (a real approver).
@@ -179,18 +188,23 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Impact:** any employee auto-approves their own expenses via the agent.
 
 ### 6. Onboarding Guide — `cs-agent-onboarding-default`
-- **Env / Owner:** Halcourt (default) / **Tom Dean (DISABLED account) → orphaned.**
+- **Env / Owner:** Halcourt (default) / **Tom Dean (left 2026-01-30; account still enabled) → orphaned.**
+- **Data sensitivity (by reach):** **Internal** — SharePoint onboarding content, plus mail send.
 - **Purpose:** Help new hires with onboarding.
 - **Connectors / tools:** SharePoint + Office 365 Outlook (**send mail**), via a **shared connection Tom
   created** that is still live.
-- **PLANTED PROBLEM A (Scenario F — lifecycle / orphan):** owner disabled, yet the agent is still
-  published, still has a live connection, still can send mail as the connection. No one is accountable;
-  nobody realizes it exists.
+- **PLANTED PROBLEM A (Scenario F — lifecycle / orphan):** the owner left months ago but nobody ran the leaver
+  process: his account is still enabled, so the agent is still published, still has a live connection, still
+  can send mail as Tom. No one is accountable; nobody realizes it exists. Signals: a populated
+  `employee_leave_date` on an `account_enabled` `TRUE` row, and a last sign-in on the leave date in the pack.
+  (The live tenant shows provisioning sign-ins after it; sign-ins after a leave date are themselves evidence
+  the account is still in use.)
 - **Trust boundary crossed:** the lifecycle assumption "an owner exists and reviews this" no longer holds.
 - **Impact:** an unowned agent with live mail-send persists indefinitely.
 
 ### 7. Team Wiki — `cs-agent-team-wiki-sandbox`
 - **Env / Owner:** Maker-Sandbox / Dev Kim.
+- **Data sensitivity (by reach):** **Internal** — every site Dev can read (broad, but not `Leadership/`).
 - **Purpose:** A maker's personal "ask the wiki" bot; never sanctioned.
 - **Connectors / tools:** SharePoint + Microsoft Graph search across **every site Dev can see** (broad).
 - **PLANTED PROBLEM A (Module 2 — shadow agent):** built outside IT's knowledge in a personal env; broad
@@ -201,6 +215,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 ### 8. Sales Nudge — `cs-agent-sales-nudge-prod`
 - **Env / Owner:** Halcourt-Prod / Lena Ford (**maker owner**) — but runs on a **CRM/Dataverse shared
   connection owned by Tom Dean (departed)**.
+- **Data sensitivity (by reach):** **PII** — CRM/Dataverse under Tom Dean's broad CRM access.
 - **Purpose:** Nudge reps about leads.
 - **PLANTED PROBLEM A (Module 2 — shared connection / unknown effective owner):** the *agent* owner is
   known and present; the *connection* owner is a ghost. Inventory that records only the agent owner
@@ -211,6 +226,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 9. HR FAQ v2 (copy) — `cs-agent-hr-faq-v2-prod` — **DECOY / noise**
 - **Env / Owner:** Halcourt-Prod / Marcus Webb.
+- **Data sensitivity (by reach):** **Internal** — the all-staff `HR FAQ` library only.
 - **Looks risky** (a duplicate "v2", HR data, sounds like sprawl) but is **benign**: read-only, grounded
   on the **`HR FAQ` document library** in `HR-Benefits` only — a dedicated, all-staff-published library
   holding one clean FAQ, **not** the whole site, **not** `Shared Documents` (which holds the poisoned
@@ -221,6 +237,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 ### 10. Meeting Notes Summarizer — `cs-agent-meeting-notes-sandbox` — **DECOY / noise**
 - **Env / Owner:** Maker-Sandbox / Dev Kim.
+- **Data sensitivity (by reach):** **Internal** — Dev's own OneDrive notes.
 - Summarizes the maker's **own** OneDrive notes (`Dev-Kim-Meeting-Notes.docx` in Dev's OneDrive `Documents`,
   seeded in Phase 4b); no shared data, no actions. **Benign.** Noise to force real inventory rather than
   "sandbox = bad" pattern-matching.
@@ -244,7 +261,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 
 What a complete inventory must surface (attendees start from the exported artifact pack + tenant read):
 
-- **Orphaned:** Onboarding Guide (owner Tom Dean disabled; connection live).
+- **Orphaned:** Onboarding Guide (owner Tom Dean left 2026-01-30, account never disabled; connection live).
 - **Shadow:** Team Wiki (Maker-Sandbox; unknown to IT).
 - **Test-became-prod:** Claims Copilot (Claims-Test doing prod work).
 - **Shared connection:** Claims Copilot (svc-claims), Sales Nudge (Tom Dean's CRM connection),
@@ -325,7 +342,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
 | Proper auth (per-user OAuth/Entra, scoped tokens, input validation, least-priv API, secret in Key Vault) | CLOSES IT | The real fix lives on the integration, not the platform. |
-| DLP / connector governance | DENTS IT | Can block unmanaged custom connectors / HTTP actions in an env; doesn't fix auth design. |
+| DLP / connector governance | DENTS IT | Can block unmanaged custom connectors / HTTP actions in an env; doesn't fix auth design. **Observed 2026-10-18:** the HTTP block stopped Policy Lookup Bot at run time (`DataLossPreventionViolation`); blocking custom connectors by the default `*` pattern did **not** stop the MCP tool. On that evidence DLP dents the HTTP half only. |
 | Environment strategy | DENTS IT | Restrict custom connectors/HTTP in sensitive envs. |
 | Conditional Access (workload identities) | DENTS IT **[verify]** | Can constrain the agent identity's token use — only if the API trusts Entra, not a static key. |
 | Agent 365 | DENTS IT | Inventories HTTP/MCP integrations and secret exposure. |
@@ -335,7 +352,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 ### Scenario F — Lifecycle (orphan / test→prod / surviving connections)
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
-| Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix: connections and agent identities die with the owner. |
+| Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix for the *access*: disabling the leaver stops his OAuth connections at their next token refresh (AADSTS50057, seen on the live estate). The agent and its Agent ID survive until someone reassigns or retires them, so JML closes the authority, not the orphan. |
 | Agent 365 / CoE governance (ownership, orphaned-resource detection, lifecycle policy) | CLOSES IT → DENTS IT **[verify]** | Inventory + orphan detection + owner reassignment is where governance genuinely helps. |
 | Environment strategy | DENTS IT | Ephemeral test envs + gated promotion prevent test→prod drift; doesn't fix existing orphans. |
 | Least privilege | DENTS IT | Shrinks blast radius of the survivor. |

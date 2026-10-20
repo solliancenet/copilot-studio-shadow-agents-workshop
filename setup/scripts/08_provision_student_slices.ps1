@@ -32,10 +32,9 @@ NOT YET WIRED IN HERE - run these per slice until they are:
     -DisplayNameSuffix <estate>-NN`. The suffix is not cosmetic: agent display names are the only thing
     telling apart the Entra identities Copilot Studio creates, and those are tenant-wide, so without it
     twenty slices leave twenty-one principals called "Claims Copilot (Microsoft Copilot Studio)".
-  - THE ORPHAN AGENT. `onboarding-guide` is owned by `tom.dean`, whom Phase 6.5 disables on purpose. He
-    must be enabled to author it and consent its connection, then disabled again - and if a run dies in
-    between he is left enabled, which silently un-plants Scenario F for the whole shared estate. Enable
-    once, build it into every slice, disable once. Do not build slices independently while he is needed.
+  - THE ORPHAN AGENT. `onboarding-guide` is owned by `tom.dean`, the departed owner. Phase 6.5 gives him a
+    leave date and leaves him ENABLED - a disabled user's connections fail (AADSTS50057), and the orphan
+    is a leaver nobody shut down - so he can author it and consent its connection in every slice.
   - SHAREPOINT. `03_provision_sharepoint.ps1 -SiteSuffix NN` gives each attendee their own
     /sites/HR-Benefits-<estate>-NN to label in Lab 05-06. NEEDS THE PnP APP REGISTRATION AND CERTIFICATE
     (ENTRAID_APP_ID + HALCOURT_PNP_CERT_PFX/PW, RUNBOOK Phase 4). Without them that script falls back to
@@ -238,5 +237,5 @@ foreach ($n in 1..$Count) {
 }
 
 Write-Host "`nSlices built. Still missing from each one: the SharePoint grounding site and the two agents"
-Write-Host '  (including the orphaned-connection agent owned by the disabled tom.dean) - see this header.'
+Write-Host '  (including the orphaned-connection agent owned by the departed tom.dean) - see this header.'
 Write-Host "Teardown: pwsh setup/scripts/08_provision_student_slices.ps1 -Estate $Estate -Destroy"

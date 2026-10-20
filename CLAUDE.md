@@ -13,6 +13,21 @@ answer key, and provisioning kit are facilitator-only and excluded from the site
 The narrative arc is **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE** against a fictional
 insurer, **Halcourt Mutual**.
 
+## Questions are questions
+
+When I ask a question, answer it. That is the only action.
+
+- A question is not permission to act. Do not edit files, run commands, or start a process
+  because a question mentioned it. "Do you understand how the process works?" gets an answer,
+  not the process.
+- Do not read files or do research to answer unless I asked for it. If you need to, ask first.
+- If you see a next step, offer it in one line after the answer. I decide whether you do it.
+- When you have asked for permission, only an explicit yes counts. Frustration, silence, or a change
+  of topic is not a yes.
+- During feedback capture — from when I start giving feedback on a page until I ask you to propose
+  changes — everything I say is feedback, including questions and requests like "check the links".
+  Record it; don't act on it or answer it unless I say I want an answer now.
+
 ## Environment
 
 `az` and `pac` sign-in state is **project-local**: `.azure/` and `.pac/` in the repo root (gitignored),
@@ -103,31 +118,39 @@ Collapsible detailed steps inside a Key Task:
 **Diagrams:** Mermaid in a fenced ```mermaid block (enabled in `_config.yml`).
 
 **Screenshots:** `media/ex##_t##_kt##_s##.png` (exercise, task, key-task, step). Reference with a
-relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`.
+relative path and alt text: `![Alt](../../media/ex04_t01_kt01_s01.png)`. A screenshot that hasn't been
+captured yet stays in the page as a commented-out image line, with a row in
+`setup/screenshot-capture-list.md`. Never remove or weaken a planned screenshot's reference because it
+hasn't been captured yet.
 
 **Navigation:** never hand-author next/prev links — `nav_order`/`parent`/`has_children` drive it.
 
 ## Key Patterns
 
 - **Single source of truth:** every fact about the estate lives in `AGENTS.md`. Lab pages send attendees
-  to *discover* facts; they never restate the answer key.
+  to *discover* facts and keep answers out of the visible text. A guided task may give a suggested answer
+  inside a collapsible block whose summary says it's a reveal (for example, "Reveal the suggested Scenario
+  A row").
 - **Spoiler discipline:** the strings `ANSWER KEY`, `PLANTED PROBLEM`, `FACILITATOR-ONLY`, `SPOILER`
   appear **only** in excluded files. CI (`.github/workflows/jekyll-gh-pages.yml`) fails the build if they
   (or a rendered `AGENTS/PLANNING/CLAUDE` page) reach `_site/`. Do not use these strings in `docs/`.
   Excluded files are listed in `_config.yml` `exclude:` and CI re-checks `_site/` every build, so VERIFY
   THE EXCLUDE LIST BEFORE EVERY DEPLOY — a prior workshop shipped its answer key to the live site.
-- **Canonical vs live names:** `AGENTS.md`, `docs/` and the artifact pack use canonical names
+- **Plain vs live names:** `AGENTS.md`, `docs/` and the artifact pack use plain names
   (`marcus.webb@halcourtmutual.onmicrosoft.com`, `Claims-Test`). A live build is an *estate* whose names
   carry an estate id and the tenant's own domain (`marcus.webb.mgray@<domain>`, `Claims-Test-mgray`) so
   several can share a tenant — rule in `AGENTS.md` → *Live estate naming*, code in `setup/scripts/_estate.ps1`.
-  Never hard-code live names in `docs/`.
+  Never hard-code live names in `docs/`, and never explain in `docs/` that the pack's account domain
+  differs from the tenant's: attendees only know the lab tenant, so there is nothing to explain.
 - **CLOSES IT / DENTS IT / MISSES IT** is the Module 5 verdict vocabulary and *is* allowed in published
   pages (attendees fill blank verdict cells). The *filled* answer matrix stays in `AGENTS.md`.
-- **Artifact-pack parity:** every analysis task must be completable from the exported **artifact pack**
-  (`worksheets/artifact-pack/`) and not only against a live tenant — attendees without a tenant still do
-  the whole lab. Before a task tells an attendee to read something from the portal, check the fact is in
-  the pack. Phase 7 of `setup/RUNBOOK.md` regenerates it; note the pack is *curated* canon, so parts of it
-  are hand-written and an export will not reproduce them.
+- **Artifact-pack parity:** every task must be completable with direct tenant access *or* from the
+  **artifact pack** (`worksheets/artifact-pack/`); the portal and APIs are the preferred path and the pack
+  is the fallback. Before a task tells an attendee to read something from the portal, check the fact is in
+  the pack. The pack holds only what someone with tenant access could find in the portal or APIs, plus
+  fields an analyst would write themselves (descriptions, notes, calls like `is_service_account`).
+  `worksheets/artifact-pack/blank/` holds the same five CSVs with headers only, for attendees to fill in
+  from the tenant. Phase 7 of `setup/RUNBOOK.md` regenerates the filled set.
 - **House voice:** direct, plainspoken, security-review tone. Name trust boundaries explicitly. Prefer
   "whose authority is this agent exercising?" framing.
 

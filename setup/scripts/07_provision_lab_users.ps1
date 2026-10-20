@@ -64,13 +64,23 @@ param(
   [string]$DomainSuffix,                               # default: the tenant's default verified domain
   [string]$InitialPassword   = 'Lab-Only-Passw0rd!',   # one shared password; rotate per delivery
   [switch]$UniquePasswords,                            # instead: a distinct typed-by-hand password each
-  [string[]]$Roles           = @('Power Platform Administrator'),  # see the header: needed for Lab 01-01
+  [string[]]$Roles           = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader'),
+                                                       # PPA: the /scopes/admin/ connection reads of Lab 01-01.
+                                                       # AI Reader: read-only; opens M365 admin center > Agents
+                                                       # (Agent 365) for 01-01 s3, 02-01 s4, 04-06 s1. Without it
+                                                       # that page is simply absent - verified 2026-10-17.
+                                                       # Security Reader: read-only; CA policies (05-04) and
+                                                       # Defender alerts / AI agents (05-07) - 2026-10-18.
+                                                       # Global Reader: read-only; Purview labels, classifiers,
+                                                       # DSPM for AI (05-06, 05-07) - 2026-10-18.
   [string]$LabGroup,                                   # CA-exclusion group; default Lab-Students-<estate>
   [switch]$ExcludeFromAdminMfa,                        # FALLBACK ONLY: weaken CA-Require-MFA-Admins so these
                                                        # accounts sign in password-only. Buys PPAC and nothing
                                                        # else - the other portals are gated by Microsoft, not
                                                        # by us. Default: attendees enrol MFA instead.
   [switch]$NoDataverseRole,                            # skip the per-environment Dataverse read role
+  [switch]$KeepExtraPrivileges,                        # report, but do not remove, privileges on the lab role that
+                                                       # the access model below does not list (default: remove)
   [string[]]$LicenseSku      = @('DEVELOPERPACK_V2_E5'),  # skuPartNumber(s), best effort, in order
   [switch]$NoLicense,                                  # skip licensing entirely
   [string]$CredentialCsv,                              # default: setup/lab-users-<estate>.local.csv
@@ -80,6 +90,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
+# The access model - role name, CA policy name, privileges with the exercise step each one serves,
+# companion roles, and Dataverse's unremovable baseline - lives in ONE file that this script and
+# 00b_preflight.ps1 both dot-source, so the enforcer and the checker cannot disagree. It is sourced here,
+# before anything that prints or uses $CaPolicyName.
+. (Join-Path $PSScriptRoot '_access_model.ps1')
 $Estate = Resolve-Estate $Estate
 
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) { throw 'This script needs the Azure CLI (az) - see scripts/env.sh.' }
@@ -156,7 +171,7 @@ function Get-LabGroupId([switch]$CreateIfMissing) {
 # This needs no extra sign-in. 00_conditional_access_baseline.ps1 connects separately because it needs
 # Policy.ReadWrite.ConditionalAccess, but az's delegated Directory.AccessAsUser.All already covers reading
 # and patching Conditional Access for a Global Administrator - verified 2026-10-13 (GET 200, PATCH 204).
-$CaPolicyName = 'CA-Require-MFA-Admins'
+# $CaPolicyName comes from _access_model.ps1
 $CaUri        = 'identity/conditionalAccess/policies'
 # Graph replaces 'conditions' wholesale on PATCH, so the policy is read, ONE field is changed, and the whole
 # conditions object goes back. Nulls are stripped because Graph rejects some of them on write.
@@ -286,6 +301,33 @@ $mfaRoleTemplates = @(
   'f28a1f50-f6e7-4571-818b-6a12f2af6b6c','fe930be7-5e62-47db-91af-98c3a49a38b1','11648597-926c-4cf3-9c36-bcebb0ba8dcc'
 )
 $templates = (Graph GET 'directoryRoleTemplates?$select=id,displayName').value
+# PIM-eligible roles need the kit's app-only identity: the az token lacks RoleEligibilitySchedule.* scopes.
+$EligibleRoleIds = [ordered]@{}; $RetiredRoleIds = [ordered]@{}; $pimToken = $null
+if (($EligibleRoles -or $RetiredEligibleRoles) -and -not $Destroy) {
+  . (Join-Path $PSScriptRoot '_labapp.ps1'); Ensure-LabApp -NoBilling
+  $pimToken = Get-AppToken 'https://graph.microsoft.com'
+  foreach ($n in $EligibleRoles) {
+    $t = $templates | Where-Object { $_.displayName -eq $n } | Select-Object -First 1
+    if ($t) { $EligibleRoleIds[$n] = $t.id } else { Write-Warning "No role template '$n' - not made eligible" }
+  }
+  foreach ($n in $RetiredEligibleRoles) {
+    $t = $templates | Where-Object { $_.displayName -eq $n } | Select-Object -First 1
+    if ($t) { $RetiredRoleIds[$n] = $t.id }
+  }
+}
+# A permission granted moments ago (Ensure-LabApp on a fresh tenant) can take minutes to reach the token
+# service: retry a 403 rather than fail every account.
+function Invoke-Pim([hashtable]$Body) {
+  for ($i = 0; ; $i++) {
+    try {
+      return Invoke-RestMethod -Method POST -Uri 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilityScheduleRequests' `
+        -Headers @{ Authorization = "Bearer $script:pimToken" } -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 5)
+    } catch {
+      if ($i -ge 5 -or "$_" -notmatch '403|Forbidden|Authorization_RequestDenied') { throw }
+      Start-Sleep 60; $script:pimToken = Get-AppToken 'https://graph.microsoft.com'
+    }
+  }
+}
 $roleTargets = @()
 $needsCaExclusion = $false
 foreach ($roleName in $Roles) {
@@ -297,7 +339,7 @@ foreach ($roleName in $Roles) {
     Write-Warning '  this tenant. Isolated training tenants only.'
     if ($ExcludeFromAdminMfa) {
       Write-Warning "  -ExcludeFromAdminMfa: weakening $CaPolicyName so they sign in password-only. That buys"
-      Write-Warning '  PPAC only - Entra, M365 and Exchange admin centers are gated by Microsoft regardless.'
+      Write-Warning '  the PPAC shell only - its data calls, Copilot Studio, Entra, M365 and Exchange still demand MFA (AADSTS50076).'
     } else {
       Write-Host   '  Attendees enrol MFA at first sign-in; no Conditional Access policy is changed.'
     }
@@ -361,6 +403,14 @@ if (-not $NoLicense) {
 $labGroupId = $null
 if ($needsCaExclusion -and $ExcludeFromAdminMfa) { $labGroupId = Get-LabGroupId -CreateIfMissing }
 
+# Resolve the agents' chat-audience groups once. They are estate groups built in Phase 2; missing ones are
+# reported, not created - an audience group this script made would not be the one the agents point at.
+$audienceGroupIds = @(foreach ($a in $AudienceGroups) {
+  $gn = Get-EstateName $a $Estate
+  $g  = @((Graph GET "groups?`$filter=displayName eq '$gn'&`$select=id").value) | Select-Object -First 1
+  if ($g) { [pscustomobject]@{ Name = $gn; Id = $g.id } } else { Write-Warning "Audience group $gn not found (Phase 2) - attendees will not be able to chat with the agents." }
+})
+
 $report = @()
 $provisioned = @()        # upn + object id per account, for the Dataverse role grant
 foreach ($i in 1..$Count) {
@@ -406,16 +456,47 @@ foreach ($i in 1..$Count) {
     if (-not $err -or $err -match 'already exist|added object references already exist') { $roleResults += $rt.Name }
     else { $roleResults += "$($rt.Name) FAILED"; Write-Warning "  $upn - role '$($rt.Name)': $err" }
   }
+  # PIM-eligible Exercise 05 roles (activated by the attendee, time-boxed). An existing eligibility comes back
+  # as RoleAssignmentExists - success on a re-run.
+  foreach ($er in $EligibleRoleIds.GetEnumerator()) {
+    try {
+      $b = @{ action = 'adminAssign'; principalId = $u.id; roleDefinitionId = $er.Value; directoryScopeId = '/'
+              justification = 'Halcourt lab: Exercise 05 only, activated on demand'
+              scheduleInfo = @{ startDateTime = (Get-Date).ToUniversalTime().ToString('o'); expiration = @{ type = 'noExpiration' } } }
+      Invoke-Pim $b | Out-Null
+      $roleResults += "$($er.Key) (eligible)"
+    } catch {
+      if ("$_" -match 'RoleAssignmentExists|already exists') { $roleResults += "$($er.Key) (eligible)" }
+      else { $roleResults += "$($er.Key) (eligible) FAILED"; Write-Warning "  $upn - eligibility '$($er.Key)': $($_.Exception.Message.Split([char]10)[0])" }
+    }
+  }
+  foreach ($er in $RetiredRoleIds.GetEnumerator()) {
+    try {
+      Invoke-Pim @{ action = 'adminRemove'; principalId = $u.id; roleDefinitionId = $er.Value; directoryScopeId = '/'
+                    justification = 'Halcourt lab: role retired from the access model' } | Out-Null
+      $roleResults += "$($er.Key) (eligibility removed)"
+    } catch {
+      if ("$_" -notmatch 'RoleAssignmentDoesNotExist|does not exist') { Write-Warning "  $upn - removing eligibility '$($er.Key)': $($_.Exception.Message.Split([char]10)[0])" }
+    }
+  }
   $row.roles = $roleResults -join '; '
 
   # Group membership is what the Conditional Access exclusion actually resolves to, so a failure here
   # means that account cannot sign in. Report it per-account rather than failing the run.
-  if (-not $labGroupId) { $row.group = 'n/a (MFA enrolment)' }
-  else {
+  $joined = @()
+  if ($labGroupId) {
     Try-Graph POST "groups/$labGroupId/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
-    if (-not $err -or $err -match 'already exist') { $row.group = $LabGroup }
-    else { $row.group = 'FAILED'; Write-Warning "  $upn - could not join $LabGroup (sign-in will fail): $err" }
+    if (-not $err -or $err -match 'already exist') { $joined += $LabGroup }
+    else { $joined += "$LabGroup FAILED"; Write-Warning "  $upn - could not join $LabGroup (sign-in will fail): $err" }
   }
+  # The agents' chat audience (see $AudienceGroups in _access_model.ps1): without it every attendee is
+  # refused by the agents Exercise 04 asks them to drive.
+  foreach ($ag in $audienceGroupIds) {
+    Try-Graph POST "groups/$($ag.Id)/members/`$ref" @{ '@odata.id' = "https://graph.microsoft.com/v1.0/directoryObjects/$($u.id)" } ([ref]$err) | Out-Null
+    if (-not $err -or $err -match 'already exist') { $joined += $ag.Name }
+    else { $joined += "$($ag.Name) FAILED"; Write-Warning "  $upn - could not join $($ag.Name) (cannot chat with the agents): $err" }
+  }
+  $row.group = if ($joined.Count) { $joined -join '; ' } else { 'none' }
 
   # Licensing: attempt, record, never stop the run. This is the column Jim asked for.
   if ($NoLicense)            { $row.license = 'skipped (-NoLicense)' }
@@ -464,20 +545,6 @@ if ($report.Count) {
 # 0x80042f09 "has not been assigned any roles" (verified 2026-10-13). The fix is a purpose-built role with
 # organization-scope READ on the few tables the exercise needs - never System Administrator, which would hand
 # attendees write access to the estate they are reviewing.
-$DvRoleName       = 'Lab Reviewer (read-only)'
-# The first five carry Lab 03-02 and 03-04. The rest are what the PPAC ROLE EDITOR asks for when an
-# attendee opens a role to read its scope - prvReadAttribute and prvReadTeam were named directly in its
-# 403 bodies, the others back the EntityDefinitions and recordfilters calls it makes alongside them.
-#
-# These do nothing on their own. Dataverse treats an account with NO LICENCE as access mode
-# '1 Administrative' and FILTERS the privileges its roles grant: a role holding 18 was applied as 15,
-# and the editor still reported a privilege missing by the exact id that had just been granted. The
-# role editor therefore needs a Dataverse-capable licence (E5 / Power Apps per user) on the lab
-# account, not more privileges. See reference/runbook-errata.md.
-$DvPrivilegeNames = @('prvReadUser', 'prvReadRole', 'prvReadOrganization', 'prvReadBusinessUnit', 'prvReadConnector',
-                      'prvReadAttribute', 'prvReadTeam', 'prvReadEntity', 'prvReadCustomization',
-                      'prvReadRecordFilter', 'prvReadEntityRecordFilter', 'prvReadRelationship')
-
 function Invoke-Dv([string]$OrgUrl, [string]$Method, [string]$Path, $Body) {
   $h = @{ Authorization = "Bearer $(Get-AdminToken $OrgUrl)"; Accept = 'application/json'
           'OData-MaxVersion' = '4.0'; 'OData-Version' = '4.0' }
@@ -494,7 +561,10 @@ function Get-EstateDataverseEnvironments {
   $envs = (Invoke-RestMethod -Method GET -Headers @{ Authorization = "Bearer $tok" } `
             -Uri 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01').value
   $names = 'Halcourt-Prod', 'Claims-Test', 'Maker-Sandbox' | ForEach-Object { Get-EstateName $_ $Estate }
-  @($envs | Where-Object { $_.properties.displayName -in $names } | ForEach-Object {
+  # Plus the tenant's default environment, which every estate shares: Expense Helper and Onboarding Guide
+  # live there, and Lab 04-04 KT02 s5 / 04-06 KT02 open them in Copilot Studio. Without the role an
+  # attendee's agent list there is simply empty (verified 2026-10-17).
+  @($envs | Where-Object { $_.properties.displayName -in $names -or $_.properties.isDefault } | ForEach-Object {
       [pscustomobject]@{ Name = $_.properties.displayName; Id = $_.name
                          OrgUrl = $_.properties.linkedEnvironmentMetadata.instanceApiUrl } } |
     Where-Object { $_.OrgUrl })
@@ -537,9 +607,11 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
   } catch {
     Write-Warning "  $($TargetEnv.Name): could not read current privileges - $($_.Exception.Message.Split([char]10)[0])"
   }
+  $wantIds = @{}                                   # privilegeid -> name, for every privilege the model lists
   $privs = @(foreach ($p in $DvPrivilegeNames) {
     $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
     if (-not $pv) { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped."; continue }
+    $wantIds["$($pv.privilegeid)"] = $p
     if (-not $held["$($pv.privilegeid)"]) { @{ PrivilegeId = $pv.privilegeid; Depth = 'Global' } }
   })
   if ($privs.Count) {
@@ -548,6 +620,43 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
   } else {
     Write-Host "  $($TargetEnv.Name): '$DvRoleName' already holds every listed privilege"
   }
+  # 2b. DRIFT. Anything on the role that the access model does not name was not put there by this script,
+  #     and a greenfield build will not have it - so the estate you tested is not the estate you deliver.
+  #     The live role had grown SharePoint WRITE privileges this way, under a name ending "(read-only)".
+  #     Report every extra by name, and remove it unless -KeepExtraPrivileges says otherwise.
+  $extraIds = @($held.Keys | Where-Object { -not $wantIds[$_] })
+  if ($extraIds.Count) {
+    $extraNames = @()
+    for ($i = 0; $i -lt $extraIds.Count; $i += 30) {
+      $ids = $extraIds[$i..([math]::Min($i + 29, $extraIds.Count - 1))]
+      $f   = ($ids | ForEach-Object { "privilegeid eq $_" }) -join ' or '
+      try { $extraNames += @((Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'name,privilegeid' $f) $null).value) } catch { }
+    }
+    # Dataverse stamps a baseline set onto EVERY custom role and refuses (400) to remove it. Those are
+    # not drift and are not this script's doing; report them once and move on.
+    $baseline = @($extraNames | Where-Object { $_.name -in $DvBaselinePrivileges })
+    $drift    = @($extraNames | Where-Object { $_.name -notin $DvBaselinePrivileges })
+    if ($baseline.Count) { Write-Host "  $($TargetEnv.Name): $($baseline.Count) Dataverse baseline privilege(s) on the role (every custom role gets these - not drift)" }
+    if ($drift.Count) {
+      $label = ($drift | ForEach-Object { $_.name } | Sort-Object) -join ', '
+      if ($KeepExtraPrivileges) {
+        Write-Warning "  $($TargetEnv.Name): '$DvRoleName' holds $($drift.Count) privilege(s) the access model does not list - KEPT (-KeepExtraPrivileges): $label"
+      } else {
+        $removed = 0; $refused = @()
+        foreach ($d in $drift) {
+          try { Invoke-Dv $TargetEnv.OrgUrl POST "roles($($role.roleid))/Microsoft.Dynamics.CRM.RemovePrivilegeRole" @{ PrivilegeId = $d.privilegeid } | Out-Null; $removed++ }
+          catch { $refused += $d.name }
+        }
+        if ($removed)       { Write-Host "  $($TargetEnv.Name): removed $removed drifted privilege(s) from '$DvRoleName'" }
+        if ($refused.Count) { Write-Warning "  $($TargetEnv.Name): Dataverse refused to remove: $($refused -join ', ') - if these appear on every fresh build, add them to `$DvBaselinePrivileges in _access_model.ps1" }
+      }
+    }
+  }
+  # Companion built-in roles, resolved once per environment.
+  $companions = @(foreach ($cn in $DvCompanionRoles) {
+    $cr = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$cn'") $null).value | Select-Object -First 1
+    if ($cr) { $cr } else { Write-Warning "  $($TargetEnv.Name): built-in role '$cn' not found - Copilot Studio agent pages will not open." }
+  })
   # 3. Assign it. Dataverse provisions the user record asynchronously, so give it a few seconds to appear.
   $granted = 0
   foreach ($u in $Users) {
@@ -561,20 +670,23 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
       Start-Sleep -Seconds 5
     }
     if (-not $su) { Write-Warning "  $($TargetEnv.Name): no user record for $($u.Upn) yet - re-run to finish the grant."; continue }
-    try {
-      Invoke-Dv $TargetEnv.OrgUrl POST "systemusers($($su.systemuserid))/systemuserroles_association/`$ref" `
-        @{ '@odata.id' = "$($TargetEnv.OrgUrl)/api/data/v9.2/roles($($role.roleid))" } | Out-Null
-      $granted++
-    } catch {
-      if ("$($_.Exception.Message)" -match 'duplicate|already|Cannot insert duplicate') { $granted++ }
-      else { Write-Warning "  $($TargetEnv.Name): role grant failed for $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])" }
+    foreach ($r in @($role) + $companions) {
+      try {
+        Invoke-Dv $TargetEnv.OrgUrl POST "systemusers($($su.systemuserid))/systemuserroles_association/`$ref" `
+          @{ '@odata.id' = "$($TargetEnv.OrgUrl)/api/data/v9.2/roles($($r.roleid))" } | Out-Null
+        if ($r.roleid -eq $role.roleid) { $granted++ }
+      } catch {
+        if ("$($_.Exception.Message)" -match 'duplicate|already|Cannot insert duplicate') { if ($r.roleid -eq $role.roleid) { $granted++ } }
+        else { Write-Warning "  $($TargetEnv.Name): '$($r.name)' grant failed for $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])" }
+      }
     }
   }
-  Write-Host "  $($TargetEnv.Name): $granted of $($Users.Count) account(s) hold '$DvRoleName'"
+  $with = if ($companions.Count) { ' + ' + (($companions | ForEach-Object { "'$($_.name)'" }) -join ', ') } else { '' }
+  Write-Host "  $($TargetEnv.Name): $granted of $($Users.Count) account(s) hold '$DvRoleName'$with"
 }
 
 if (-not $NoDataverseRole -and $provisioned.Count) {
-  Write-Host "`nGranting '$DvRoleName' in the estate's Dataverse environments (Lab 03-02 and 03-04 need it)..."
+  Write-Host "`nReconciling '$DvRoleName' (+ $($DvCompanionRoles -join ', ')) in the estate's Dataverse environments to the access model..."
   $dvEnvs = @(Get-EstateDataverseEnvironments)
   if (-not $dvEnvs) { Write-Warning '  no estate environments with Dataverse found - skipping.' }
   foreach ($e in $dvEnvs) {
