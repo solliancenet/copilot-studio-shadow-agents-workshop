@@ -53,14 +53,8 @@ count. Why, and how to work outside the container:
 ### Tenant capabilities the exercises assume
 
 Some things the exercises reach for cannot be provisioned by any script in this kit: the tenant either has
-them or it does not. `setup/scripts/00b_preflight.ps1` checks every one of them, plus the estate itself and
-the attendee access model, and names the exercise steps each check protects. **Run it the day before a
-delivery**, with the attendee count - no more attendees than you have Microsoft 365 seats to give them
-(see *Student licences* below):
-
-```bash
-pwsh setup/scripts/00b_preflight.ps1 -Attendees 14     # one per seat available: up to 14 in the build tenant
-```
+them or it does not. You check them the day before a delivery, in
+[Before delivery](#before-delivery--preflight-audit-and-exercise-04-notes).
 
 | Capability | Without it | Fallback |
 |---|---|---|
@@ -952,7 +946,22 @@ seconds**, far faster than Phase 3's wait suggests; and the first calls against 
 with *"Interactive authentication is needed"* while `az` settles a token for the new resource — it clears
 on its own, so the script retries rather than failing the slice.
 
-### Before delivery — audit and Exercise 04 notes
+### Before delivery — preflight, audit and Exercise 04 notes
+
+**The day before the delivery, run the preflight.** It checks the tenant capabilities in
+[Prerequisites](#tenant-capabilities-the-exercises-assume), the estate and the attendee access model, and
+names the exercise steps each failed check would break.
+
+1. In the dev container terminal, sign in as the tenant's global admin and set your estate id, as in
+   [Estates](#estates--choose-your-estate-id) steps 2 and 4.
+2. Run it with the attendee count — no more attendees than you have Microsoft 365 seats to give them
+   (see *Student licences* in Prerequisites):
+
+   ```bash
+   pwsh setup/scripts/00b_preflight.ps1 -Attendees 14     # one per seat available: up to 14 in the build tenant
+   ```
+
+3. Fix every FAIL before the delivery. A WARN names the fallback attendees will use.
 
 Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
 and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
