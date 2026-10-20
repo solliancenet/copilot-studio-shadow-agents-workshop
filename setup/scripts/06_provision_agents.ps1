@@ -538,10 +538,15 @@ function Provision-Agent([object]$A) {
     if ($link) {
       $url = "$link" -replace '^LINK='
       $links = Join-Path (Split-Path $PSScriptRoot -Parent) "teams-links-$Estate.local.csv"   # gitignored (*.local.csv)
-      $rows = @(if (Test-Path $links) { Import-Csv $links | Where-Object agent -ne $A.display })
-      @($rows) + [pscustomobject]@{ agent = $A.display; teams_link = $url } | Export-Csv -NoTypeInformation $links
+      # Keyed by $display, not $A.display: per-student slices share the manifest entry but not the agent.
+      # (A shared build also drops a row an earlier version keyed by $A.display.)
+      $rows = @(if (Test-Path $links) { Import-Csv $links | Where-Object { $_.agent -ne $display -and ($DisplayNameSuffix -or $_.agent -ne $A.display) } })
+      @($rows) + [pscustomobject]@{ agent = $display; teams_link = $url } | Export-Csv -NoTypeInformation $links
       Write-Host "    teams link -> $links"
-    } else { Write-Warning "    no Teams install link read for $($A.display) - copy it by hand: Channels > Teams > Availability options > Copy link" }
+    } else {
+      $why = ($r | Select-String '^LINKERROR=' | Select-Object -First 1)
+      Write-Warning "    no Teams install link read for $display$(if ($why) { " ($("$why" -replace '^LINKERROR='))" }) - copy it by hand: Channels > Teams > Availability options > Copy link"
+    }
   }
 
   # publishing right after create can be too soon; retry and confirm success.
