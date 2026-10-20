@@ -7,9 +7,12 @@ audit ingestion False, Claims-Test auditing off, so 05-07 had nothing to find):
 
   1. Microsoft Purview Audit - unified audit log ingestion (Exchange Online, app-only). Microsoft says a
      change takes up to 60 minutes; CopilotInteraction events start after that.
-  2. Dataverse auditing in Claims-Test-<estate>: the environment (auditing, read logs, user access) and the
-     Claim and Customer tables (changes, single-record reads, list reads). Read logs go to Purview Audit, not
-     the record's audit history - Scenario D's reads are found there.
+  2. Dataverse auditing in Claims-Test-<estate>: the environment, and the Claim and Customer tables. That
+     records CHANGES (create, update, delete, sharing) - what the 05-03 demonstration makes.
+
+Deliberately NOT turned on: read logs. Dataverse auditing never records a read, and activity logging (Read logs
+plus a table's read settings) reaches Purview only for PRODUCTION environments - Claims-Test is a sandbox, so
+Claims Copilot's reads are logged nowhere. 05-07 KT03 teaches that gap; don't work around it.
 
 Not scripted: Defender real-time protection for agents (05-07 KT06) - it needs the Microsoft 365 app
 connector and an Entra app registered in the Defender portal; RUNBOOK Phase 5b.
@@ -55,24 +58,22 @@ function Dv([string]$Method, [string]$Path, $Body, [hashtable]$Extra = @{}) {
   else { Invoke-RestMethod -Method $Method -Uri $u -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30) }
 }
 
-$o = (Dv GET 'organizations?$select=organizationid,isauditenabled,isreadauditenabled,isuseraccessauditenabled').value[0]
-if ($o.isauditenabled -and $o.isreadauditenabled -and $o.isuseraccessauditenabled) { Write-Host '   environment: already on' }
+$o = (Dv GET 'organizations?$select=organizationid,isauditenabled').value[0]
+if ($o.isauditenabled) { Write-Host '   environment: already on' }
 else {
-  Dv PATCH "organizations($($o.organizationid))" @{ isauditenabled = $true; isreadauditenabled = $true; isuseraccessauditenabled = $true } | Out-Null
-  Write-Host '   environment: auditing, read logs and user access logging on'
+  Dv PATCH "organizations($($o.organizationid))" @{ isauditenabled = $true } | Out-Null
+  Write-Host '   environment: auditing on'
 }
 
 # A table's audit flags are metadata: read the whole definition, set the flags, PUT it back, publish.
 $publish = @()
 foreach ($t in 'mm_claim', 'mm_customer') {
   $def = Dv GET "EntityDefinitions(LogicalName='$t')"
-  if ($def.IsAuditEnabled.Value -and $def.IsRetrieveAuditEnabled -and $def.IsRetrieveMultipleAuditEnabled) { Write-Host "   $t : already audited"; continue }
+  if ($def.IsAuditEnabled.Value) { Write-Host "   $t : already audited"; continue }
   $def.IsAuditEnabled.Value = $true
-  $def.IsRetrieveAuditEnabled = $true
-  $def.IsRetrieveMultipleAuditEnabled = $true
   $body = $def | Select-Object -Property * -ExcludeProperty '@odata.context'
   Dv PUT "EntityDefinitions($($def.MetadataId))" $body @{ 'MSCRM.MergeLabels' = 'true' } | Out-Null
-  $publish += $t; Write-Host "   $t : changes, reads and list reads audited"
+  $publish += $t; Write-Host "   $t : changes audited"
 }
 if ($publish) {
   $xml = '<importexportxml><entities>' + (($publish | ForEach-Object { "<entity>$_</entity>" }) -join '') + '</entities></importexportxml>'
@@ -83,10 +84,10 @@ if ($publish) {
 # ---- check ----------------------------------------------------------------------------------------------
 # Metadata reads can lag the publish (seen: one table read back False/False/False right after it): retry.
 for ($i = 0; $i -lt 6; $i++) {
-  $o = (Dv GET 'organizations?$select=isauditenabled,isreadauditenabled,isuseraccessauditenabled').value[0]
-  $tabs = foreach ($t in 'mm_claim', 'mm_customer') { $d = Dv GET "EntityDefinitions(LogicalName='$t')?`$select=IsAuditEnabled,IsRetrieveAuditEnabled,IsRetrieveMultipleAuditEnabled"; "$t=$($d.IsAuditEnabled.Value)/$($d.IsRetrieveAuditEnabled)/$($d.IsRetrieveMultipleAuditEnabled)" }
+  $o = (Dv GET 'organizations?$select=isauditenabled').value[0]
+  $tabs = foreach ($t in 'mm_claim', 'mm_customer') { $d = Dv GET "EntityDefinitions(LogicalName='$t')?`$select=IsAuditEnabled"; "$t=$($d.IsAuditEnabled.Value)" }
   if (-not ($tabs -match 'False')) { break }
   Start-Sleep 15
 }
-Write-Host "Check: environment audit=$($o.isauditenabled) reads=$($o.isreadauditenabled) access=$($o.isuseraccessauditenabled); tables (changes/read/list) $($tabs -join ', ')"
+Write-Host "Check: environment audit=$($o.isauditenabled); tables (changes) $($tabs -join ', ')"
 Write-Host 'Defender real-time protection is a portal step - RUNBOOK Phase 5b.'

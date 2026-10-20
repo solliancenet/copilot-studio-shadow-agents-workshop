@@ -579,9 +579,12 @@ pwsh setup/scripts/04b_provision_audit.ps1     # rerun-safe; ends with a Check l
 
 | What | Where it shows in 05-07 |
 |---|---|
-| Purview Audit: unified audit log ingestion (up to **60 minutes** to start recording) | `CopilotInteraction` events (KT02, KT05); the Dataverse read logs |
-| `Claims-Test-<estate>`: auditing, read logs, user access logging | the environment's audit settings (KT01) |
-| `mm_claim`, `mm_customer`: changes, single reads, list reads | a claim's audit history (changes); Purview Audit (reads - Scenario D's lookups) |
+| Purview Audit: unified audit log ingestion (up to **60 minutes** to start recording; it was **off** on this tenant, not on by default) | `CopilotInteraction` events (KT02, KT04, KT05) |
+| `Claims-Test-<estate>`: environment auditing | the environment's audit settings (KT01) |
+| `mm_claim`, `mm_customer`: changes | a claim's Audit History (changes only - KT03 finds no read there, which is the point) |
+
+It deliberately leaves **read logs off**: reads reach Purview only for production environments, and
+`Claims-Test` is a sandbox, so there is nothing to turn on (see the pre-delivery audit checklist).
 
 **Not scripted yet - Defender real-time protection for agents** (KT01, KT06). It needs the Microsoft 365
 app connector in Defender for Cloud Apps and an Entra app registered for the agents' runtime protection;
@@ -955,17 +958,18 @@ on its own, so the script retries rather than failing the slice.
 Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
 and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
 
-- [ ] **Dataverse auditing in `Claims-Test-<estate>`.** PPAC → the environment → **Settings** → **Audit and
-      logs** → **Audit settings**: turn auditing on for the environment. Then turn on auditing for the `Claim`
-      and `Customer` tables, each in the table's properties. This records **changes** (create, update,
-      delete, sharing), which is what the 05-03 demonstration makes.
+- [ ] **Dataverse auditing in `Claims-Test-<estate>`** - Phase 5b's `04b_provision_audit.ps1` turns it on
+      for the environment and the `Claim` and `Customer` tables (by hand: PPAC → the environment →
+      **Settings** → **Audit and logs** → **Audit settings**, then each table's properties). This records
+      **changes** (create, update, delete, sharing), which is what the 05-03 demonstration makes.
 - [ ] **No setting makes Claims Copilot's reads visible in `Claims-Test`.** Dataverse auditing never logs a
       read, so a claim's Audit History shows none. Reads are logged only by activity logging (the **Read
       logs** setting plus the table's single- and multiple-record settings), and those events reach Purview
       only for production environments. `Claims-Test` is a sandbox. Don't try to work around it: 05-07 KT03
       now teaches that gap instead of relying on a read event.
-- [ ] **Purview Audit is on.** Purview portal → **Audit** (it is on by default; a banner offers to start
-      recording if it is not).
+- [ ] **Purview Audit is on** - also Phase 5b. It is **not** always on by default: on this developer tenant
+      unified audit ingestion was off (2026-10-20), and only activity after it is switched on (allow up to an
+      hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
 - [ ] **Defender real-time protection for agents** is not a pre-delivery step: you switch it on during
       05-07 and back afterwards, per the demonstration table (Exercise 05 demonstrations, above).
 - [ ] **Open item: attendees cannot read audit history yet.** 05-07 KT03 has each attendee open a claim's
