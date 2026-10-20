@@ -1429,3 +1429,15 @@ which still has attendees run each step. The facilitator's audit reach is the Pu
 PIM-eligible Security Administrator - also what the Defender step needs. The lab app can't add Purview
 role-group members (`Add-RoleGroupMember` exposes no `-Identity` to it), so DSPM content (`Data Security AI
 Content Viewers`) is not granted yet.
+
+### Phase 5b · Defender real-time protection needs an Agent 365 licence (2026-10-20)
+
+**Symptom.** As the facilitator with Security Administrator activated (PIM), Defender → **Settings → Security
+for AI** said *"You don't have permission to view this page"*, and the Cloud Apps settings showed *"Hang on!
+We're preparing new spaces for your data and connecting them"*. **Evidence.** `subscribedSkus`:
+`DEVELOPERPACK_V2_E5` and `FLOW_FREE` only. Learn (*Transition agent security to Agent 365*): from 1 July 2026,
+AI agent security for Copilot Studio requires a Microsoft Agent 365 licence. **Fix.** None in the kit: a
+licence (an admin-led trial is 25 seats for 30 days) is a commercial decision, and Defender for Cloud Apps has
+to finish initialising (hours, started by the first admin visit). RUNBOOK Phase 5b lists the setup for when
+both are in place. Also seen: a PIM deactivation can silently miss - check the role's members afterwards and
+deactivate again.
