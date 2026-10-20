@@ -33,10 +33,11 @@ $DvRoleName   = 'Lab Reviewer (read-only)'
 # Entra directory roles every attendee holds (07 -Roles defaults to these).
 #   Power Platform Administrator - the /scopes/admin/ connection reads (01-01); tenant-wide, MFA-gated.
 #   AI Reader - read-only; M365 admin center > Agents (Agent 365): All agents, Agent map, Tools, Settings,
-#               for 01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1. Without it the Agents page is ABSENT from the
-#               nav, which looks exactly like a tenant that lacks Agent 365 (it was misreported as such until
-#               2026-10-17). Agent 365 itself needs no service plan in the SKU list: the tenant shows the
-#               'Agent 365' service principal and the page renders for AI Reader on DEVELOPERPACK_V2_E5.
+#               for 01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1, 05-05 KT01. Without it the Agents page is
+#               ABSENT from the nav, which looks exactly like a tenant that lacks Agent 365 (it was
+#               misreported as such until 2026-10-17). Agent 365 itself needs no service plan in the SKU
+#               list: the tenant shows the 'Agent 365' service principal and the page renders for AI Reader
+#               on DEVELOPERPACK_V2_E5.
 #   Security Reader - read-only; Entra > Conditional Access policies (05-04 KT01) and the Defender portal's
 #               Alerts, Incidents and AI agents (05-07). Without it CA says "You don't have access" and Defender
 #               shows only Audit and Settings (verified 2026-10-18). It does NOT reach Purview, whose role

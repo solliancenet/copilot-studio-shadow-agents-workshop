@@ -30,8 +30,9 @@ fixing anything.
 You work in two places, and the difference matters all day:
 
 - **The shared estate:** Halcourt Mutual's environments, agents, connections and identities, built once and
-  shared by everyone in the room. You *observe* it. Where Exercise 05 configures a control on it, your
-  facilitator makes the change once, for the room, and you retest.
+  shared by everyone in the room. You *observe* it: your lab account has the access the tasks need to read
+  it, and you don't change it. In Exercise 05, your facilitator applies each control to it, once, for the
+  room, and you retest.
 - **Your own lab environment:** an environment provisioned for you alone, named `Lab-<estate_id>-NN`. It
   carries a copy of the Claims Dataverse set-up: the `Claim` and `Customer` tables with their seeded rows,
   and the same role on the same service account. You are its **administrator**. Exercise 03 sends you there

@@ -65,9 +65,9 @@ Check 'E5 seats for attendee accounts' 'Teams chat with the agents (04-01, 04-02
   else { Result 'WARN' "$free free of $($e5.prepaidUnits.enabled), $Attendees attendee(s). Unlicensed attendees cannot use Teams (no chat with the agents) and cannot open roles or agent pages in the shared estate." }
 }
 
-Check 'Agent 365 in the M365 admin center' '01-01 KT01 s3, 02-01 KT01 s4, 04-06 KT01 s1' {
+Check 'Agent 365 in the M365 admin center' '01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1, 05-05 KT01' {
   $sp = (Get-Json "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=displayName eq 'Agent 365'&`$select=appId" 'https://graph.microsoft.com').value
-  if (-not $sp) { return Result 'WARN' "no 'Agent 365' service principal - the three registry steps fall back to agents-export.csv" }
+  if (-not $sp) { return Result 'WARN' "no 'Agent 365' service principal - the registry steps fall back to agents-export.csv" }
   Result 'PASS' "present - attendees need the AI Reader role to see M365 admin center > Agents (checked below)"
 }
 
