@@ -28,8 +28,12 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')          # also the tenant guard
 $Estate = Resolve-Estate $Estate
-if (-not (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "ex05-state/$Estate/claims-roles.json"))) {
-  throw "No ClaimsRoles snapshot - run 09_ex05_demo_state.ps1 -Action Snapshot -Control ClaimsRoles first, or the demonstration can't be undone."
+# The restore puts back exactly what the snapshot holds, so it must describe the estate as it is NOW: a
+# missing snapshot, one from an earlier delivery, or one an older 09 wrote (no record owners, or no owner
+# type) would leave the demonstration half-undone or roll back later changes. Diff exits 1 on any difference.
+& pwsh -NoProfile -File (Join-Path $PSScriptRoot '09_ex05_demo_state.ps1') -Action Diff -Control ClaimsRoles -Estate $Estate
+if ($LASTEXITCODE) {
+  throw "The ClaimsRoles snapshot is missing or doesn't match Claims-Test now - run 09_ex05_demo_state.ps1 -Action Snapshot -Control ClaimsRoles first, or the demonstration can't be undone."
 }
 
 $PP = 'https://service.powerapps.com/'
