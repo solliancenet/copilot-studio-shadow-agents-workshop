@@ -527,12 +527,25 @@ function Provision-Agent([object]$A) {
       $cfg = (DvAs $E $alias GET "bots($($bot.botid))?`$select=configuration").configuration
       $cfg -and @(($cfg | ConvertFrom-Json).channels | ForEach-Object { $_.channelId }) -contains 'msteams'
     }
-    if (& $hasTeams) { Write-Host '    teams channel: already on' }
-    else {
-      $r = python3 (Join-Path $PSScriptRoot 'lib/enable_teams_channel.py') --upn (Get-Upn $alias) --password $LabPassword --env $E.Id --bot $bot.botid 2>&1
-      $code = $LASTEXITCODE
-      if (& $hasTeams) { Write-Host '    teams channel: added' }
-      else { Write-Warning "    teams channel NOT added (exit $code): $($r | Select-Object -Last 1) - attendees can't chat with $($A.display) in Teams. Screenshot: /tmp/enable_teams_channel_error.png" }
+    $before = & $hasTeams
+    # Run it even when the channel is on: it also reads the agent's Teams INSTALL link (Availability options >
+    # Copy link), the one attendees open - a plain chat link is refused ("You do not have permission").
+    $r = python3 (Join-Path $PSScriptRoot 'lib/enable_teams_channel.py') --upn (Get-Upn $alias) --password $LabPassword --env $E.Id --bot $bot.botid 2>&1
+    $code = $LASTEXITCODE
+    if (& $hasTeams) { Write-Host "    teams channel: $(if ($before) { 'already on' } else { 'added' })" }
+    else { Write-Warning "    teams channel NOT added (exit $code): $($r | Select-Object -Last 1) - attendees can't chat with $($A.display) in Teams. Screenshot: /tmp/enable_teams_channel_error.png" }
+    $link = ($r | Select-String '^LINK=' | Select-Object -First 1)
+    if ($link) {
+      $url = "$link" -replace '^LINK='
+      $links = Join-Path (Split-Path $PSScriptRoot -Parent) "teams-links-$Estate.local.csv"   # gitignored (*.local.csv)
+      # Keyed by $display, not $A.display: per-student slices share the manifest entry but not the agent.
+      # (A shared build also drops a row an earlier version keyed by $A.display.)
+      $rows = @(if (Test-Path $links) { Import-Csv $links | Where-Object { $_.agent -ne $display -and ($DisplayNameSuffix -or $_.agent -ne $A.display) } })
+      @($rows) + [pscustomobject]@{ agent = $display; teams_link = $url } | Export-Csv -NoTypeInformation $links
+      Write-Host "    teams link -> $links"
+    } else {
+      $why = ($r | Select-String '^LINKERROR=' | Select-Object -First 1)
+      Write-Warning "    no Teams install link read for $display$(if ($why) { " ($("$why" -replace '^LINKERROR='))" }) - copy it by hand: Channels > Teams > Availability options > Copy link"
     }
   }
 

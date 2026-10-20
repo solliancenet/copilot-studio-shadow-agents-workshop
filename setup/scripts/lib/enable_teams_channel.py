@@ -9,7 +9,9 @@ through the owner's sign-in and the agent's Channels page.
 
   python3 enable_teams_channel.py --upn <owner-upn> --password <pw> --env <environment-id> --bot <bot-id>
 
-Prints OK=added | NOTFOUND=<what> (exit 2) | ERROR=<message> (exit 1). It never reports success it didn't
+Prints OK=added | NOTFOUND=<what> (exit 2) | ERROR=<message> (exit 1), and on success LINK=<url>: the
+agent's Teams install link (Availability options > Copy link) - the link attendees open; a plain chat link
+says "You do not have permission to use this app here". It never reports success it didn't
 see: a missing "Add channel" button may mean the channel is on, or that the page didn't load, so the caller
 (06) checks the bot record's channels instead. The caller publishes afterwards.
 Lab-only: the password is the shared lab password, passed by the engine; never use against a real tenant.
@@ -57,7 +59,8 @@ def main():
     a = ap.parse_args()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_context(locale="en-US", viewport={"width": 1600, "height": 1000}).new_page()
+        page = browser.new_context(locale="en-US", viewport={"width": 1600, "height": 1000},
+                                   permissions=["clipboard-read", "clipboard-write"]).new_page()
         page.set_default_timeout(30000)
         try:
             page.goto(CS, wait_until="commit", timeout=90000)
@@ -79,15 +82,25 @@ def main():
             page.locator("text=Microsoft Teams >> visible=true").first.click()
             page.wait_for_timeout(8000)
             step = "add the channel"
+            def print_link():
+                # Availability options > Copy link puts the install link on the clipboard.
+                try:
+                    page.get_by_text(re.compile("Availability options", re.I)).first.click(); page.wait_for_timeout(5000)
+                    page.get_by_role("button", name=re.compile("Copy link", re.I)).first.click(); page.wait_for_timeout(1500)
+                    link = page.evaluate("navigator.clipboard.readText()")
+                    if link.startswith("https://teams.microsoft.com/"): print(f"LINK={link}")
+                except Exception as e:
+                    print("LINKERROR=" + (str(e).splitlines() or ["?"])[0][:120])
             add = page.get_by_role("button", name=re.compile(r"^\s*Add channel\s*$"))
             if not add.count():
+                print_link()
                 page.screenshot(path="/tmp/enable_teams_channel_error.png")
                 print("NOTFOUND=no Add channel button (already on, or the panel didn't open)"); return 2
             add.first.click()
             for _ in range(30):
                 page.wait_for_timeout(3000)
                 if not page.get_by_role("button", name=re.compile(r"^\s*Add channel\s*$")).count():
-                    print("OK=added"); return 0
+                    print("OK=added"); print_link(); return 0
             print("ERROR=Add channel did not complete"); return 1
         except Exception as e:
             page.screenshot(path="/tmp/enable_teams_channel_error.png")

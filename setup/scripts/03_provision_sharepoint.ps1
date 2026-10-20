@@ -272,6 +272,12 @@ foreach ($canon in 'HR-Team', 'Claims-Adjusters', 'All-Employees') {
 }
 # Members edit, visitors read. Security groups join a site's SharePoint groups by claim.
 function Grant-SiteAccess([string]$MemberGroup, [string]$ReaderGroup) {
+  # A PUBLIC group site puts "Everyone except external users" in Members - and Leadership/ keeps Members, so
+  # every employee could open the comp file and Scenario B's asymmetry (the agent reads it, the employee
+  # can't) was gone (found 2026-10-19). The groups are created Private now; strip the claim on any site that
+  # still has it.
+  $everyone = Get-PnPGroupMember -Group (Get-PnPGroup -AssociatedMemberGroup) | Where-Object { $_.LoginName -like 'c:0-.f|rolemanager|spo-grid-all-users/*' }
+  foreach ($e in $everyone) { Remove-PnPGroupMember -Group (Get-PnPGroup -AssociatedMemberGroup) -LoginName $e.LoginName; Write-Host "  access: removed $($e.Title) from members" }
   Add-PnPGroupMember -Group (Get-PnPGroup -AssociatedMemberGroup) -LoginName "c:0t.c|tenant|$($groupIds[$MemberGroup])"
   Add-PnPGroupMember -Group (Get-PnPGroup -AssociatedVisitorGroup) -LoginName "c:0t.c|tenant|$($groupIds[$ReaderGroup])"
   Write-Host "  access: members $(Get-EstateName $MemberGroup $Estate), visitors (read) $(Get-EstateName $ReaderGroup $Estate)"
@@ -296,6 +302,23 @@ foreach ($site in @(
     @{ Alias = $claimsAlias; Url = $claimsUrl; Title = (Get-EstateDisplayName 'Claims Knowledge' $Estate) })) {
   if (Test-SiteExists $site.Url) {
     Write-Host "  $($site.Alias) already exists — skipping create."
+    # A site built before the groups were created Private still has a PUBLIC group, which any employee can
+    # join without approval - and a member opens Leadership/ (see Grant-SiteAccess). Make it Private too.
+    if ($AppOnly) {
+      $g = az rest --method GET --url "https://graph.microsoft.com/v1.0/groups?`$filter=mailNickname eq '$($site.Alias)'&`$select=id,visibility" --query 'value[0]' -o json | ConvertFrom-Json
+      if ($g -and $g.visibility -ne 'Private') {
+        $gf = New-TemporaryFile; '{"visibility":"Private"}' | Set-Content $gf -Encoding utf8
+        az rest --method PATCH --url "https://graph.microsoft.com/v1.0/groups/$($g.id)" --headers 'Content-Type=application/json' --body "@$gf" -o none
+        Remove-Item $gf
+        Write-Host "  $($site.Alias): backing group was $($g.visibility) - now Private"
+      }
+    } else {
+      $g = Get-PnPMicrosoft365Group -Identity $site.Alias -ErrorAction SilentlyContinue
+      if ($g -and $g.Visibility -ne 'Private') {
+        Set-PnPMicrosoft365Group -Identity $g.Id -IsPrivate:$true
+        Write-Host "  $($site.Alias): backing group was $($g.Visibility) - now Private"
+      }
+    }
     continue
   }
   Write-Host "  Creating team site $($site.Url)"
@@ -307,13 +330,13 @@ foreach ($site in @(
     $ownerId = (az ad user show --id $SiteOwner --query id -o tsv 2>$null); if ($ownerId) { $ownerId = $ownerId.Trim() }
     if (-not $ownerId) { throw "Site owner '$SiteOwner' not found in the directory." }
     $gbody = @{ displayName = $site.Title; mailNickname = $site.Alias; mailEnabled = $true
-                securityEnabled = $false; groupTypes = @('Unified')
+                securityEnabled = $false; groupTypes = @('Unified'); visibility = 'Private'   # see Grant-SiteAccess
                 'owners@odata.bind' = @("https://graph.microsoft.com/v1.0/users/$ownerId") } | ConvertTo-Json -Depth 6
     $gf = New-TemporaryFile; $gbody | Set-Content $gf -Encoding utf8
     az rest --method POST --url 'https://graph.microsoft.com/v1.0/groups' --headers 'Content-Type=application/json' --body "@$gf" -o none
     Remove-Item $gf
   } else {
-    New-PnPSite -Type TeamSite -Title $site.Title -Alias $site.Alias | Out-Null
+    New-PnPSite -Type TeamSite -Title $site.Title -Alias $site.Alias | Out-Null   # private unless -IsPublic
   }
 }
 # A new group site provisions asynchronously and, on a fresh tenant, can take well over 5 minutes.

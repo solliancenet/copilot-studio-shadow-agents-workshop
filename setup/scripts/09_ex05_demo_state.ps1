@@ -182,10 +182,17 @@ function Claims-Read { $E = Env (Get-EstateName 'Claims-Test' $Estate)
     roles = @((Dv $E GET "systemusers($su)/systemuserroles_association?`$select=roleid").value | ForEach-Object roleid | Sort-Object)
     teams = @((Dv $E GET "systemusers($su)/teammembership_association?`$select=teamid").value | ForEach-Object teamid | Sort-Object)
     custom = @((Dv $E GET 'roles?$select=roleid&$filter=ismanaged eq false').value | ForEach-Object roleid | Sort-Object)
-    self   = @(Self-Roles $E) } }
+    self   = @(Self-Roles $E)
+    # Record owners: a fixed-subset demonstration (05-03) reassigns claims and customers to svc-claims.
+    # es|id|owner|user or team. The owner TYPE comes from _owningteam_value: the lookup's logical-name
+    # annotation isn't returned without a Prefer header, and a team restored as /systemusers(...) fails.
+    owners = @($(foreach ($es in 'mm_claims', 'mm_customers') {
+      $key = ($es.TrimEnd('s')) + 'id'
+      (Dv $E GET "$es`?`$select=$key,_ownerid_value,_owningteam_value").value | ForEach-Object {
+        "$es|$($_.$key)|$($_.'_ownerid_value')|$(if ($_.'_owningteam_value') { 'team' } else { 'user' })" } }) | Sort-Object) } }
 function Claims-Snapshot { $c = Claims-Read; Save 'claims-roles' $c; Write-Host "  svc-claims: $($c.roles.Count) roles, $($c.teams.Count) teams; $($c.custom.Count) unmanaged roles in Claims-Test" }
 function Claims-Diff { $w = Load 'claims-roles'; $h = Claims-Read
-  $d = @(Compare-Object @($w.roles) @($h.roles)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.custom) @($h.custom)) + @(Compare-Object @($w.self) @($h.self))
+  $d = @(Compare-Object @($w.roles) @($h.roles)) + @(Compare-Object @($w.teams) @($h.teams)) + @(Compare-Object @($w.custom) @($h.custom)) + @(Compare-Object @($w.self) @($h.self)) + @(Compare-Object @($w.owners) @($h.owners))
   if ($d.Count) { $d | ForEach-Object { Write-Host "  $(if ($_.SideIndicator -eq '=>') {'ADDED  '} else {'REMOVED'}) $($_.InputObject)" } } else { Write-Host '  svc-claims roles: same as the snapshot' }
   $d.Count }
 function Claims-Restore { $E = Env (Get-EstateName 'Claims-Test' $Estate); $w = Load 'claims-roles'; $h = Claims-Read; $su = $w.user
@@ -194,6 +201,14 @@ function Claims-Restore { $E = Env (Get-EstateName 'Claims-Test' $Estate); $w = 
   foreach ($t in @($h.teams) | Where-Object { $_ -notin $w.teams }) { Dv $E DELETE "teams($t)/teammembership_association($su)/`$ref" | Out-Null }
   foreach ($t in @($w.teams) | Where-Object { $_ -notin $h.teams }) { Dv $E POST "teams($t)/teammembership_association/`$ref" @{ '@odata.id' = "$($E.Org)/api/data/v9.2/systemusers($su)" } | Out-Null }
   Self-Restore $E $w.self
+  # Record owners back (svc-claims has its original role again by here). Read the current owners once.
+  $now = @((Claims-Read).owners)
+  foreach ($o in @($w.owners) | Where-Object { $_ -notin $now }) {
+    $es, $id, $owner, $type = $o -split '\|'
+    $set = if ($type -eq 'team') { 'teams' } else { 'systemusers' }
+    try { Dv $E PATCH "$es($id)" @{ 'ownerid@odata.bind' = "/$set($owner)" } | Out-Null; Write-Host "  owner restored: $es $id" }
+    catch { Write-Warning "  could not restore the owner of $es $id : $($_.Exception.Message.Split([char]10)[0])" }
+  }
   # Roles the demonstration created (the scoped role), once nobody holds them.
   foreach ($r in @((Claims-Read).custom) | Where-Object { $_ -notin $w.custom }) { try { Dv $E DELETE "roles($r)" | Out-Null; Write-Host "  deleted role $r (created by the demonstration)" } catch { Write-Warning "  could not delete role $r : $($_.Exception.Message.Split([char]10)[0])" } }
   (Claims-Diff) -eq 0 }
@@ -206,7 +221,7 @@ foreach ($c in $controls) {
   $prefix = @{ Dlp = 'Dlp'; DefaultMakers = 'Makers'; ClaimsRoles = 'Claims' }[$c]
   switch ($Action) {
     'Snapshot' { & "$prefix-Snapshot" }
-    'Diff'     { [void](& "$prefix-Diff") }
+    'Diff'     { if ((& "$prefix-Diff") -gt 0) { $ok = $false } }      # exit 1 when anything differs, like diff(1)
     'Restore'  { if (-not (& "$prefix-Restore")) { $ok = $false; Write-Warning "  $c does NOT match its snapshot after restore - see the lines above." } else { Write-Host "  $c matches its snapshot." } }
   }
 }

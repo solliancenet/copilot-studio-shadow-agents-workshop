@@ -1352,3 +1352,35 @@ back doesn't.
 **Fix.** `09` re-adds each user separately and reports the ones it can't; a lockdown demonstration removes only
 enabled, current accounts. The 12 stale records lost the role (harmless: they can't sign in) and the
 snapshot was retaken.
+
+### Phase 4 · public group sites gave every employee the comp file (2026-10-19)
+
+**Symptom.** As student03 (an ordinary employee), `Leadership/2026-comp-bands.xlsx` opened directly - so
+Benefits Buddy disclosing it proved nothing, and Scenario B's asymmetry was gone.
+**Evidence.** 03 created both sites' M365 groups through Graph without `visibility`, so they were **Public**,
+and SharePoint put `Everyone except external users` in each site's Members group. `Leadership/` keeps
+Members. Claims-Knowledge had the same grant: every employee could edit the claims knowledge base.
+**Fix.** Groups are created `Private`; on a site that already exists 03 sets the backing group `Private` (a
+public group lets any employee join and become a member), and `Grant-SiteAccess` strips the Everyone claim
+from Members - both, so a re-run repairs an existing site. Live: both groups set Private, the claim removed from both sites. After the fix
+student03 gets SharePoint's access-denied page for the file, and Benefits Buddy, asked in Teams as student03,
+**still** returns the comp table - re-asked 35 minutes later, after the index had time to catch up, with
+the same result. The agent reads what the employee can't: Scenario B's asymmetry is real once the site is
+private. Test path: Teams web as student03 via the agent's install link (06 now saves it).
+
+### Exercise 05-03 · narrowing Benefits Buddy's grounding did not stop the leak within an hour (2026-10-20)
+
+**What was done.** As the owner (Marcus), Benefits Buddy's whole-site `HR-Benefits` knowledge source was
+replaced by the single file `Shared Documents/Open-Enrollment-FAQ.docx` and the agent was published (09:35;
+Copilot Studio: "Your users will see the new content soon"). The knowledge list showed only the FAQ.
+**Observed.** As student03 in Teams (who gets access-denied on the comp file itself), after "Start over":
+10:08 and 10:40 - both times Benefits Buddy returned the full 2026 comp table, citing `2026-comp-bands.xlsx`.
+A recording run the same morning saw the same at +10 minutes. Restored afterwards with
+`06 -Agents benefits-buddy`.
+**Why it matters.** 05-03's suggested verdict for Least privilege x B is "CLOSES IT when the retest shows the
+comp file no longer appears". On this platform the retest, run in the session, will show it still
+appearing: removing a source from an agent does not promptly remove what was indexed from it. The honest
+in-session verdict is DENTS IT at best ("the change is right, but its effect is not observable within the
+lab"), or the lab should scope the reader's SharePoint permission instead - the route 05-03 also offers - and
+retest that. **Decision for the exercise owner.** Not root-caused: whether the answer comes from a retained
+index, a cached published version, or another grounding path is open.
