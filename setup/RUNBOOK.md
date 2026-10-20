@@ -841,7 +841,7 @@ pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at
 | 05-03 | Benefits Buddy's Knowledge URL narrowed from the whole site to the open-enrollment FAQ, as its owner (Marcus) - the facilitator account can't open another person's agent - then published; a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | knowledge: `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
 | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
 | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-| 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
+| 05-07 | the whole task is on the facilitator's screen. Activate **Security Administrator** (PIM, 1 hour) - its Purview role group carries Audit Logs, and it is what the Defender setting needs. Purview Audit searches (`CopilotInteraction`; Dataverse reads on the claim); a changed claim's audit history needs **Add me** in `Claims-Test` (snapshot `-Control ClaimsRoles` first); Defender: real-time protection for agents on | `-Action Restore -Control ClaimsRoles` (drops the Add me role); Defender **by hand**: back to its prior state; let the PIM role lapse or deactivate it |
 
 The default environment and the tenant's Defender setting are shared with every estate in the tenant:
 coordinate with any other facilitator delivering at the same time.
