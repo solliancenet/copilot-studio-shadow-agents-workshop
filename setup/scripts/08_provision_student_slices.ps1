@@ -1,11 +1,14 @@
 <#
-FACILITATOR-ONLY. Phase 8c - per-student slices, so every attendee can do Module 5 hands-on.
+FACILITATOR-ONLY. Phase 8c - per-student slices, so every attendee can open the svc-claims role as System
+Administrator in 03-02 and 03-04.
 
-Module 5 asks attendees to APPLY controls - a scoped Dataverse role, row-level security, a DLP policy,
-orphan remediation - and then retest. Those are environment-scoped changes: the first attendee to enable
-row-level security removes the "before" state for everyone else, and the exercise's whole method is that
-each attendee reaches their own CLOSES IT / DENTS IT / MISSES IT verdict. One shared estate cannot carry
-that. This script gives each attendee an environment of their own with a vulnerable slice in it.
+The PPAC role editor opens for a System Administrator whatever their licence, but for a reviewer holding the
+read-only Lab Reviewer role only if they have a Dataverse-capable seat: an unlicensed account runs in
+Administrative mode, which filters a custom role's privileges (RUNBOOK Phase 8b). Attendees must never be
+System Administrator of the shared estate they are reviewing, so each one gets an environment of their own,
+seeded with the same over-broad svc-claims role, and is System Administrator there. Exercise 05 is
+demonstrated by the facilitator on the shared estate (09_ex05_demo_state.ps1); attendees apply no control in
+their slice.
 
 WHAT MAKES THIS AFFORDABLE. Two facts, both verified live 2026-10-13:
 
@@ -23,10 +26,11 @@ WHAT THIS BUILDS, PER ATTENDEE (slice = one environment, not a whole estate):
   2. linked to the estate's PAYG billing policy, or agents in it cannot publish;
   3. `svc-claims` added, then the Phase 5 seed run into it - Claim and Customer with PII rows, and the
      over-broad `svc-claims Dataverse Full Access` role assigned. That is Scenario C/D's substrate;
-  4. the attendee added as System Administrator OF THEIR OWN environment, so they can create roles,
-     enable row-level security and remediate - none of which they can do in the shared estate.
+  4. the attendee added as System Administrator OF THEIR OWN environment, so the role editor opens for
+     them in 03-02 and 03-04 with or without a seat - which it does not in the shared estate.
 
-NOT YET WIRED IN HERE - run these per slice until they are:
+NOT BUILT HERE, AND NOT NEEDED WHILE EXERCISE 05 IS DEMONSTRATED. A slice holds no agents and no SharePoint
+site. Only if attendees ever apply Exercise 05's controls in their own slice would each slice need these:
 
   - AGENTS. `06_provision_agents.ps1 -Agents <slug> -TargetEnvironment Lab-<estate>-NN
     -DisplayNameSuffix <estate>-NN`. The suffix is not cosmetic: agent display names are the only thing
@@ -36,7 +40,7 @@ NOT YET WIRED IN HERE - run these per slice until they are:
     leave date and leaves him ENABLED - a disabled user's connections fail (AADSTS50057), and the orphan
     is a leaver nobody shut down - so he can author it and consent its connection in every slice.
   - SHAREPOINT. `03_provision_sharepoint.ps1 -SiteSuffix NN` gives each attendee their own
-    /sites/HR-Benefits-<estate>-NN to label in Lab 05-06. NEEDS THE PnP APP REGISTRATION AND CERTIFICATE
+    /sites/HR-Benefits-<estate>-NN to label in Task 05-06. NEEDS THE PnP APP REGISTRATION AND CERTIFICATE
     (ENTRAID_APP_ID + HALCOURT_PNP_CERT_PFX/PW, RUNBOOK Phase 4). Without them that script falls back to
     an interactive device code, so it cannot run unattended - and twenty sites is the slowest part of a
     delivery. This repo has also hit site-URL collisions with soft-deleted sites before, so test the
@@ -206,15 +210,15 @@ foreach ($n in 1..$Count) {
     }
   }
 
-  # The attendee owns their slice: System Administrator here lets them build a scoped role, switch on
-  # row-level security and remediate - the Module 5 work they cannot do in the shared estate.
+  # The attendee owns their slice: System Administrator here opens the svc-claims role in the PPAC role
+  # editor for 03-02 and 03-04, licensed or not - which the read-only role in the shared estate does not.
   $studentUpn = "$(Get-EstateAlias ("{0}{1:d2}" -f $StudentPrefix, $n) $Estate)@$DomainSuffix"
   $oid = Add-EnvUser $env.name $studentUpn
   if ($oid) {
     try {
       # addUser is ASYNCHRONOUS and Invoke-DvRetry retries exceptions, not a successful-but-empty
       # result, so a single lookup here can silently miss the record and leave the attendee without
-      # System Administrator - which is exactly the grant Module 5 depends on.
+      # System Administrator - which is exactly the grant 03-02 and 03-04 depend on.
       $su = $null
       foreach ($try in 1..12) {
         $su = (Invoke-DvRetry $url ("systemusers?`$select=systemuserid&`$filter=" + [uri]::EscapeDataString("azureactivedirectoryobjectid eq $oid"))).value | Select-Object -First 1

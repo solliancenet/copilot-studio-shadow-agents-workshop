@@ -78,21 +78,35 @@ automatically in a VS Code terminal on this repo and in the dev container; in an
 Some things the exercises reach for cannot be provisioned by any script in this kit: the tenant either has
 them or it does not. `setup/scripts/00b_preflight.ps1` checks every one of them, plus the estate itself and
 the attendee access model, and names the exercise steps each check protects. **Run it the day before a
-delivery**, with the attendee count:
+delivery**, with the attendee count - no more attendees than you have Microsoft 365 seats to give them
+(see *Student licences* below):
 
 ```bash
-pwsh setup/scripts/00b_preflight.ps1 -Attendees 20
+pwsh setup/scripts/00b_preflight.ps1 -Attendees 14     # one per seat available: up to 14 in the build tenant
 ```
 
 | Capability | Without it | Fallback |
 |---|---|---|
 | **Agent 365** (M365 admin center → Agents) | 01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1 and 05-05 KT01 read the agent registry there. Present in the build tenant on `DEVELOPERPACK_V2_E5`, but the page appears only for an admin role that can read it: attendees get **AI Reader** (Phase 8b) - without it the Agents page is simply missing from the nav, which looks exactly like a tenant without Agent 365. | each step falls back to `agents-export.csv`, inline |
 | **A Dataverse-capable licence per attendee** (E5) | The access model in the *shared* estate. Unlicensed accounts run in Administrative mode, which filters the custom role: the PPAC role editor (03-02 KT01 s2, 03-04 KT01 s3, 04-03 KT02 s2) and the Copilot Studio agent pages (01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2, 03-04, 04-01..06, 05-01 KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2) refuse them. | the role editor in 03-02 and 03-04: the attendee's own slice, where System Administrator survives the filter; everything else: the artifact pack |
+| **A Microsoft 365 licence per attendee** (E5): Exercise 04 chat | The tenant route of Exercise 04: chatting with the published agents in Teams (04-01, 04-02, 04-04, and 04-05 KT02 s2's one Policy Lookup Bot lookup). Teams is the agents' only working channel and refuses an unlicensed account outright. | the reveal blocks and the artifact pack |
+| **A Microsoft 365 licence per attendee** (E5): `CopilotInteraction` audit | 05-07 KT02: Copilot Studio records `CopilotInteraction` events only for licensed users, so an unlicensed attendee's Exercise 04 chat leaves nothing to find in Purview Audit. | the artifact pack for the Dataverse side (KT03 s3); the pack holds no audit events, so KT02 itself has no offline substitute |
 | **Container Apps endpoints** (Policy API, Underwriting MCP) | 04-03, 04-05 and the 05-01 retests have nothing to call. | none - Phase 1 |
 | **SharePoint site** `HR-Benefits-<estate>` | 04-01 / 04-02 grounding, 05-03, 05-06. | none - Phase 4 |
 
 The access model itself - every Dataverse privilege an attendee holds and the exercise step it serves - is
 `setup/scripts/_access_model.ps1`. Phase 8b enforces it; the preflight verifies it.
+
+#### Student licences
+
+**A Microsoft 365 licence (E5) per attendee is a delivery requirement**, not a nice-to-have. Without one, an
+attendee loses the tenant route of Exercise 04 (Teams refuses them, so they cannot chat with the published
+agents), produces no `CopilotInteraction` audit events for 05-07, and runs Dataverse in Administrative mode
+(the row above). That attendee works those tasks from the artifact pack. Plan the delivery around the seats
+you have: up to 14 in the build tenant (Phase 8b), so size `-Attendees` / `-Count` to the seats available,
+not to the room. No separate Copilot Studio licence is needed; chatting with a published agent draws on
+tenant capacity. Licensing is documented here, not automated: 07 attempts an assignment and reports who
+got one. Open item: [PLANNING item 15](../PLANNING.md).
 
 ### Windows build VM (optional)
 
@@ -686,6 +700,11 @@ Walk `AGENTS.md` and confirm, in the live tenant:
   the confused-deputy path, with the attendee as the requester.
 - **Phase 6.5 has run** — Tom has a leave date and is still **enabled**, and both of his connections
   show `Connected`; otherwise the departed-owner thread reads wrong and `users-export` disagrees with the canon.
+- **The agent registry shows the estate (05-05).** All ten estate agents appear in Microsoft 365 admin
+  center → Agents, and **Block** is available on Onboarding Guide there - as the facilitator account with AI
+  Administrator activated, the way 05-05 is demonstrated. If you try it, Unblock straight away. Whether the
+  tenant's Agent 365 licensing holds for the delivery is an open question:
+  [PLANNING item 8](../PLANNING.md).
 - Re-run Phase 7 and **review** `git diff worksheets/artifact-pack`. It will not be empty; look for
   *unexpected* drift — an agent missing, an owner that changed, a connection that lost its sharing, an
   environment that lost its DLP.
@@ -702,9 +721,10 @@ they review the estate from inside the tenant rather than as guests. Run it shor
 tear it down after.
 
 ```bash
-pwsh setup/scripts/00b_preflight.ps1 -Attendees 20                           # the day before: seats, service plans, endpoints, the access model
-pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20                      # student01.<estate> .. student20.<estate>
-pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20 -UniquePasswords     # a distinct password each
+# N = the attendees you can license (see "Student licences" under Prerequisites) - 14 here
+pwsh setup/scripts/00b_preflight.ps1 -Attendees 14                           # the day before: seats, service plans, endpoints, the access model
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14                      # student01.<estate> .. student14.<estate>
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14 -UniquePasswords     # a distinct password each
 pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
 ```
 
@@ -802,25 +822,28 @@ work for users the agent is shared with, which 07 arranges by adding attendees t
 the attendee sees an **Add** dialog, then the chat. A plain chat link (`/l/chat/0/0?users=28:<app id>`) is
 refused: *"You do not have permission to use this app here"* (verified as student03, 2026-10-19).
 
-**Licences are best effort, but the access model needs one.** Verified 2026-10-17 with three accounts holding
-the identical access model: the one with an E5 seat (`accessmode=0`) opened the PPAC role editor and the
-Copilot Studio agent pages; the two without (`accessmode=1`, Administrative) got *"You don't have
-permission to view these items."* Administrative access mode **filters** a custom role's privileges. What
-survives filtering is System Administrator - so an unlicensed attendee can do those steps only in **their
-own slice** (Phase 8c), never in the shared estate. Without seats, the steps that read a role or an agent's
-configuration in the shared estate fall back to the artifact pack: the Copilot Studio parts of 01-01 KT02 s6,
-01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2 and 03-04; Exercise 04's configuration reads (04-01..06) and
-04-03 KT02 s2's role editor in Claims-Test; and 05-01 KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2. The role editor
-in 03-02 and 03-04 already routes to the slice.
-Entra reads, PPAC lists and the admin APIs work either way.
+**Each attendee needs a licence** (see *Student licences* under Prerequisites; [PLANNING item
+15](../PLANNING.md)): Exercise 04's Teams chat, 05-07's `CopilotInteraction` events and the access model all
+depend on one. Verified 2026-10-17 with three accounts holding the identical access model: the one with an E5
+seat (`accessmode=0`) opened the PPAC role editor and the Copilot Studio agent pages; the two without
+(`accessmode=1`, Administrative) got *"You don't have permission to view these items."* Administrative access
+mode **filters** a custom role's privileges. What survives filtering is System Administrator - so an
+unlicensed attendee can do those steps only in **their own slice** (Phase 8c), never in the shared estate.
+Without seats, the steps that read a role or an agent's configuration in the shared estate fall back to the
+artifact pack: the Copilot Studio parts of 01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2 and
+03-04; Exercise 04's configuration reads (04-01..06) and 04-03 KT02 s2's role editor in Claims-Test; and 05-01
+KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2. The role editor in 03-02 and 03-04 already routes to the slice. Entra
+reads, PPAC lists and the admin APIs work either way.
 
-Assignment is attempted, never fatal, and the end-of-run table reports who got one. If you licence
-attendees, **do it the day before**: Dataverse keeps its own copy of licence state and re-reads it hours
-later, in both directions - an account licensed that morning still reports unlicensed, and one created
+The script attempts assignment, never fatally, and the end-of-run table reports who got one - so an attendee
+without a seat is a delivery decision you make, not a surprise: they take the artifact-pack route for those
+tasks. **Licence attendees the day before**: Dataverse keeps its own copy of licence state and re-reads it
+hours later, in both directions - an account licensed that morning still reports unlicensed, and one created
 unlicensed reports *licensed* for about an hour, so a rehearsal can pass and the delivery fail. The
 preflight checks `accessmode` per attendee. The build tenant's 25 E5 seats were held by estate personas,
 admins and 14 unused Microsoft sample users; the sample users' seats were released
-(`setup/licence-restore-2026-10-14.local.json` is the undo), so up to 14 attendees can be licensed.
+(`setup/licence-restore-2026-10-14.local.json` is the undo), so up to 14 attendees can be licensed - size
+the delivery to that.
 `FLOW_FREE` does nothing for Dataverse.
 
 Why this role and not something weaker:
@@ -881,8 +904,8 @@ introduces the slice by name (`Lab-<estate>-NN`), so the number on each attendee
 slice built for them: `studentNN` gets `Lab-<estate>-NN`.
 
 ```bash
-pwsh setup/scripts/07_provision_lab_users.ps1 -Count 20        # accounts first
-pwsh setup/scripts/08_provision_student_slices.ps1 -Count 20   # then a slice each
+pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14        # accounts first - one per licensable seat
+pwsh setup/scripts/08_provision_student_slices.ps1 -Count 14   # then a slice each - the same N
 pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy    # after the delivery
 ```
 
@@ -907,6 +930,26 @@ seconds**, far faster than Phase 3's wait suggests; and the first calls against 
 with *"Interactive authentication is needed"* while `az` settles a token for the new resource — it clears
 on its own, so the script retries rather than failing the slice.
 
+### Before delivery — audit and Exercise 04 notes
+
+Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
+and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
+
+- [ ] **Dataverse auditing in `Claims-Test-<estate>`.** PPAC → the environment → **Settings** → **Audit and
+      logs** → **Audit settings**: turn auditing on for the environment. Then turn on auditing for the `Claim`
+      and `Customer` tables, each in the table's properties.
+- [ ] **Purview Audit is on.** Purview portal → **Audit** (it is on by default; a banner offers to start
+      recording if it is not).
+- [ ] **Defender real-time protection for agents** is not a pre-delivery step: you switch it on during
+      05-07 and back afterwards, per the demonstration table (Exercise 05 demonstrations, above).
+- [ ] **Open item: attendees cannot read audit history yet.** 05-07 KT03 has each attendee open a claim's
+      audit history in `Claims-Test`, which needs read access to audit records. The access model in
+      `_access_model.ps1` grants none today, so that step fails live until it does.
+
+**04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
+instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the
+room the write half of Scenario D is reasoned, not exercised.
+
 ### Phase 9 — Teardown / reseed
 
 `99_teardown.ps1` removes ONE estate and nothing another estate owns, in dependency order: the shared
@@ -926,6 +969,28 @@ Environments delete asynchronously (a few minutes). It KEEPS Phase 0 (tenant, CA
 defaults) and the shared **default environment** and its Dataverse — that can't be un-provisioned. To
 reseed, re-run Phases 1–6. If you rebuild the Azure endpoints, use a **new** azd environment name; the
 agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision time.
+
+**What `99_teardown.ps1` does not remove.** Run these by hand after the delivery:
+
+- [ ] **Per-student slices** (Phase 8c): `pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy`
+      (`-Force` skips the prompt). **Run it before `99_teardown.ps1`**: it finds the billing policy to unlink
+      through the estate's Prod environment, and once Prod is gone it warns and skips the unlink unless you
+      pass `-BillingPolicyId`.
+- [ ] **Lab accounts** (Phase 8b): `pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy` (`-Force` skips
+      the prompt), then delete `setup/lab-users-<estate>.local.csv`.
+- [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also
+      deletes `setup/lab-facilitator-<estate>.local.csv`).
+- [ ] **Phase 4c's Purview artifacts.** The label policy `Halcourt-Labels-<estate>` and the sensitivity label
+      `Confidential-PII-<estate>` (delete the policy first; Purview portal → Information Protection), and the
+      group `HR-Leadership-<estate>`. The labelled copy goes with the `HR-Benefits-<estate>` site.
+- [ ] **Shared per-tenant, only when the last estate in the tenant goes:** the app registration
+      `halcourt-lab-compliance` (03c, 07 and 07b sign in with it) with its local
+      `setup/lab-compliance-app.local.{json,pfx}`, and the resource group `rg-halcourt-graph-billing` holding
+      its Graph billing resource `halcourt-lab-compliance-billing`. `azd down` does not touch either.
+
+`-RemovePersonas` deletes every user whose UPN ends `.<estate>@<domain>` and every group named `*-<estate>`,
+so it also catches the lab accounts, the facilitator and `HR-Leadership-<estate>`. Run the scripts above
+anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 
 ## File index (this kit)
 
