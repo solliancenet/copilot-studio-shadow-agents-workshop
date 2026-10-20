@@ -7,10 +7,10 @@ Turns security defaults OFF and creates the two baseline Conditional Access poli
 
 Why (setup/RUNBOOK.md -> Phase 0, step 4): security defaults block device-code sign-in (AADSTS530035),
 which the dev container and scripts 01/03/05/99 depend on; they push every persona account into MFA
-registration; and Conditional Access - which Module 5 tests - can't be enabled while they are on. This
+registration; and Conditional Access - which Exercise 05 tests - can't be enabled while they are on. This
 baseline keeps the two protections that matter for a lab tenant: MFA for admins and no legacy auth.
 
-It deliberately creates NO policy targeting workload/agent identities (a Module 5 finding) and NO policy
+It deliberately creates NO policy targeting workload/agent identities (an Exercise 05 finding) and NO policy
 blocking device-code flow.
 
 CA-Require-MFA-Admins is also written to by Phase 8b: 07_provision_lab_users.ps1 adds one group per
@@ -155,4 +155,4 @@ foreach ($p in $all) {
     Write-Warning "  '$($p.displayName)' restricts authentication flows - exclude the build admin, or device-code sign-in breaks again."
   }
 }
-Write-Host 'Phase 0 CA baseline complete. Do not add a policy targeting workload/agent identities - Module 5 finds that gap.'
+Write-Host 'Phase 0 CA baseline complete. Do not add a policy targeting workload/agent identities - Exercise 05 finds that gap.'

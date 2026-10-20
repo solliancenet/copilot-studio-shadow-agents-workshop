@@ -937,14 +937,20 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
 
 - [ ] **Dataverse auditing in `Claims-Test-<estate>`.** PPAC → the environment → **Settings** → **Audit and
       logs** → **Audit settings**: turn auditing on for the environment. Then turn on auditing for the `Claim`
-      and `Customer` tables, each in the table's properties.
+      and `Customer` tables, each in the table's properties. This records **changes** (create, update,
+      delete, sharing), which is what the 05-03 demonstration makes.
+- [ ] **No setting makes Claims Copilot's reads visible in `Claims-Test`.** Dataverse auditing never logs a
+      read, so a claim's Audit History shows none. Reads are logged only by activity logging (the **Read
+      logs** setting plus the table's single- and multiple-record settings), and those events reach Purview
+      only for production environments. `Claims-Test` is a sandbox. Don't try to work around it: 05-07 KT03
+      now teaches that gap instead of relying on a read event.
 - [ ] **Purview Audit is on.** Purview portal → **Audit** (it is on by default; a banner offers to start
       recording if it is not).
 - [ ] **Defender real-time protection for agents** is not a pre-delivery step: you switch it on during
       05-07 and back afterwards, per the demonstration table (Exercise 05 demonstrations, above).
 - [ ] **Open item: attendees cannot read audit history yet.** 05-07 KT03 has each attendee open a claim's
-      audit history in `Claims-Test`, which needs read access to audit records. The access model in
-      `_access_model.ps1` grants none today, so that step fails live until it does.
+      Audit History in `Claims-Test` to see that it shows no read, which needs read access to audit records.
+      The access model in `_access_model.ps1` grants none today, so that step fails live until it does.
 
 **04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
 instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the

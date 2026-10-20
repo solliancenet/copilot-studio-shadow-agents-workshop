@@ -336,7 +336,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Agent 365 | DENTS IT | Surfaces shared-connection / service-account use. |
 | Conditional Access | MISSES IT (mostly) | Governs authentication of principals; CA-for-workload-identities can slightly constrain where the agent identity is used. |
 | DLP / Environment | MISSES IT | Don't address *whose* identity acts. |
-| Logging / audit | MISSES IT (attribution) | **Teaching point:** the log shows svc-claims/owner as the actor, not the real user — you cannot reconstruct *who really asked*. |
+| Logging / audit | MISSES IT (attribution) | **Teaching point:** for a **read** (Claims Copilot has only List-rows tools) there is no downstream record at all: Dataverse auditing logs changes, not reads, and read logs reach Purview only for production environments — `Claims-Test` is a sandbox. Nothing downstream ties the read to anyone, not even svc-claims; attribution rests entirely on the `CopilotInteraction` event and transcript. For a **write**, the log shows svc-claims/owner as the actor, not the real user — only cross-log correlation with `CopilotInteraction` links it to *who really asked*. Fix is upstream: on-behalf-of auth. |
 
 ### Scenario E — HTTP / MCP / tool boundary
 | Control | Verdict | Why / remaining risk |

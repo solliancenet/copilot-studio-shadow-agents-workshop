@@ -3,7 +3,7 @@ FACILITATOR-ONLY. Phase 3 - Environments and DLP.
 
 Creates this estate's three environments and applies DLP to PROD ONLY. Deliberately leaves Default /
 Claims-Test / Maker-Sandbox WITHOUT DLP, and creates NO Conditional Access policy targeting workload/agent
-identities - those omissions drive Module 5. The CA baseline already exists: Phase 0 created it
+identities - those omissions drive Exercise 05. The CA baseline already exists: Phase 0 created it
 (00_conditional_access_baseline.ps1), because security defaults block the device-code sign-ins used here.
 
   Halcourt-Prod-<estate>  Production + Dataverse, Managed Environment, Halcourt-Prod-DLP-<estate>
@@ -143,7 +143,7 @@ if ($prod.properties.governanceConfiguration.protectionLevel -eq 'Standard') {
 
 # --- DLP: PROD ONLY ---------------------------------------------------------------------------------
 # Baseline business/non-business connector split on this estate's Prod ONLY. Default / Claims-Test /
-# Maker-Sandbox INTENTIONALLY stay open (planted gap for Module 5) - do NOT add DLP.
+# Maker-Sandbox INTENTIONALLY stay open (planted gap for Exercise 05) - do NOT add DLP.
 $dlpName = Get-EstateName 'Halcourt-Prod-DLP' $Estate
 $policyApi = "$bap/providers/PowerPlatform.Governance/v1/policies"
 $existingDlp = @((Invoke-Bap GET "$policyApi`?api-version=2016-11-01").value) | Where-Object { $_.displayName -eq $dlpName } | Select-Object -First 1
@@ -175,7 +175,7 @@ if ($existingDlp) {
   # with "conflict between business and non-business connectors" (verified 2026-09-21; see errata). So the
   # baseline groups the sensitive connectors as business and treats everything as business by default,
   # blocking nothing. It still demonstrates a DLP control on Prod that MISSES the agent-identity risks
-  # (Module 5), which is the point. Default / Claims-Test / Maker-Sandbox still get NO DLP.
+  # (Exercise 05), which is the point. Default / Claims-Test / Maker-Sandbox still get NO DLP.
   $business = foreach ($c in @(
       @('shared_commondataserviceforapps', 'Microsoft Dataverse'),
       @('shared_sharepointonline',         'SharePoint'),
@@ -202,13 +202,13 @@ if ($existingDlp) {
   Invoke-Bap POST "$policyApi`?api-version=2016-11-01" $policy | Out-Null
   Write-Host "  '$dlpName' applied to $($prod.properties.displayName)."
 }
-Write-Host "DEALER'S CHOICE for Module 5: leave any HTTP/custom-connector *block* OFF at start so Scenario E fires,"
-Write-Host 'then have attendees tighten it (block HTTP / custom connectors in Prod) during Module 5 and retest.'
-Write-Host "DO NOT create DLP for Halcourt (default), $(Get-EstateName 'Claims-Test' $Estate), or $(Get-EstateName 'Maker-Sandbox' $Estate) - that gap is a planted Module 5 finding."
+Write-Host "DEALER'S CHOICE for Exercise 05: leave any HTTP/custom-connector *block* OFF at start so Scenario E fires,"
+Write-Host 'then the facilitator demonstrates tightening it (block HTTP / custom connectors in Prod) in Exercise 05 and retests.'
+Write-Host "DO NOT create DLP for Halcourt (default), $(Get-EstateName 'Claims-Test' $Estate), or $(Get-EstateName 'Maker-Sandbox' $Estate) - that gap is a planted Exercise 05 finding."
 
 # --- Conditional Access -----------------------------------------------------------------------------
 Write-Host 'Conditional Access: baseline created in Phase 0 (00_conditional_access_baseline.ps1).'
-Write-Host 'Deliberately DO NOT create any CA policy targeting workload/agent identities - that gap is a Module 5 finding.'
+Write-Host 'Deliberately DO NOT create any CA policy targeting workload/agent identities - that gap is an Exercise 05 finding.'
 
 # --- Summary: hand these to Phase 5 -----------------------------------------------------------------
 Write-Host ''
