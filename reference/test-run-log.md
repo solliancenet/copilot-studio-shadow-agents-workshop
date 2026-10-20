@@ -47,9 +47,3 @@ its own document. Covers:
 - the whole "Estates" section: the canonical vs live naming table, shared-not-renamed items, the
   `_estate.ps1` rule. The one operator action inside it (choose an id, check it is unused, set
   `HALCOURT_ESTATE`) is a real step and would stay in the runbook as a numbered step.
-
-### Prerequisites (technician)
-
-**Feedback, not yet acted on.** "no step needs Windows any more" is history. Nobody reading the runbook
-cares what used to be true. State what is required now (the dev container runs every phase) and drop the
-"any more" clause. Worth sweeping the runbook for other "no longer / any more / now" phrasing.
