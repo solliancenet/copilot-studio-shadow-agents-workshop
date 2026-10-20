@@ -586,9 +586,31 @@ pwsh setup/scripts/04b_provision_audit.ps1     # rerun-safe; ends with a Check l
 It deliberately leaves **read logs off**: reads reach Purview only for production environments, and
 `Claims-Test` is a sandbox, so there is nothing to turn on (see the pre-delivery audit checklist).
 
-**Not scripted yet - Defender real-time protection for agents** (KT01, KT06). It needs the Microsoft 365
-app connector in Defender for Cloud Apps and an Entra app registered for the agents' runtime protection;
-PLANNING item 16 tracks it. Until it's set up, 05-07 KT06 has nothing to turn on.
+**Defender real-time protection for agents (KT01, KT06) - blocked on this tenant.** Two prerequisites
+are missing (checked 2026-10-20 as the facilitator with Security Administrator active):
+
+- **A Microsoft Agent 365 licence.** Since 1 July 2026 Copilot Studio agent protection in Defender requires
+  it; E5 alone is not enough. The tenant has only `DEVELOPERPACK_V2_E5`, and **Settings → Security for AI**
+  says *"You don't have permission to view this page"*. An admin-led trial gives 25 seats for 30 days - it
+  expires, so time it to the delivery.
+- **Defender for Cloud Apps initialised.** Its pages show *"Hang on! We're preparing new spaces for your
+  data"*; the first visit starts it and it takes hours.
+
+Once both are in place (Learn: *Real-time protection for AI agents*, *External security provider*):
+
+1. Defender → **Settings → Security for AI → Get started**: enable, connect the **Microsoft 365** connector,
+   then in the **Copilot Studio** step turn **Real-time protection** on and copy the endpoint URL. Security
+   Administrator. Portal only.
+2. An Entra app with a **federated credential** for that endpoint (no secret) - scriptable
+   (`Create-CopilotWebhookApp.ps1` from the PowerShell Gallery, or Graph `applications` +
+   `federatedIdentityCredentials`).
+3. PPAC → **Security → Threat detection → Additional threat detection** → `Halcourt-Prod-<estate>` (Benefits
+   Buddy's environment): share data with the provider, the app ID and the endpoint. Power Platform
+   Administrator. Portal only, per environment.
+4. Paste the app ID back into the Defender pane and save; it should show **Connected**.
+
+On and off for the demonstration: the PPAC checkbox in step 3. Only generative-orchestration agents are
+checked, and only their tool calls. PLANNING item 16 tracks it.
 
 ### Phase 6 — Author the agents
 
