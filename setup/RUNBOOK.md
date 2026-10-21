@@ -32,8 +32,9 @@ tool the scripts need already installed.
 4. Open a terminal: **Terminal → New Terminal**. Run every command in this runbook in that terminal unless
    a step says otherwise, and sign in to `az` and `pac` only from it — a sign-in made outside the container
    isn't seen by the scripts ([ADR-0003](../reference/adr/0003-project-local-sign-in.md)).
-5. Make sure you hold **Owner** on an Azure subscription (or Contributor + User Access Administrator) —
-   Phase 1 creates role assignments, which Contributor alone can't.
+5. **Only the owner of the shared Azure deployment** (Phase 1) needs an Azure role: **Owner** on the lab
+   subscription (or Contributor + User Access Administrator) — the deployment creates role assignments,
+   which Contributor alone can't. Every other facilitator needs no Azure access at all.
 
 **The admin portals.** This runbook names each portal in full; "PPAC" is the Power Platform admin center.
 
@@ -230,34 +231,52 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
 
 5. Give attendees the estate id along with the tenant domain.
 
-### Phase 1 — Azure infrastructure (azd up)
+### Phase 1 — Azure infrastructure (shared)
 
-Deploys the demo web app + Foundry, plus the internal **Policy API** and **Underwriting MCP** server as
-Container Apps. The latter two are intentionally weak (static-secret auth, over-scoped surface) — see
-`setup/infra/policy-api/` and `setup/infra/mcp-underwriting/`. Everything goes into the **same Azure
-subscription** from Phase 0.
+The agents call two intentionally weak Container Apps — the internal **Policy API** and the
+**Underwriting MCP** server (static-secret auth, over-scoped surface; see `setup/infra/policy-api/` and
+`setup/infra/mcp-underwriting/`). **One deployment serves every estate**
+([ADR-0005](../reference/adr/0005-shared-azure-deployment.md)): the apps hold no estate state, no exercise
+changes them, and they take static secrets rather than Entra, so they work from any estate in any tenant.
+
+**Building an estate:** get `setup/lab-endpoints.local.json` from the deployment's owner and save it at
+that path (gitignored). It holds the four values Phase 6 puts into the agents — `POLICY_API_FQDN`,
+`POLICY_API_KEY`, `UNDERWRITING_MCP_FQDN`, `MCP_BEARER`. Then check it:
+
+```bash
+pwsh setup/scripts/00b_preflight.ps1   # "Training endpoints" must PASS: 401 without each secret, 200 with it
+```
+
+Don't run `azd up` for your estate, and don't change the secrets: every estate's agents carry them.
+
+#### Once per lab: the owner deploys it
+
+One named facilitator owns the deployment. Only the owner redeploys or tears it down, and the secrets stay
+fixed for its life — **a redeploy with new secrets, or a teardown, breaks every estate's agents** until
+each re-runs Phase 6. The deployment also brings the demo web app and Foundry; the agents don't use them.
 
 ```bash
 azd auth login --use-device-code  # skip if `azd config get auth.useAzCliAuth` says true — az login covers it
 
 az group list --subscription <lab-subscription-id> --query "[?starts_with(name, 'rg-halcourt')].name" -o tsv   # names already used
-ENV_NAME=halcourt-$HALCOURT_ESTATE-lab
+ENV_NAME=halcourt-shared-lab      # a name nobody has used in this subscription
 azd env new "$ENV_NAME" --subscription <lab-subscription-id> --location eastus2   # RG: rg-$ENV_NAME
-azd env set POLICY_API_KEY "lab-$(openssl rand -hex 8)"   # any lab-only string — RECORD it
-azd env set MCP_BEARER   "lab-$(openssl rand -hex 8)"     # any lab-only string — RECORD it
+azd env set POLICY_API_KEY "lab-$(openssl rand -hex 8)"   # any lab-only string
+azd env set MCP_BEARER   "lab-$(openssl rand -hex 8)"     # any lab-only string
 azd up                            # provisions + builds/pushes all images + deploys
-azd env get-values                # read POLICY_API_FQDN / UNDERWRITING_MCP_FQDN
+pwsh -c '. setup/scripts/_lab_endpoints.ps1; Save-LabEndpoints'   # writes setup/lab-endpoints.local.json
 ```
 
-- **Record both secret values as you set them** — you need them again in Phase 6. The Policy API key is
-  the one that ends up hard-coded in Policy Lookup Bot (Scenario E).
-- **Use an environment name nobody has used in this subscription.** `halcourt-<estate>-lab` is the
-  convention; reusing a name silently redeploys another facilitator's apps, and reusing a *torn-down* name
-  hits the Foundry soft-delete trap. Add a suffix (`-2`, a date) when you rebuild.
+- **Hand `setup/lab-endpoints.local.json` to each facilitator out of band** (it holds two lab secrets;
+  never commit it). Phase 6 and the preflight read it, falling back to the selected azd environment — so
+  the owner's own builds work either way.
+- **Use an environment name nobody has used in this subscription.** Reusing a live name redeploys that
+  deployment and replaces its secrets; reusing a *torn-down* name hits the Foundry soft-delete trap. Add a
+  suffix (`-2`, a date) when you rebuild.
 - Pass `--subscription` and `--location` explicitly — azd's global defaults can point outside the lab
   tenant. `eastus2` is tested; any region with gpt-5-mini (GlobalStandard) quota works.
-- **Record the two Container App addresses.** Despite the `_FQDN` names they are full URLs; the agents'
-  actions want the host part (drop `https://`).
+- The Policy API key is the one that ends up hard-coded in Policy Lookup Bot (Scenario E). Despite the
+  `_FQDN` names, both addresses are full URLs.
 
 Name derivation and the FQDN shape:
 [ADR-0012](../reference/adr/0012-azd-environment-per-estate.md) and
@@ -849,13 +868,25 @@ export ENTRAID_APP_ID=<PnP app id>  HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx  H
 pwsh setup/scripts/99_teardown.ps1                                  # estate artifacts; KEEPS personas + shared infra
 pwsh setup/scripts/99_teardown.ps1 -RemovePersonas                  # also the Phase 2 personas + *-<estate> groups
 pwsh setup/scripts/99_teardown.ps1 -RemovePersonas -RemoveShared    # also the shared authors group + PnP app registration
-azd down --purge --force                                            # Azure (Phase 1), from the repo root
 ```
 
 Environments delete asynchronously (a few minutes). It KEEPS Phase 0 (tenant, CA baseline, security
-defaults) and the shared **default environment** and its Dataverse — that can't be un-provisioned. To
-reseed, re-run Phases 1–6. If you rebuild the Azure endpoints, use a **new** azd environment name; the
-agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision time.
+defaults) and the shared **default environment** and its Dataverse — that can't be un-provisioned. It
+also keeps the **shared Azure deployment** (Phase 1): it is every estate's, not this one's. To reseed,
+re-run Phases 2–6 with the same `setup/lab-endpoints.local.json`.
+
+**Shared Azure deployment — owner only, after the last estate.** Tearing it down breaks every estate's
+agents, so do it only when no estate still needs it:
+
+```bash
+azd env select <shared env name>   # from the repo root
+azd down --purge --force
+rm setup/lab-endpoints.local.json  # and ask facilitators to delete their copies
+```
+
+If it has to be rebuilt while estates still use it, use a **new** azd environment name, write and hand
+out the new values file, and have every estate re-run Phase 6: the agents' `${…}` action tokens
+re-inject the new addresses and secrets at provision time.
 
 **What `99_teardown.ps1` does not remove.** Run these by hand after the delivery:
 

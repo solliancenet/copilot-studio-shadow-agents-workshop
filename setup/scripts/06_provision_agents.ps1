@@ -12,8 +12,8 @@ Agents are DATA: the pac workspace under setup/agents/<slug>/ holds instructions
 manifest holds owner/environment/connections/audience. Benign agents are authored+committed here; the six
 planted agents are captured once with `pac copilot clone` and committed (capture:"clone").
 
-Prerequisites (run first): 01 (personas+groups), 03/03b (SharePoint+OneDrive grounding), 04 (Dataverse),
-owner licenses, default-environment Dataverse, and a billing plan on Prod+Claims-Test. See RUNBOOK Phase 6.
+Prerequisites (run first): the shared Phase 1 values (setup/lab-endpoints.local.json, from the deployment's
+owner), 01 (personas+groups), 03/03b (SharePoint+OneDrive grounding), 04 (Dataverse), owner licenses, default-environment Dataverse, and a billing plan on Prod+Claims-Test. See RUNBOOK Phase 6.
 
 Auth: az's admin sign-in for BAP/Graph/Dataverse admin calls; per-owner password sign-in (ROPC + a pac
 auth profile) so each agent is built as its persona. The CA baseline only MFAs admins, so persona
@@ -49,9 +49,15 @@ $realPac   = if (Test-Path "$HOME/.dotnet/tools/pac") { "$HOME/.dotnet/tools/pac
 
 # Committed agent workspaces carry NO secrets/endpoints - they use ${VAR} tokens (e.g. ${POLICY_API_FQDN},
 # ${POLICY_API_KEY}, ${UNDERWRITING_MCP_FQDN}, ${MCP_BEARER}) that are substituted at provision time from the
-# Phase 1 azd environment. So the planted key lives in the LIVE agent (that IS the vulnerability) but never in git.
-$AzdValues = @{}
-try { (& azd env get-values 2>$null) | ForEach-Object { if ($_ -match '^([A-Za-z0-9_]+)="?(.*?)"?$') { $AzdValues[$Matches[1]] = $Matches[2] } } } catch {}
+# ONE shared Phase 1 deployment (_lab_endpoints.ps1: the owner's setup/lab-endpoints.local.json, else azd).
+# So the planted key lives in the LIVE agent (that IS the vulnerability) but never in git.
+. (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
+$lab = Get-LabEndpoints
+$AzdValues = $lab.Values
+if ($lab.Missing.Count) {
+  $msg = "Phase 1 values missing from $($lab.Source): $($lab.Missing -join ', '). Get setup/lab-endpoints.local.json from the shared deployment's owner (RUNBOOK Phase 1)."
+  if ($VerifyOnly) { Write-Warning $msg } else { throw $msg }
+} else { Write-Host "Phase 1 endpoints from $($lab.Source)" }
 $AzClient  = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'   # Azure CLI public client (for persona ROPC)
 
 # ---- identity / tenant --------------------------------------------------------------------------------
@@ -429,7 +435,7 @@ function Provision-Agent([object]$A) {
     $p = Join-Path $wsdir "topics/$t.mcs.yml"
     if (Test-Path $p) { Remove-Item $p -Force; Write-Host "    removed retired topic $t" }
   }
-  # Inject Phase 1 endpoints/secrets from azd into ${VAR} tokens, and resolve ${FLOW:<name>} to a live flow
+  # Inject the shared Phase 1 endpoints/secrets into ${VAR} tokens, and resolve ${FLOW:<name>} to a live flow
   # id (as the owner - flows are estate-specific record ids, not secrets, so they stay out of git too).
   Get-ChildItem $wsdir -Recurse -Include *.mcs.yml | ForEach-Object {
     $c = Get-Content $_.FullName -Raw; $changed = $false

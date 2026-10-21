@@ -8,8 +8,8 @@ estate environments (their Dataverse/agents/connections go with them) + DLP + bi
 the Phase 2 personas/groups (-RemovePersonas) and the shared per-tenant infra (-RemoveShared: authors group,
 PnP app). KEEPS Phase 0 (tenant, CA baseline, security defaults) and the default environment.
 
-Azure (Phase 1) is separate - run it after this:
-  azd down --purge --force        # from the repo root, with the estate's azd env selected
+Azure (Phase 1) is NOT this estate's to remove: one deployment serves every estate (ADR-0005). Only its
+owner tears it down, and only when the last estate is gone (RUNBOOK Phase 9 -> Shared Azure deployment).
 
   pwsh setup/scripts/99_teardown.ps1                              # estate from HALCOURT_ESTATE
   pwsh setup/scripts/99_teardown.ps1 -RemovePersonas -RemoveShared
@@ -245,6 +245,6 @@ if ($RemoveShared) {
 
 Write-Host ""
 Write-Host "Teardown of estate '$Estate' complete (environments delete asynchronously - allow a few minutes)."
-Write-Host "Azure (Phase 1) is separate:  azd down --purge --force   (repo root, estate's azd env selected)."
+Write-Host "Azure (Phase 1) kept: it is shared by every estate. Only its owner removes it, after the last estate (RUNBOOK Phase 9)."
 if (-not $RemovePersonas) { Write-Host "Personas/groups kept - pass -RemovePersonas to remove them." }
 if (-not $RemoveShared)   { Write-Host "Shared authors group + PnP app kept - pass -RemoveShared to remove them." }

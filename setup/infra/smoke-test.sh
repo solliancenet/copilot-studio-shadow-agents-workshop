@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run after `azd up`:  eval "$(azd env get-values | grep -E "^(POLICY_API_FQDN|UNDERWRITING_MCP_FQDN|POLICY_API_KEY|MCP_BEARER)=")"
+#   (no azd env? from the shared values file: eval "$(jq -r 'to_entries[]|"\(.key)=\(.value)"' setup/lab-endpoints.local.json)")
 #   bash setup/infra/smoke-test.sh "$POLICY_API_FQDN" "$POLICY_API_KEY" "$UNDERWRITING_MCP_FQDN" "$MCP_BEARER"
 # Functional smoke test of the two Phase 1 endpoints: each must REJECT a bad credential and SERVE the scenario
 # behaviour with the right one. Usage: azd_smoke.sh <policy fqdn> <policy key> <mcp fqdn> <mcp bearer>

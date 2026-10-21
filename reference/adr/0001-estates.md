@@ -24,7 +24,6 @@ every tenant-scoped name it creates carries that id:
 | Groups, environments, DLP, sites | `Halcourt-Makers`, `Claims-Test`, `Halcourt-Prod-DLP`, `HR-Benefits` | `Halcourt-Makers-jsmith`, `Claims-Test-jsmith`, `Halcourt-Prod-DLP-jsmith`, `HR-Benefits-jsmith` | `<name>-<estate>` |
 | Agents in the default environment | `Expense Helper`, `Onboarding Guide` | `Expense Helper (jsmith)`, `Onboarding Guide (jsmith)` | `<name> (<estate>)` |
 | …and their schema names | `cr458_ExpenseHelper` | `cr458_ExpenseHelperjsmith` | `<schema><estate>` — a schema name is unique per environment ([issue #33](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/issues/33)) |
-| Azure (Phase 1) | — | azd environment `halcourt-jsmith-lab` | `halcourt-<estate>-lab` |
 
 The id comes from `HALCOURT_ESTATE` or `-Estate <id>`; a script refuses to run with neither.
 `setup/scripts/_estate.ps1` implements the rule; `AGENTS.md` → *Live estate naming* is the canonical
@@ -34,9 +33,9 @@ statement of it.
 
 - the default environment (`Halcourt (default)`), named once by whoever runs first;
 - the Conditional Access baseline (Phase 0);
-- the PnP app registration (Phase 4).
-- the `halcourt-lab-compliance` app and `rg-halcourt-graph-billing` (Phase 4c, [ADR-0029](0029-purview-app-only-identity.md)).
-- proposed: the Phase 1 Azure deployment ([ADR-0005](0005-shared-azure-deployment.md)).
+- the PnP app registration (Phase 4);
+- the `halcourt-lab-compliance` app and `rg-halcourt-graph-billing` (Phase 4c, [ADR-0029](0029-purview-app-only-identity.md));
+- the Phase 1 Azure deployment — one per lab, not per tenant ([ADR-0005](0005-shared-azure-deployment.md)).
 
 **Lab pages keep the canonical names.** Attendees get the estate id with the tenant domain, and Task 00-01
 shows them how names carry it.
