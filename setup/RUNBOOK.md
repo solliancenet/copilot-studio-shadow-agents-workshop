@@ -979,7 +979,7 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
 - [ ] **Attendees can read AI transcripts** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b).
       05-07 KT04 opens the chat's transcript in **DSPM for AI → Activity explorer**. Global Reader shows each
       interaction (user, agent, resources) but not its text (*"We couldn't retrieve this prompt and
-      response"*). 07c puts `Lab-Students-<estate>` in Purview's **Data Security AI Content Viewers** role
+      response"*). 07c puts each lab account (`student<NN>.<estate>`) in Purview's **Data Security AI Content Viewers** role
       group. Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks
       for **one device-code approval** from a Global Administrator. `-Remove` after the delivery. Note:
       Microsoft retires *DSPM for AI (classic)* on 30 November 2026; check the step's wording against the
@@ -1020,7 +1020,7 @@ agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision 
       through the estate's Prod environment, and once Prod is gone it warns and skips the unlink unless you
       pass `-BillingPolicyId`.
 - [ ] **The attendees' Purview role** (Phase 8b): `pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove`
-      (one admin device-code approval). Run it before `07 -Destroy`, while the group still has its members.
+      (one admin device-code approval). Run it before `07 -Destroy`, while the lab accounts still exist.
 - [ ] **Lab accounts** (Phase 8b): `pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy` (`-Force` skips
       the prompt), then delete `setup/lab-users-<estate>.local.csv`.
 - [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also

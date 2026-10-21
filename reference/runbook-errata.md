@@ -1441,3 +1441,16 @@ licence (an admin-led trial is 25 seats for 30 days) is a commercial decision, a
 to finish initialising (hours, started by the first admin visit). RUNBOOK Phase 5b lists the setup for when
 both are in place. Also seen: a PIM deactivation can silently miss - check the role's members afterwards and
 deactivate again.
+
+### Phase 8b · DSPM showed no transcripts to attendees (2026-10-21)
+
+**Symptom.** As student03, DSPM for AI → Activity explorer listed the Exercise 04 interactions, but each one
+said *"We couldn't retrieve this prompt and response"*. **Evidence.** Learn (*Permissions for DSPM for AI*):
+the text needs Content Explorer Content Viewer or **Microsoft Purview Data Security AI Content Viewer** - the
+first also opens classified files (the comp bands), so the second. The lab app's S&C session exposes
+`Add-RoleGroupMember` with no parameters (role-group membership needs Organization Management).
+**Fix.** `07c_provision_purview_roles.ps1`: an admin device-code sign-in, then each lab account
+(`student<NN>.<estate>`) into Data Security AI Content Viewers. **Trap:** the first version added
+`Lab-Students-<estate>`, assuming it held the attendees. It is 07's Conditional Access exclusion group and held
+only student01/02, so student03 - the account the recordings use - was never covered. Purview also lists
+members by display name and returns no object id, so an "already a member" error is treated as success.
