@@ -77,16 +77,17 @@ function Connect-LabComplianceAdmin([string]$Organization, [string]$TenantId) {
   $scope  = 'https://ps.compliance.protection.outlook.com/.default offline_access'
   $dc = Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/devicecode" -Body @{ client_id = $client; scope = $scope }
   Write-Host "Security & Compliance admin sign-in: $($dc.message)"
-  $deadline = (Get-Date).AddSeconds([int]$dc.expires_in)
+  $deadline = (Get-Date).AddSeconds([int]$dc.expires_in); $interval = [int]$dc.interval
   while ((Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds ([int]$dc.interval)
+    Start-Sleep -Seconds $interval
     try {
       $t = Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body @{
         grant_type = 'urn:ietf:params:oauth:grant-type:device_code'; client_id = $client; device_code = $dc.device_code }
       break
     } catch {
       $e = ($_.ErrorDetails.Message | ConvertFrom-Json -ErrorAction SilentlyContinue).error
-      if ($e -notin 'authorization_pending', 'slow_down') { throw "Device-code sign-in failed: $e" }
+      if ($e -eq 'slow_down') { $interval += 5; continue }          # RFC 8628: back off by 5 s from now on
+      if ($e -ne 'authorization_pending') { throw "Device-code sign-in failed: $e" }
     }
   }
   if (-not $t) { throw 'Device-code sign-in timed out.' }

@@ -976,12 +976,17 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
       hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
 - [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
       2026 it needs a Microsoft Agent 365 licence, and a developer tenant offers no trial.
-- [ ] **Attendees can read AI transcripts** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b).
-      05-07 KT04 opens the chat's transcript in **DSPM for AI → Activity explorer**. Global Reader shows each
-      interaction (user, agent, resources) but not its text (*"We couldn't retrieve this prompt and
-      response"*). 07c puts each lab account (`student<NN>.<estate>`) in Purview's **Data Security AI Content Viewers** role
-      group. Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks
-      for **one device-code approval** from a Global Administrator. `-Remove` after the delivery. Note:
+- [ ] **The DSPM transcript role** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b). 05-07 KT04
+      reads the chat's **interaction record** in **DSPM for AI → Activity explorer** (user, agent, time,
+      resources); the prompt and response text is optional. Global Reader shows the record; the text needs
+      Purview's **Data Security AI Content Viewers**, which 07c gives each lab account (`student<NN>.<estate>`).
+      Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks for
+      **one device-code approval** from a Global Administrator. `-Remove` after the delivery.
+      **Check it as an attendee:** after the Exercise 04 rehearsal chat, open the interaction in Activity
+      explorer. The record (user, agent, resources) must show; that is what KT04 needs. Note whether
+      **Interaction details** shows text or *"We couldn't retrieve this prompt and response"* - in the build
+      tenant it never showed text, even with the role in place for hours ([errata → Phase 8b](../reference/runbook-errata.md)),
+      so tell the room the transcript is optional and expect it to be unavailable.
       Microsoft retires *DSPM for AI (classic)* on 30 November 2026; check the step's wording against the
       portal before a later delivery.
 - [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
