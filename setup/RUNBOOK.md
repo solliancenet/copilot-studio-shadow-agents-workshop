@@ -731,6 +731,7 @@ pwsh setup/scripts/00b_preflight.ps1 -Attendees 14                           # t
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14                      # student01.<estate> .. student14.<estate>
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14 -UniquePasswords     # a distinct password each
 pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
+pwsh setup/scripts/07c_provision_purview_roles.ps1                           # attendees -> DSPM transcript role; one admin device-code approval
 ```
 
 Accounts are estate-scoped (`student01.<estate>@<domain>`), so two facilitators can run deliveries in one
@@ -975,14 +976,14 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
       hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
 - [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
       2026 it needs a Microsoft Agent 365 licence, and a developer tenant offers no trial.
-- [ ] **Attendees can read AI transcripts - by hand, once per tenant.** 05-07 KT04 opens the chat's transcript in
-      **DSPM for AI → Activity explorer**. Global Reader shows each interaction (user, agent, resources) but
-      not its text: *"We couldn't retrieve this prompt and response"*. Prompt and response text needs Purview's
-      **Data Security AI Content Viewers** role group, which the lab app can't edit (its session exposes no
-      role-group membership cmdlets). Purview portal → **Settings → Roles and scopes → Role groups → Data
-      Security AI Content Viewers → Edit**, add `Lab-Students-<estate>` (07 puts every attendee in it).
-      Note: Microsoft retires *DSPM for AI (classic)* on 30 November 2026 in favour of the new DSPM; check the
-      step's wording against the portal before a later delivery.
+- [ ] **Attendees can read AI transcripts** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b).
+      05-07 KT04 opens the chat's transcript in **DSPM for AI → Activity explorer**. Global Reader shows each
+      interaction (user, agent, resources) but not its text (*"We couldn't retrieve this prompt and
+      response"*). 07c puts `Lab-Students-<estate>` in Purview's **Data Security AI Content Viewers** role
+      group. Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks
+      for **one device-code approval** from a Global Administrator. `-Remove` after the delivery. Note:
+      Microsoft retires *DSPM for AI (classic)* on 30 November 2026; check the step's wording against the
+      portal before a later delivery.
 - [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
       summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
       `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
@@ -1018,6 +1019,8 @@ agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision 
       (`-Force` skips the prompt). **Run it before `99_teardown.ps1`**: it finds the billing policy to unlink
       through the estate's Prod environment, and once Prod is gone it warns and skips the unlink unless you
       pass `-BillingPolicyId`.
+- [ ] **The attendees' Purview role** (Phase 8b): `pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove`
+      (one admin device-code approval). Run it before `07 -Destroy`, while the group still has its members.
 - [ ] **Lab accounts** (Phase 8b): `pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy` (`-Force` skips
       the prompt), then delete `setup/lab-users-<estate>.local.csv`.
 - [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also
@@ -1064,6 +1067,7 @@ anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 | `scripts/03c_provision_purview.ps1` | Phase 4c: the encrypting label and the labelled comp copy |
 | `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
 | `scripts/07b_provision_facilitator.ps1` | The facilitator's Exercise 05 demonstration account |
+| `scripts/07c_provision_purview_roles.ps1` | Phase 8b: attendees into Purview's Data Security AI Content Viewers (05-07 KT04); one admin device-code approval |
 | `scripts/08_provision_student_slices.ps1` | Phase 8c: an environment per attendee, with the Claims Dataverse seed |
 | `scripts/09b_ex05_scoped_claims_role.ps1` | Exercise 05-03 demonstration: svc-claims' scoped role and fixed subset |
 | `scripts/09_ex05_demo_state.ps1` | Exercise 05 demonstrations: snapshot / diff / restore the shared estate |
