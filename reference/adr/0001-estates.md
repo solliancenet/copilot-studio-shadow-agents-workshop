@@ -34,6 +34,7 @@ statement of it.
 - the default environment (`Halcourt (default)`), named once by whoever runs first;
 - the Conditional Access baseline (Phase 0);
 - the PnP app registration (Phase 4).
+- proposed: the Phase 1 Azure deployment ([ADR-0005](0005-shared-azure-deployment.md)).
 
 **Lab pages keep the canonical names.** Attendees get the estate id with the tenant domain, and Task 00-01
 shows them how names carry it.
