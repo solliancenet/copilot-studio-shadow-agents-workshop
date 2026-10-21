@@ -431,8 +431,8 @@ could be rewritten portal-first and the attendee account could go back to read-o
 
 ### Why licence assignment is best effort
 
-A Dev Program sandbox carries **25** E5 seats. The estate itself needs eight (Phase 2), and the optional
-content pack's ~16 sample users hold most of the rest; on the build tenant `subscribedSkus` reported
+A Dev Program sandbox carries **25** E5 seats. The estate itself needs eight (Phase 2), and the content
+pack's ~16 sample users (the RUNBOOK now frees them in Phase 0, step 3) hold most of the rest; on the build tenant `subscribedSkus` reported
 `DEVELOPERPACK_V2_E5` at **25/25 consumed, 0 free**, so every attendee account came out unlicensed.
 
 That is why `07_provision_lab_users.ps1` checks seat availability up front, attempts assignment per account,

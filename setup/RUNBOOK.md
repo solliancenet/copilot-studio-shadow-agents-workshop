@@ -80,7 +80,8 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - Choose **Instant sandbox (Add-on purchases enabled)** — a 90-day renewable E5 sandbox.
    - Pick the **data-center region**. You can't change it later.
    - Accept whatever **domain** signup assigns (e.g. `0zwdt94t.onmicrosoft.com`). The scripts use it as is.
-   - **Content pack:** optional. Its ~16 sample users take licence seats the personas need in Phase 2.
+   - **Install the content pack** if signup offers it. Its ~16 sample users take E5 seats — you free them
+     in step 3.
    - Trouble with the variant, a billing account that doesn't show up, or no Developer Program:
      [errata → Phase 0](../reference/runbook-errata.md).
 
@@ -94,6 +95,12 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
      Defender**. Global Administrator covers all of them in a fresh tenant.
 
 3. **Assign licensing.**
+   - **Free the content pack's seats.** Admin center → **Billing → Licenses** → the E5 developer
+     licence → select the sample users → **Unassign licenses**. Leave the users themselves.
+   - In a new tenant that is everyone except the global admin. In a tenant where estates are already built,
+     **don't** unassign estate accounts — they carry an estate id (`marcus.webb.jsmith@…`,
+     `student01.jsmith@…`).
+   - The personas (Phase 2) and attendees (Phase 8b) need those seats.
    - Admin center → **Billing → Licenses** → assign an **E5** seat to the global admin.
    - E5 comes with the sandbox and covers the Purview features the labs use.
    - The personas get their seats in Phase 2.

@@ -56,7 +56,7 @@ https://www.microsoft.com/microsoft-365/enterprise/e5.
 ### Phase 0 · content pack / sample users
 
 The Dev Program offers an optional **content pack** that seeds the tenant with ~16 sample users and demo
-data. They don't collide with the personas — **don't** repurpose them as personas: the persona names and
+data. The RUNBOOK installs it and frees its seats (Phase 0, steps 1 and 3). They don't collide with the personas — **don't** repurpose them as personas: the persona names and
 aliases are canon, used by `AGENTS.md`, the artifact pack and the lab pages. Two real effects:
 
 - **License seats.** The sample users hold E5 developer seats (25 in all; 19 were taken on the tenant
