@@ -190,13 +190,19 @@ foreach ($name in $estateEnvNames) {
 # the DLP silently survives the teardown. It then outlives the environment it was scoped to, and the next
 # Phase 3 sees the name already in use and leaves Prod with no DLP at all.
 $dlp = Get-EstateName 'Halcourt-Prod-DLP' $Estate
-$policyApi = "$BAP/providers/PowerPlatform.Governance/v1/policies"
-$pol = (Invoke-Json GET "$policyApi`?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')).value | Where-Object { $_.displayName -eq $dlp } | Select-Object -First 1
-if ($pol) {
-  Invoke-Json DELETE "$policyApi/$($pol.name)?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/') | Out-Null
-  Write-Host "  deleted DLP $dlp"
+# NOT under $BAP: that already ends in /providers/Microsoft.BusinessAppPlatform, and the policy API sits beside it.
+# Built on $BAP the GET 404'd and the teardown reported "no DLP found" - and the policy survived (2026-10-21).
+$policyApi = 'https://api.bap.microsoft.com/providers/PowerPlatform.Governance/v1/policies'
+$list = Invoke-Json GET "$policyApi`?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')
+if ($null -eq $list) {
+  Write-Warning "  could not list DLP policies (above) - check for $dlp by hand; if it survives, Phase 3 leaves Prod without DLP"
 } else {
-  Write-Host "  no DLP named $dlp found"
+  $pol = @($list.value) | Where-Object { $_.displayName -eq $dlp } | Select-Object -First 1
+  if (-not $pol) { Write-Host "  no DLP named $dlp found" }
+  elseif ($null -ne (Invoke-Json DELETE "$policyApi/$($pol.name)?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')) -or
+          -not (@((Invoke-Json GET "$policyApi`?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')).value) | Where-Object { $_.name -eq $pol.name })) {
+    Write-Host "  deleted DLP $dlp"
+  } else { Write-Warning "  DLP $dlp still exists after DELETE - remove it by hand (PPAC -> Security -> Data and privacy -> Data policy)" }
 }
 # Unlink the estate envs from any billing plan (also happens as the envs finish deleting). Read the linked
 # list from the /environments SUB-RESOURCE: a billing policy's own `environmentIds` property always comes
