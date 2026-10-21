@@ -149,7 +149,7 @@ hasn't been captured yet.
   is the fallback. Before a task tells an attendee to read something from the portal, check the fact is in
   the pack. The pack holds only what someone with tenant access could find in the portal or APIs, plus
   fields an analyst would write themselves (descriptions, notes, calls like `is_service_account`).
-  `worksheets/artifact-pack/blank/` holds the same five CSVs with headers only, for attendees to fill in
+  `worksheets/artifact-pack/blank/` holds the same CSVs with headers only, for attendees to fill in
   from the tenant. Phase 7 of `setup/RUNBOOK.md` regenerates the filled set.
 - **House voice:** direct, plainspoken, security-review tone. Name trust boundaries explicitly. Prefer
   "whose authority is this agent exercising?" framing.

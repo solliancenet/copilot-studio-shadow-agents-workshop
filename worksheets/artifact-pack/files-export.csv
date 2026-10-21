@@ -1,0 +1,7 @@
+site,library,path,sensitivity_label
+Claims-Knowledge,Documents,Claims-Procedures.docx,
+Claims-Knowledge,Documents,claims.csv,
+HR-Benefits,Documents,Leadership/2026-comp-bands-labeled.xlsx,Confidential-PII
+HR-Benefits,Documents,Leadership/2026-comp-bands.xlsx,
+HR-Benefits,Documents,Open-Enrollment-FAQ.docx,
+HR-Benefits,HR FAQ,HR-FAQ-Published.docx,

@@ -14,7 +14,7 @@ pack** (exported estate data), so you are never blocked when the tenant is slow 
 
 ## The artifact pack
 
-Five CSVs that describe the Halcourt Mutual estate. If you can reach the tenant, start from the blank
+Five CSVs that describe the Halcourt Mutual estate, plus `files-export.csv`, which only Task 05-06 uses. If you can reach the tenant, start from the blank
 copies and fill them in from the portal and APIs as you go. If you can't, use the filled-in set: exports
 of the estate, tidied for the lab. Its connectors carry friendly names, the agent descriptions were written
 by hand, and `connections-export.csv` also lists three integrations that aren't Power Platform connections
@@ -28,6 +28,7 @@ across them to answer *how many agents, who owns them, what can they reach*.
 | `agent-identities-export.csv` | Each agent's auto-created Entra identity. The pack labels it `cs-agent-<slug>-<env>`; in Entra it is named `<agent name> (Microsoft Copilot Studio)`, and the app ids won't match the tenant's | [download]({% link worksheets/artifact-pack/blank/agent-identities-export.csv %}) | [download]({% link worksheets/artifact-pack/agent-identities-export.csv %}) |
 | `users-export.csv` | Accounts: enabled/disabled, leave date, last sign-in, service/shared | [download]({% link worksheets/artifact-pack/blank/users-export.csv %}) | [download]({% link worksheets/artifact-pack/users-export.csv %}) |
 | `environments-export.csv` | Environments, type, DLP applied, managed | [download]({% link worksheets/artifact-pack/blank/environments-export.csv %}) | [download]({% link worksheets/artifact-pack/environments-export.csv %}) |
+| `files-export.csv` | The knowledge sites' files and the sensitivity label each carries | [download]({% link worksheets/artifact-pack/blank/files-export.csv %}) | [download]({% link worksheets/artifact-pack/files-export.csv %}) |
 
 ### Where each column comes from
 
@@ -40,6 +41,7 @@ If you're working in the tenant, you fill in each blank CSV at the task that fir
 | `users-export.csv` | Microsoft Entra admin center: **Users**, and the users query (`az rest`) for leave dates and sign-ins. Exchange admin center: **Mailboxes**, filtered to shared mailboxes | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
 | `connections-export.csv` | The Power Platform admin API, through `az rest`. Copilot Studio: each agent's **Tools** and **Topics**. Power Platform admin center: each environment's **Flows** | [Task 01-01]({% link docs/01_the_agent_estate/01_01.md %}) |
 | `agent-identities-export.csv` | Microsoft Entra admin center: **Agent identities** (or Graph Explorer) | [Task 01-02]({% link docs/01_the_agent_estate/01_02.md %}) |
+| `files-export.csv` | SharePoint: each knowledge site's libraries; a file's **Details** panel shows its **Sensitivity**. You can't open `Leadership/`, so your facilitator shows that folder | [Task 05-06]({% link docs/05_test_the_controls/05_06.md %}) |
 
 A few columns have no field in the tenant, so you write them yourself: `maker_access` (who holds the maker
 roles), `is_service_account`, `auth_type` (whose credential a call carries), and `description` where an
