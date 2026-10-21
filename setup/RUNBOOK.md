@@ -134,15 +134,16 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
      [decisions → Phase 0](../reference/runbook-decisions.md#phase-0--tenant).
 
 5. **Consent to the Graph scopes.** Once, for the whole organization, as the global admin.
-   - Run:
+   - Run it in the dev container terminal. Safe to re-run: scopes already granted are skipped, and only
+     missing ones are asked for.
 
-     ```powershell
-     Connect-MgGraph -TenantId <yourlab>.onmicrosoft.com -Scopes `
-       Policy.ReadWrite.ConditionalAccess, Policy.Read.All, User.ReadWrite.All, Group.ReadWrite.All, `
-       User.Read.All, Application.Read.All, AuditLog.Read.All
+     ```bash
+     pwsh -c "Connect-MgGraph -TenantId <tenant domain> -UseDeviceCode -Scopes Policy.ReadWrite.ConditionalAccess,Policy.Read.All,User.ReadWrite.All,Group.ReadWrite.All,User.Read.All,Application.Read.All,AuditLog.Read.All"
      ```
 
-   - Tick **Consent on behalf of your organization**, then **Accept**.
+   - It prints a web address and a code; open the address, enter the code, and sign in as the global admin.
+   - If a consent screen appears, tick **Consent on behalf of your organization**, then **Accept**. No
+     screen means everything was already granted.
    - Check it: **Entra admin center → Enterprise applications → Microsoft Graph Command Line Tools →
      Permissions**.
    - What each scope is for:
