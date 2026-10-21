@@ -10,9 +10,12 @@ matches theirs.
 
 1. **Read the region from the Phase 3 summary** (the `Region` column — e.g. `canada`), or in PPAC
    (https://admin.powerplatform.microsoft.com) → **Manage → Environments**.
-2. **Create the billing plan in that region.** PPAC → **Licensing → Billing Plans → + New billing plan →
-   Azure subscription**. Name it `Halcourt-PAYG-<estate>` → pick the **Azure subscription** and **resource
-   group** → set the **Meter** to **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select
+2. **Create the billing plan in that region — only if it has none.** Check **Licensing → Billing Plans**
+   first; if a plan in the region has the Copilot Studio meter on, link to it instead (step 2's
+   **Select environments** page, on that plan). PPAC → **Licensing → Billing Plans → + New billing plan →
+   Azure subscription**. Name it for the region, not your estate — `Halcourt-PAYG-<region>` (e.g.
+   `Halcourt-PAYG-canada`), because every estate in the region will share it → pick the **Azure
+   subscription** and the shared **resource group** `rg-halcourt-billing` → set the **Meter** to **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select
    environments**, set the **Region** filter to the summary's region, then **check**
    `Halcourt-Prod-<estate>` and `Claims-Test-<estate>` → **Save**.
 3. **Mind the region-lock.** A plan only lists environments in its own region: if an environment isn't in

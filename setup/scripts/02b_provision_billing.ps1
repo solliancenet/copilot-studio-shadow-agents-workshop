@@ -8,8 +8,11 @@ its agents run without a plan.
 
 Estates in one tenant SHARE a plan per region (it is just an Azure meter; each environment's usage is
 reported separately). So this finds a plan in the environments' region with the Copilot Studio meter on and
-links to it; if none exists it creates the once-per-region plan - a Microsoft.PowerPlatform/accounts Azure
-resource plus a billing policy - then links.
+links to it, whatever its name (a Dev Program tenant may already have one, e.g. ppccdevcanada); if none
+exists it creates the once-per-region plan - a Microsoft.PowerPlatform/accounts Azure resource plus a billing
+policy - then links. A plan it creates is SHARED, so its names carry the region, never an estate id: resource
+group rg-halcourt-billing, account ppcc-halcourt-<region>, plan Halcourt-PAYG-<region>. No estate owns it, and
+estate teardown (99) only unlinks.
 
 Reuses az's sign-in for both ARM and api.powerplatform.com (no device code). Region-lock: a plan only lists
 environments in its own region, so the plan region must match where Phase 3 put the environments (a macro
@@ -20,9 +23,9 @@ Lines marked [verify] are the create-a-new-plan path, unconfirmed on a tenant th
 param(
   [string]$Estate = $env:HALCOURT_ESTATE,               # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$SubscriptionId,                              # default: az's current subscription
-  [string]$ResourceGroup,                               # default: rg-halcourt-billing-<estate>
+  [string]$ResourceGroup = 'rg-halcourt-billing',       # shared by every estate: no estate id
   [string]$ResourceGroupLocation = 'eastus',            # AZURE region for the RG; unrelated to the plan's region
-  [string]$PlanName                                     # default: Halcourt-PAYG-<estate>
+  [string]$PlanName                                     # default: Halcourt-PAYG-<region> (shared)
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
@@ -53,8 +56,6 @@ function Invoke-Rest([string]$Method, [string]$Url, [string]$Resource, $Body) {
 }
 
 if (-not $SubscriptionId) { $SubscriptionId = az account show --query id -o tsv }
-if (-not $ResourceGroup)  { $ResourceGroup  = "rg-halcourt-billing-$Estate" }
-if (-not $PlanName)       { $PlanName       = "Halcourt-PAYG-$Estate" }
 Write-Host "Estate: $Estate   Subscription: $SubscriptionId"
 
 # --- Resolve this estate's Prod + Claims-Test and their region ------------------------------------------
@@ -68,6 +69,7 @@ foreach ($canon in 'Halcourt-Prod', 'Claims-Test') {
 }
 $region = $targets[0].Region
 if ($targets.Region | Where-Object { $_ -ne $region }) { throw "Prod and Claims-Test are in different regions - link them to separate plans." }
+if (-not $PlanName) { $PlanName = "Halcourt-PAYG-$region" }
 Write-Host "Linking to a '$region' plan: $($targets.Name -join ', ')"
 
 # --- Find a plan in that region with the Copilot Studio (MCSMessages) meter on --------------------------
@@ -94,7 +96,7 @@ if (-not $plan) {
 
   # The ARM account takes the Power Platform region TITLE-CASED ('Canada'); the billing policy below takes
   # the same region lower-case ('canada'). They really are spelled differently.
-  $accountName = "ppcc-$Estate"
+  $accountName = "ppcc-halcourt-$region"
   $accountUrl  = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroup" +
                  "/providers/Microsoft.PowerPlatform/accounts/$accountName" + '?api-version=2020-10-30-preview'
   Invoke-Rest PUT $accountUrl 'https://management.azure.com/' @{
