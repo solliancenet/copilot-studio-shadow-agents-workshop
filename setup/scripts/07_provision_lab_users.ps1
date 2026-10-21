@@ -542,20 +542,25 @@ if ($report.Count) {
 # --- Graph Explorer: tenant-wide consent for the lab's read queries ------------------------------------------
 # $GraphExplorerScopes (_access_model.ps1) says which steps need it. An AllPrincipals grant; the app's
 # service principal appears on first sign-in, so create it if nobody has signed in yet.
-$geSp = @((Graph GET "servicePrincipals?`$filter=appId eq '$GraphExplorerAppId'&`$select=id").value) | Select-Object -First 1
-if (-not $geSp) { $geSp = Graph POST 'servicePrincipals' @{ appId = $GraphExplorerAppId } }
-$msGraph = @((Graph GET "servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=id").value)[0]
-$want = $GraphExplorerScopes -join ' '
-$grant = @((Graph GET "oauth2PermissionGrants?`$filter=clientId eq '$($geSp.id)' and consentType eq 'AllPrincipals' and resourceId eq '$($msGraph.id)'").value) | Select-Object -First 1
-if (-not $grant) {
-  Graph POST 'oauth2PermissionGrants' @{ clientId = $geSp.id; consentType = 'AllPrincipals'; resourceId = $msGraph.id; scope = $want } | Out-Null
-  Write-Host "Graph Explorer: consented for all users ($want)"
-} else {
-  $missing = @($GraphExplorerScopes | Where-Object { $_ -notin ($grant.scope -split ' ') })
-  if ($missing) {
-    Graph PATCH "oauth2PermissionGrants/$($grant.id)" @{ scope = ((@($grant.scope -split ' ' | Where-Object { $_ }) + $missing) -join ' ') } | Out-Null
-    Write-Host "Graph Explorer: consent extended with $($missing -join ' ')"
-  } else { Write-Host 'Graph Explorer: consent already in place' }
+# Never fatal: the credentials are already saved and the Dataverse grants below must still run.
+try {
+  $geSp = @((Graph GET "servicePrincipals?`$filter=appId eq '$GraphExplorerAppId'&`$select=id").value) | Select-Object -First 1
+  if (-not $geSp) { $geSp = Graph POST 'servicePrincipals' @{ appId = $GraphExplorerAppId } }
+  $msGraph = @((Graph GET "servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=id").value)[0]
+  $want = $GraphExplorerScopes -join ' '
+  $grant = @((Graph GET "oauth2PermissionGrants?`$filter=clientId eq '$($geSp.id)' and consentType eq 'AllPrincipals' and resourceId eq '$($msGraph.id)'").value) | Select-Object -First 1
+  if (-not $grant) {
+    Graph POST 'oauth2PermissionGrants' @{ clientId = $geSp.id; consentType = 'AllPrincipals'; resourceId = $msGraph.id; scope = $want } | Out-Null
+    Write-Host "Graph Explorer: consented for all users ($want)"
+  } else {
+    $missing = @($GraphExplorerScopes | Where-Object { $_ -notin ($grant.scope -split ' ') })
+    if ($missing) {
+      Graph PATCH "oauth2PermissionGrants/$($grant.id)" @{ scope = ((@($grant.scope -split ' ' | Where-Object { $_ }) + $missing) -join ' ') } | Out-Null
+      Write-Host "Graph Explorer: consent extended with $($missing -join ' ')"
+    } else { Write-Host 'Graph Explorer: consent already in place' }
+  }
+} catch {
+  Write-Warning "Graph Explorer consent failed - 01-02, 02-01 and 06-01's Graph Explorer queries will be refused: $($_.Exception.Message.Split([char]10)[0]). Re-run 07."
 }
 
 # --- Dataverse read-only role -------------------------------------------------------------------------------
@@ -627,7 +632,7 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
     Write-Warning "  $($TargetEnv.Name): could not read current privileges - $($_.Exception.Message.Split([char]10)[0])"
   }
   $wantIds = @{}                                   # privilegeid -> name, for every privilege the model lists
-  $privs = @(foreach ($p in $DvPrivilegeNames) {
+  $privs = @(foreach ($p in (Get-DvPrivilegeNamesFor $TargetEnv.Name $Estate)) {
     $pv = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'privileges' 'privilegeid' "name eq '$p'") $null).value | Select-Object -First 1
     if (-not $pv) { Write-Warning "  $($TargetEnv.Name): privilege $p not found - skipped."; continue }
     $wantIds["$($pv.privilegeid)"] = $p

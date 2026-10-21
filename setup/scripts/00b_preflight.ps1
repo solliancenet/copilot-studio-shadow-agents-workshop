@@ -210,7 +210,7 @@ foreach ($en in $wantEnvs) {
     if (-not $role) { return Result 'FAIL' "role not created - run 07_provision_lab_users.ps1" }
     $held = @((Get-Json "$org/api/data/v9.2/RetrieveRolePrivilegesRole(RoleId=$($role.roleid))" $org).RolePrivileges | ForEach-Object { $_.PrivilegeId })
     $wantIds = @{}
-    foreach ($n in $DvPrivilegeNames) {
+    foreach ($n in (Get-DvPrivilegeNamesFor $en $Estate)) {
       $pv = (Get-Json "$org/api/data/v9.2/privileges?`$select=privilegeid&`$filter=name eq '$n'" $org).value | Select-Object -First 1
       if ($pv) { $wantIds[$pv.privilegeid] = $n }
     }

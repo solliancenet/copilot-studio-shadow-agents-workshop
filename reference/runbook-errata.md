@@ -1418,13 +1418,14 @@ Administrator), for the exercise owner:
 
 | Step | Result |
 |---|---|
-| KT01 s1, KT02, KT05 s1 - Purview Audit search | form greyed out (above), even though Purview's `GlobalReader` role group lists View-Only Audit Logs. Not re-tested now ingestion is on |
+| KT01 s1, KT02, KT05 s1 - Purview Audit search | form greyed out (above), even though Purview's `GlobalReader` role group lists View-Only Audit Logs. **Re-tested 2026-10-21 once ingestion was on: works** - student03 searched, the jobs completed in 4-7 minutes, results and event details opened |
 | KT04 s2, KT05 s2 - DSPM for AI | *"Additional permissions required. Your role can't view or take action on certain data items"* |
 | KT01 s3, KT06 s1 - Defender real-time protection | Settings: *"You don't have permission to view this page"* |
 | KT03 - a claim's audit history (to see it holds no read) | Dataverse: *"missing prvReadRecordAuditHistory"*. Opening the claim at all would need claim read, which would break Scenario D |
 
-Decided 2026-10-20 (Matt): 05-07 becomes a facilitator demonstration - not yet reflected in 05-07 on main,
-which still has attendees run each step. The facilitator's audit reach is the Purview
+Decided 2026-10-20 (Matt): 05-07 becomes a facilitator demonstration. **Superseded the same day:** Matt
+chose to give attendees read access instead (Graph Explorer consent, Claims-Test audit records, 07c), and
+Jim's 05-07 keeps every step with the attendee; 07b no longer makes Security Administrator eligible. The facilitator's audit reach is the Purview
 `SecurityAdministrator` role group (Audit Logs, View-Only Audit Logs), which it gets by activating its
 PIM-eligible Security Administrator - also what the Defender step needs. The lab app can't add Purview
 role-group members (`Add-RoleGroupMember` exposes no `-Identity` to it), so DSPM content (`Data Security AI

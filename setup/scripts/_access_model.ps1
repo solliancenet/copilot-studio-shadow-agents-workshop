@@ -91,9 +91,10 @@ $DvAccessModel = @(
   # The Audit Summary view (/tools/audit/audit_summary.aspx) lists a table's audit records WITHOUT opening the
   # record, so attendees see that Claims Copilot's read left none while claim rows stay closed to them (claim
   # read would break Scenario D). Verified as student03, 2026-10-20: audits readable, mm_claims still denied.
-  @{ Privilege = 'prvReadRecordAuditHistory';     Needs = '05-07 KT03: audit records (the audits API; without it 0x80040220)' }
-  @{ Privilege = 'prvReadAuditSummary';           Needs = '05-07 KT03: the Audit Summary view' }
-  @{ Privilege = 'prvReadQuery';                  Needs = '05-07 KT03: Audit Summary renders its views (named in its 403)' }
+  # Env: Claims-Test ONLY - audit records carry changed values, and no other environment's audit is needed.
+  @{ Privilege = 'prvReadRecordAuditHistory';     Env = 'Claims-Test'; Needs = '05-07 KT03: audit records (the audits API; without it 0x80040220)' }
+  @{ Privilege = 'prvReadAuditSummary';           Env = 'Claims-Test'; Needs = '05-07 KT03: the Audit Summary view' }
+  @{ Privilege = 'prvReadQuery';                  Env = 'Claims-Test'; Needs = '05-07 KT03: Audit Summary renders its views (named in its 403)' }
   # PPAC role editor: the per-table privilege grid ............................. 03-02 KT01 s2, 03-04 KT01 s3
   @{ Privilege = 'prvReadAttribute';              Needs = '03-02 role editor: EntityDefinitions (named in its 403)' }
   @{ Privilege = 'prvReadEntity';                 Needs = '03-02 role editor: EntityDefinitions' }
@@ -114,6 +115,11 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadCopilotSynonyms';        Needs = 'agent page (named in its 403)' }
 )
 $DvPrivilegeNames = @($DvAccessModel | ForEach-Object { $_.Privilege })
+# The privileges one environment's lab role should hold: every entry without an Env, plus those whose Env
+# (a canonical name, e.g. 'Claims-Test') is this environment. $EnvName is the live display name.
+function Get-DvPrivilegeNamesFor([string]$EnvName, [string]$Estate) {
+  @($DvAccessModel | Where-Object { -not $_.Env -or (Get-EstateName $_.Env $Estate) -eq $EnvName } | ForEach-Object { $_.Privilege })
+}
 
 # Built-in roles assigned ALONGSIDE the lab role, by name. Never pruned - they are Microsoft's.
 $DvCompanionRoles = @('Bot Viewer')

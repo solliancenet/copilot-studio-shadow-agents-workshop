@@ -58,9 +58,10 @@ as Tom, then attach them.
 
 ### Claims Copilot  (Claims-Test, owner priya.nair)
 - Connection: **shared Dataverse connection running as `svc-claims`** (the over-broad role from Phase 5).
-- Tools: Dataverse *List rows* on Claim and Customer; *Update claim status*.
+- Tools: Dataverse *List rows* on Claim and Customer. **No update tool** - 05-07's attribution lesson needs a
+  read-only agent (a read leaves no downstream record); 04-04 reasons the write half.
 - Ground on `Claims-Knowledge`. Publish. Verify Scenarios C (reads all rows + PII), D (Jordan Blake can
-  read/modify any claim), F (it is a "test" env doing prod work).
+  read any claim), F (it is a "test" env doing prod work).
 
 ### Policy Lookup Bot  (Halcourt-Prod, owner = it.helpdesk shared mailbox)
 - Add an **HTTP action** to `https://<policy-api-fqdn>/policy/{id}` (`<policy-api-fqdn>` = the Policy API

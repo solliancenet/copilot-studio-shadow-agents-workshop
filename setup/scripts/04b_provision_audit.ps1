@@ -7,15 +7,17 @@ audit ingestion False, Claims-Test auditing off, so 05-07 had nothing to find):
 
   1. Microsoft Purview Audit - unified audit log ingestion (Exchange Online, app-only). Microsoft says a
      change takes up to 60 minutes; CopilotInteraction events start after that.
-  2. Dataverse auditing in Claims-Test-<estate>: the environment, and the Claim and Customer tables. That
-     records CHANGES (create, update, delete, sharing) - what the 05-03 demonstration makes.
+  2. Dataverse auditing in Claims-Test-<estate>: the environment, and the Claim table. That records CHANGES
+     (create, update, delete, sharing) - what the 05-03 demonstration makes. NOT the Customer table:
+     attendees read Claims-Test's audit records (05-07 KT03), and a customer change would carry its old and
+     new values - SSN and date of birth - which they must not see. A run that finds it audited turns it off.
 
 Deliberately NOT turned on: read logs. Dataverse auditing never records a read, and activity logging (Read logs
 plus a table's read settings) reaches Purview only for PRODUCTION environments - Claims-Test is a sandbox, so
 Claims Copilot's reads are logged nowhere. 05-07 KT03 teaches that gap; don't work around it.
 
-Not scripted: Defender real-time protection for agents (05-07 KT06) - it needs the Microsoft 365 app
-connector and an Entra app registered in the Defender portal; RUNBOOK Phase 5b.
+Not used: Defender real-time protection for agents. It needs a Microsoft Agent 365 licence the lab tenant
+doesn't have, so 05-07 KT06 is reasoned; RUNBOOK Phase 5b keeps the setup for a build that has one.
 
 Auth: the lab app (_labapp.ps1, made by 03c) for Exchange Online; az's admin sign-in for Dataverse.
 Safe to re-run. Isolated training tenants only. ASCII only.
@@ -29,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')          # also the tenant guard
 $Estate = Resolve-Estate $Estate
 . (Join-Path $PSScriptRoot '_labapp.ps1')
-Ensure-LabApp
+Ensure-LabApp -NoBilling                           # 04b uses no metered Graph API
 $domain = (Get-Content $AppConfig -Raw | ConvertFrom-Json).organization
 
 # ---- 1. unified audit log ingestion ---------------------------------------------------------------------
@@ -41,6 +43,7 @@ else {
   Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true -WarningAction SilentlyContinue
   Write-Host '   turned on - allow up to 60 minutes before running Exercise 04'
 }
+$ingestion = (Get-AdminAuditLogConfig).UnifiedAuditLogIngestionEnabled
 Disconnect-ExchangeOnline -Confirm:$false | Out-Null
 
 # ---- 2. Dataverse auditing in Claims-Test --------------------------------------------------------------
@@ -67,13 +70,14 @@ else {
 
 # A table's audit flags are metadata: read the whole definition, set the flags, PUT it back, publish.
 $publish = @()
-foreach ($t in 'mm_claim', 'mm_customer') {
+$want = @{ mm_claim = $true; mm_customer = $false }
+foreach ($t in $want.Keys) {
   $def = Dv GET "EntityDefinitions(LogicalName='$t')"
-  if ($def.IsAuditEnabled.Value) { Write-Host "   $t : already audited"; continue }
-  $def.IsAuditEnabled.Value = $true
+  if ($def.IsAuditEnabled.Value -eq $want[$t]) { Write-Host "   $t : audited=$($want[$t]) already"; continue }
+  $def.IsAuditEnabled.Value = $want[$t]
   $body = $def | Select-Object -Property * -ExcludeProperty '@odata.context'
   Dv PUT "EntityDefinitions($($def.MetadataId))" $body @{ 'MSCRM.MergeLabels' = 'true' } | Out-Null
-  $publish += $t; Write-Host "   $t : changes audited"
+  $publish += $t; Write-Host "   $t : audited=$($want[$t])"
 }
 if ($publish) {
   $xml = '<importexportxml><entities>' + (($publish | ForEach-Object { "<entity>$_</entity>" }) -join '') + '</entities></importexportxml>'
@@ -85,9 +89,11 @@ if ($publish) {
 # Metadata reads can lag the publish (seen: one table read back False/False/False right after it): retry.
 for ($i = 0; $i -lt 6; $i++) {
   $o = (Dv GET 'organizations?$select=isauditenabled').value[0]
-  $tabs = foreach ($t in 'mm_claim', 'mm_customer') { $d = Dv GET "EntityDefinitions(LogicalName='$t')?`$select=IsAuditEnabled"; "$t=$($d.IsAuditEnabled.Value)" }
-  if (-not ($tabs -match 'False')) { break }
+  $bad = @(foreach ($t in $want.Keys) { $d = Dv GET "EntityDefinitions(LogicalName='$t')?`$select=IsAuditEnabled"; if ($d.IsAuditEnabled.Value -ne $want[$t]) { $t } })
+  $tabs = foreach ($t in $want.Keys) { "$t=$(if ($t -in $bad) { 'WRONG' } else { $want[$t] })" }
+  if (-not $bad) { break }
   Start-Sleep 15
 }
-Write-Host "Check: environment audit=$($o.isauditenabled); tables (changes) $($tabs -join ', ')"
-Write-Host 'Defender real-time protection is a portal step - RUNBOOK Phase 5b.'
+Write-Host "Check: unified audit ingestion=$ingestion; environment audit=$($o.isauditenabled); tables $($tabs -join ', ')"
+if (-not $ingestion -or -not $o.isauditenabled -or $bad) { throw 'Auditing is not in the state 05-07 needs - see the Check line.' }
+Write-Host 'Defender real-time protection is not used: 05-07 KT06 is reasoned (RUNBOOK Phase 5b).'
