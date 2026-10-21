@@ -873,9 +873,9 @@ AI Administrator,
 
 Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
 the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
-(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator /
-Security Administrator only as PIM-eligible - activate one for the step that needs it (05-05, 05-07) and
-let it lapse. Create it once, after the attendee accounts:
+(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator only
+as PIM-eligible - activate it for the step that needs it (05-05) and let it lapse. (Security Administrator
+was eligible for 05-07's Defender step; that step is reasoned now, so 07b removes it.) Create it once, after the attendee accounts:
 
 ```powershell
 pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv

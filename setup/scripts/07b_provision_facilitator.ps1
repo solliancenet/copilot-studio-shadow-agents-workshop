@@ -9,9 +9,10 @@ student, and the facilitator's own tenant-admin account stays off the projector.
   facilitator.<estate>@<domain>  "Lab Facilitator (<estate>)"
     Power Platform Administrator   standing - data policies, environment roles, Dataverse self-elevation
     AI Administrator               PIM-ELIGIBLE - 05-05: Block an agent in Agent 365
-    Security Administrator         PIM-ELIGIBLE - 05-07: Defender real-time protection. It can also edit
-                                   Conditional Access, which is why it is eligible, not held: activate it for
-                                   the one step, time-boxed, and let it lapse.
+
+Security Administrator is no longer eligible: it was for 05-07's Defender real-time protection, which is
+reasoned now (it needs a Microsoft Agent 365 licence the lab tenant lacks), and the role can also edit
+Conditional Access. A re-run removes the eligibility from an account an older 07b gave it to.
 
 The admin roles put it under CA-Require-MFA-Admins: it enrols MFA at first sign-in like any admin. No licence
 (every step is an admin-portal action). Its password goes to setup/lab-facilitator-<estate>.local.csv
@@ -84,7 +85,7 @@ catch { if ("$_" -match 'already exist') { Write-Host '  Power Platform Administ
 # ---- eligible roles, through the kit's app-only identity (the az token lacks the PIM scopes) -------------
 . (Join-Path $PSScriptRoot '_labapp.ps1'); Ensure-LabApp -NoBilling
 $pim = Get-AppToken 'https://graph.microsoft.com'
-foreach ($n in 'AI Administrator', 'Security Administrator') {
+foreach ($n in 'AI Administrator') {
   $b = @{ action = 'adminAssign'; principalId = $id; roleDefinitionId = (TemplateId $n); directoryScopeId = '/'
           justification = 'Halcourt lab: Exercise 05 facilitator demonstrations, activated per step'
           scheduleInfo = @{ startDateTime = (Get-Date).ToUniversalTime().ToString('o'); expiration = @{ type = 'noExpiration' } } }
@@ -100,5 +101,18 @@ foreach ($n in 'AI Administrator', 'Security Administrator') {
     }
   }
 }
-Write-Host "`nSign in once as $upn to enrol MFA (CA-Require-MFA-Admins). Activate AI Administrator / Security"
-Write-Host "Administrator in Entra > Privileged Identity Management > My roles only for the step that needs it."
+# Retired: Security Administrator (05-07 is reasoned). Remove it where an older 07b made it eligible.
+foreach ($n in 'Security Administrator') {
+  $b = @{ action = 'adminRemove'; principalId = $id; roleDefinitionId = (TemplateId $n); directoryScopeId = '/'
+          justification = 'Halcourt lab: role retired from the facilitator account' }
+  try {
+    Invoke-RestMethod -Method POST -Uri 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilityScheduleRequests' `
+      -Headers @{ Authorization = "Bearer $pim" } -ContentType 'application/json' -Body ($b | ConvertTo-Json -Depth 5) | Out-Null
+    Write-Host "  $n`: eligibility removed (retired)"
+  } catch {
+    if ("$_" -match 'RoleAssignmentDoesNotExist|does not exist') { Write-Host "  $n`: not eligible (retired)" }
+    else { Write-Warning "  removing eligibility '$n': $($_.Exception.Message.Split([char]10)[0])" }
+  }
+}
+Write-Host "`nSign in once as $upn to enrol MFA (CA-Require-MFA-Admins). Activate AI Administrator in"
+Write-Host "Entra > Privileged Identity Management > My roles only for the step that needs it (05-05)."
