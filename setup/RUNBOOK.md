@@ -975,6 +975,14 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
       hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
 - [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
       2026 it needs a Microsoft Agent 365 licence, and a developer tenant offers no trial.
+- [ ] **Attendees can read AI transcripts - by hand, once per tenant.** 05-07 KT04 opens the chat's transcript in
+      **DSPM for AI → Activity explorer**. Global Reader shows each interaction (user, agent, resources) but
+      not its text: *"We couldn't retrieve this prompt and response"*. Prompt and response text needs Purview's
+      **Data Security AI Content Viewers** role group, which the lab app can't edit (its session exposes no
+      role-group membership cmdlets). Purview portal → **Settings → Roles and scopes → Role groups → Data
+      Security AI Content Viewers → Edit**, add `Lab-Students-<estate>` (07 puts every attendee in it).
+      Note: Microsoft retires *DSPM for AI (classic)* on 30 November 2026 in favour of the new DSPM; check the
+      step's wording against the portal before a later delivery.
 - [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
       summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
       `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
