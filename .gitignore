@@ -48,3 +48,6 @@ __pycache__/
 
 # Exercise 05 demonstration snapshots (09_ex05_demo_state.ps1)
 setup/ex05-state/
+
+# Claude Code per-machine settings
+.claude/settings.local.json
