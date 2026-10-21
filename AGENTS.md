@@ -34,7 +34,7 @@
 Every identifier in this file is **canonical** — it is what the artifact pack, the answer keys and the lab
 pages use. A live build is an **estate**: several facilitators can build one in the same tenant, each under
 a short **estate id** (their alias, e.g. `jsmith`), and every tenant-scoped name it creates is derived from
-the canonical one so estates never collide (`setup/scripts/_estate.ps1`; RUNBOOK → *Estates*):
+the canonical one so estates never collide (`setup/scripts/_estate.ps1`; RUNBOOK → *Phase 0b*):
 
 | Canonical | Live (estate `jsmith`) | Rule |
 |---|---|---|

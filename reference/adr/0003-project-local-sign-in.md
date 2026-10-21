@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Applies to:** `scripts/env.sh`, `scripts/shims/pac`, `.vscode/settings.json`, `.claude/settings.json`,
-`.devcontainer/`, every `setup/scripts/*` and `infra/*.sh` script; `setup/RUNBOOK.md` → *Estates* step 2
+`.devcontainer/`, every `setup/scripts/*` and `infra/*.sh` script; `setup/RUNBOOK.md` → *Phase 0b* step 2
 
 ## Context
 

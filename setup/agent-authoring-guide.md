@@ -10,7 +10,7 @@
 ## Estate names
 
 Every name below is **canonical**. Build with your estate's live names ([`../AGENTS.md`](../AGENTS.md) →
-*Live estate naming*; RUNBOOK → *Estates*), for estate `<estate>` on tenant domain `<domain>`:
+*Live estate naming*; RUNBOOK → *Phase 0b*), for estate `<estate>` on tenant domain `<domain>`:
 
 | Canonical, below | Build with |
 |---|---|

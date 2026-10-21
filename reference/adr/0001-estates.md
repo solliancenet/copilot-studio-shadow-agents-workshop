@@ -1,7 +1,7 @@
 # ADR-0001: Every live build is an estate
 
 **Status:** Accepted
-**Applies to:** `setup/RUNBOOK.md` → *Estates*, every `setup/scripts/*` script, `AGENTS.md` → *Live estate naming*
+**Applies to:** `setup/RUNBOOK.md` → *Phase 0b*, every `setup/scripts/*` script, `AGENTS.md` → *Live estate naming*
 
 ## Context
 

@@ -44,7 +44,7 @@ real Windows desktop browser for interactive sign-in and MFA? See
 
 ```
 0. Provision isolated tenant   → fresh *.onmicrosoft.com, licensing, security defaults → CA baseline
-   Choose your estate id        → once per build, in a tenant that already exists
+0b. Choose your estate id      → once per build, in a tenant that already exists
 1. Azure infra (Bicep)        → Policy API + Underwriting MCP endpoints
 2. Entra identities/personas  → users, groups (tom.dean: leave date in 6.5, stays enabled)
 3. Environments + DLP          → 4 environments, prod DLP, PAYG billing plan
@@ -66,7 +66,7 @@ real Windows desktop browser for interactive sign-in and MFA? See
 ### Phase 0 — Provision the isolated training tenant
 
 Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else already set up?** Skip to
-[Estates](#estates--choose-your-estate-id); you need its global admin sign-in.
+[Phase 0b](#phase-0b--choose-your-estate-id); you need its global admin sign-in.
 
 {: .important }
 > This tenant **must not** be linked to any production or corporate tenant. Sign up with a **personal or
@@ -177,7 +177,7 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
      browser from your own machine or the Windows VM: drop `--use-device-code` / `--deviceCode` /
      `-UseDeviceCode`.
 
-### Estates — choose your estate id
+### Phase 0b — Choose your estate id
 
 Once per build. Several people can build Halcourt Mutual in the same tenant; each build is an **estate**,
 and every name it creates carries its estate id. With the id `jsmith`, `Claims-Test` becomes
@@ -957,7 +957,7 @@ on its own, so the script retries rather than failing the slice.
 names the exercise steps each failed check would break.
 
 1. In the dev container terminal, sign in as the tenant's global admin and set your estate id, as in
-   [Estates](#estates--choose-your-estate-id) steps 2 and 4.
+   [Phase 0b](#phase-0b--choose-your-estate-id) steps 2 and 4.
 2. Run it with the attendee count — no more attendees than you have Microsoft 365 seats to give them
    (count your free E5 seats; [ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)):
 

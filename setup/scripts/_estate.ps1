@@ -26,7 +26,7 @@ elseif ([System.IO.Path]::GetFullPath($env:AZURE_CONFIG_DIR).TrimEnd('/','\') -n
 function Resolve-Estate([string]$Estate) {
   if (-not $Estate) { $Estate = $env:HALCOURT_ESTATE }
   if (-not $Estate) {
-    throw 'No estate id. Pass -Estate <id> or set HALCOURT_ESTATE (e.g. your alias: jsmith) - see RUNBOOK -> Estates.'
+    throw 'No estate id. Pass -Estate <id> or set HALCOURT_ESTATE (e.g. your alias: jsmith) - see RUNBOOK -> Phase 0b.'
   }
   # Lowercase letters/digits only: the id lands in UPNs, group and environment names, and SharePoint URLs.
   if ($Estate -cnotmatch '^[a-z0-9]{2,12}$') {
