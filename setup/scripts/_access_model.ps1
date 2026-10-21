@@ -65,6 +65,14 @@ $RetiredEligibleRoles = @('AI Administrator', 'Security Administrator')
 # Scenario B: the agent reaches Leadership/, the attendee cannot.
 #   NOT Halcourt-Makers: it carries maker rights, so Underwriting Assistant and Sales Nudge stay out of chat.
 $AudienceGroups = @('All-Employees')
+
+# Graph Explorer, consented tenant-wide for these READ scopes, so the Graph Explorer steps work: 01-02 KT01 s2
+# and 02-01 KT01 s4 (servicePrincipals/microsoft.graph.agentIdentity), 06-01 KT02 note and KT03 s1 (users with
+# signInActivity). Each is admin-consent-only: without the grant an attendee's query returns
+# Authorization_RequestDenied (verified as student03, 2026-10-20). Decided 2026-10-20 (Matt): consent the app
+# rather than drop the steps. Tenant-wide and shared by every estate, so -Destroy leaves it.
+$GraphExplorerAppId  = 'de8bc8b5-d9f9-48b1-a8ad-b748da725064'
+$GraphExplorerScopes = @('openid', 'profile', 'offline_access', 'User.Read', 'User.Read.All', 'AuditLog.Read.All', 'Application.Read.All', 'AgentIdentity.Read.All')
 # The Conditional Access policy attendees enrol MFA against (00_conditional_access_baseline.ps1 creates it).
 $CaPolicyName = 'CA-Require-MFA-Admins'
 
@@ -79,6 +87,14 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadPosition';               Needs = '03-02 KT01 s2, 04-04 KT01 s1: PPAC Settings > Users list - its systemusers query (named in its 403; without it the list shows "something went wrong")' }
   @{ Privilege = 'prvReadSettingDefinition';      Needs = 'PPAC Settings > Users: settingdefinitions read (named in its 403)' }
   @{ Privilege = 'prvReadWorkflow';               Needs = '03-01 KT01 s2, 04-04 KT02 s5: PPAC Resources > Flows lists another owner''s flow (Bot Viewer grants it at Basic only: the list said "No flows found")' }
+  # Dataverse audit records ........................................................................ 05-07 KT03
+  # The Audit Summary view (/tools/audit/audit_summary.aspx) lists a table's audit records WITHOUT opening the
+  # record, so attendees see that Claims Copilot's read left none while claim rows stay closed to them (claim
+  # read would break Scenario D). Verified as student03, 2026-10-20: audits readable, mm_claims still denied.
+  # Env: Claims-Test ONLY - audit records carry changed values, and no other environment's audit is needed.
+  @{ Privilege = 'prvReadRecordAuditHistory';     Env = 'Claims-Test'; Needs = '05-07 KT03: audit records (the audits API; without it 0x80040220)' }
+  @{ Privilege = 'prvReadAuditSummary';           Env = 'Claims-Test'; Needs = '05-07 KT03: the Audit Summary view' }
+  @{ Privilege = 'prvReadQuery';                  Env = 'Claims-Test'; Needs = '05-07 KT03: Audit Summary renders its views (named in its 403)' }
   # PPAC role editor: the per-table privilege grid ............................. 03-02 KT01 s2, 03-04 KT01 s3
   @{ Privilege = 'prvReadAttribute';              Needs = '03-02 role editor: EntityDefinitions (named in its 403)' }
   @{ Privilege = 'prvReadEntity';                 Needs = '03-02 role editor: EntityDefinitions' }
@@ -99,6 +115,11 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadCopilotSynonyms';        Needs = 'agent page (named in its 403)' }
 )
 $DvPrivilegeNames = @($DvAccessModel | ForEach-Object { $_.Privilege })
+# The privileges one environment's lab role should hold: every entry without an Env, plus those whose Env
+# (a canonical name, e.g. 'Claims-Test') is this environment. $EnvName is the live display name.
+function Get-DvPrivilegeNamesFor([string]$EnvName, [string]$Estate) {
+  @($DvAccessModel | Where-Object { -not $_.Env -or (Get-EstateName $_.Env $Estate) -eq $EnvName } | ForEach-Object { $_.Privilege })
+}
 
 # Built-in roles assigned ALONGSIDE the lab role, by name. Never pruned - they are Microsoft's.
 $DvCompanionRoles = @('Bot Viewer')

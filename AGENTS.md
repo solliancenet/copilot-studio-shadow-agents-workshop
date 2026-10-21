@@ -135,7 +135,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Data sensitivity (by reach):** **PII** — Dataverse `Customer` (SSN, DOB) via svc-claims.
 - **Purpose:** Let adjusters look up and update claim status.
 - **Connections:** **Shared** Dataverse connection running as **svc-claims**.
-- **Connectors / tools:** Dataverse — `List rows` (Claim, Customer), `Update claim status`.
+- **Connectors / tools:** Dataverse — `List rows` (Claim, Customer). No update tool: the instructions mention status updates, but the agent can only read - 05-07's attribution lesson depends on that (a read leaves no downstream record), and 04-04 reasons the write half rather than running it.
 - **Grounding:** `Claims-Knowledge`.
 - **PLANTED PROBLEM A (Scenario C — excess connector):** svc-claims has broad Dataverse role
   (System Customizer + read/write on **all** Claim and Customer rows, incl. PII). Job needs read of the
@@ -336,7 +336,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Agent 365 | DENTS IT | Surfaces shared-connection / service-account use. |
 | Conditional Access | MISSES IT (mostly) | Governs authentication of principals; CA-for-workload-identities can slightly constrain where the agent identity is used. |
 | DLP / Environment | MISSES IT | Don't address *whose* identity acts. |
-| Logging / audit | MISSES IT (attribution) | **Teaching point:** for a **read** (Claims Copilot has only List-rows tools) there is no downstream record at all: Dataverse auditing logs changes, not reads, and read logs reach Purview only for production environments — `Claims-Test` is a sandbox. Nothing downstream ties the read to anyone, not even svc-claims; attribution rests entirely on the `CopilotInteraction` event and transcript. For a **write**, the log shows svc-claims/owner as the actor, not the real user — only cross-log correlation with `CopilotInteraction` links it to *who really asked*. Fix is upstream: on-behalf-of auth. |
+| Logging / audit | MISSES IT (attribution) | **Teaching point:** for a **read** (Claims Copilot has only List-rows tools) there is no downstream record at all: Dataverse auditing logs changes, not reads, and read logs reach Purview only for production environments — `Claims-Test` is a sandbox. Nothing downstream ties the read to anyone, not even svc-claims; attribution rests entirely on the agent layer - the `CopilotInteraction` event and the DSPM interaction record, which name the requester and the agent but not the claim: **partial** at the agent layer, **unavailable** downstream (**complete** at the agent layer only if the prompt and response text is readable and shows the claim; in the lab tenant DSPM can't retrieve it - errata, Phase 8b). For a **write**, the log shows svc-claims/owner as the actor, not the real user — only cross-log correlation with `CopilotInteraction` links it to *who really asked*. Fix is upstream: on-behalf-of auth. |
 
 ### Scenario E — HTTP / MCP / tool boundary
 | Control | Verdict | Why / remaining risk |

@@ -1384,3 +1384,78 @@ in-session verdict is DENTS IT at best ("the change is right, but its effect is 
 lab"), or the lab should scope the reader's SharePoint permission instead - the route 05-03 also offers - and
 retest that. **Decision for the exercise owner.** Not root-caused: whether the answer comes from a retained
 index, a cached published version, or another grounding path is open.
+
+### Phase 8b · Graph Explorer refused every lab query (2026-10-20)
+
+**Symptom.** As student03, with Graph Explorer's sign-in consent accepted, both lab queries failed:
+`users?$select=…,signInActivity` (06-01) and `servicePrincipals/microsoft.graph.agentIdentity` (01-02, 02-01)
+returned `Authorization_RequestDenied` (before consent: `Authentication_MSGraphPermissionMissing: AuditLog.Read.All`).
+**Evidence.** The only grant for Graph Explorer was student03's own `openid profile User.Read offline_access`;
+`User.Read.All`, `AuditLog.Read.All`, `Application.Read.All` and `AgentIdentity.Read.All` are all
+admin-consent-only. **Fix.** Decided 2026-10-20 (Matt): 07 consents Graph Explorer for all principals with
+exactly those read scopes (`$GraphExplorerScopes`). After the grant both queries return data as student03.
+
+### Phase 5b · nothing was being audited, so 05-07 had nothing to reconstruct (2026-10-20)
+
+**Symptom.** Probing 05-07 as student03, Purview Audit's search form was greyed out and its list said
+*"Failed to load data"*, under *"Sorry, we're having trouble figuring out if activity is being recorded"*.
+**Evidence.** `Get-AdminAuditLogConfig`: `UnifiedAuditLogIngestionEnabled = False`; `Search-UnifiedAuditLog
+-RecordType CopilotInteraction` over three days: 0. In `Claims-Test-mgray`: `isauditenabled`,
+`isreadauditenabled`, `isuseraccessauditenabled` all false, and `mm_claim` / `mm_customer` not audited.
+PLANNING item 16 assumed Purview Audit is "on by default" - not on a developer tenant - and no phase did the rest.
+**Fix.** `04b_provision_audit.ps1` (RUNBOOK Phase 5b) turns on ingestion (Exchange Online, the 03c app),
+environment auditing and the two tables' change auditing. It must run at least an hour before Exercise 04. A
+table's flag reads back False for a while after the publish; the script's check retries.
+**Correction (same day).** A first version also turned on read logs and the tables' read settings, on the
+theory that Scenario D's reads would reach Purview. They can't: Dataverse auditing never records a read, and
+activity logging reaches Purview only for production environments - `Claims-Test` is a sandbox (Microsoft
+Learn, *Manage Dataverse auditing*). Removed from the script and switched back off in the tenant; 05-07 KT03
+now teaches the gap (Jim, bf878e1).
+**Still open:** Defender real-time protection for agents.
+
+**Also found - what an attendee reaches in 05-07** (Global Reader, Security Reader, Power Platform
+Administrator), for the exercise owner:
+
+| Step | Result |
+|---|---|
+| KT01 s1, KT02, KT05 s1 - Purview Audit search | form greyed out (above), even though Purview's `GlobalReader` role group lists View-Only Audit Logs. **Re-tested 2026-10-21 once ingestion was on: works** - student03 searched, the jobs completed in 4-7 minutes, results and event details opened |
+| KT04 s2, KT05 s2 - DSPM for AI | *"Additional permissions required. Your role can't view or take action on certain data items"* |
+| KT01 s3, KT06 s1 - Defender real-time protection | Settings: *"You don't have permission to view this page"* |
+| KT03 - a claim's audit history (to see it holds no read) | Dataverse: *"missing prvReadRecordAuditHistory"*. Opening the claim at all would need claim read, which would break Scenario D |
+
+Decided 2026-10-20 (Matt): 05-07 becomes a facilitator demonstration. **Superseded the same day:** Matt
+chose to give attendees read access instead (Graph Explorer consent, Claims-Test audit records, 07c), and
+Jim's 05-07 keeps every step with the attendee; 07b no longer makes Security Administrator eligible. The facilitator's audit reach is the Purview
+`SecurityAdministrator` role group (Audit Logs, View-Only Audit Logs), which it gets by activating its
+PIM-eligible Security Administrator - also what the Defender step needs. The lab app can't add Purview
+role-group members (`Add-RoleGroupMember` exposes no `-Identity` to it), so DSPM content (`Data Security AI
+Content Viewers`) is not granted yet.
+
+### Phase 5b · Defender real-time protection needs an Agent 365 licence (2026-10-20)
+
+**Symptom.** As the facilitator with Security Administrator activated (PIM), Defender → **Settings → Security
+for AI** said *"You don't have permission to view this page"*, and the Cloud Apps settings showed *"Hang on!
+We're preparing new spaces for your data and connecting them"*. **Evidence.** `subscribedSkus`:
+`DEVELOPERPACK_V2_E5` and `FLOW_FREE` only. Learn (*Transition agent security to Agent 365*): from 1 July 2026,
+AI agent security for Copilot Studio requires a Microsoft Agent 365 licence. **Fix.** None in the kit: a
+licence (an admin-led trial is 25 seats for 30 days) is a commercial decision, and Defender for Cloud Apps has
+to finish initialising (hours, started by the first admin visit). RUNBOOK Phase 5b lists the setup for when
+both are in place. Also seen: a PIM deactivation can silently miss - check the role's members afterwards and
+deactivate again.
+
+### Phase 8b · DSPM showed no transcripts to attendees (2026-10-21)
+
+**Symptom.** As student03, DSPM for AI → Activity explorer listed the Exercise 04 interactions, but each one
+said *"We couldn't retrieve this prompt and response"*. **Evidence.** Learn (*Permissions for DSPM for AI*):
+the text needs Content Explorer Content Viewer or **Microsoft Purview Data Security AI Content Viewer** - the
+first also opens classified files (the comp bands), so the second. The lab app's S&C session exposes
+`Add-RoleGroupMember` with no parameters (role-group membership needs Organization Management).
+**Fix.** `07c_provision_purview_roles.ps1`: an admin device-code sign-in, then each lab account
+(`student<NN>.<estate>`) into Data Security AI Content Viewers. **Trap:** the first version added
+`Lab-Students-<estate>`, assuming it held the attendees. It is 07's Conditional Access exclusion group and held
+only student01/02, so student03 - the account the recordings use - was never covered. Purview also lists
+members by display name and returns no object id, so an "already a member" error is treated as success.
+**Still open.** With student03 a direct member for ~2 hours, DSPM still says *"We couldn't retrieve this prompt
+and response"* - for the 2026-10-20 chats and for a new one at 13:34 UTC on 2026-10-21, so it isn't when the
+chat was captured. Not root-caused: longer propagation, or Copilot Studio-in-Teams text not retrievable here.
+05-07 KT04 step 2 can't be shown live until it is; the interaction record (user, agent, resources) is.

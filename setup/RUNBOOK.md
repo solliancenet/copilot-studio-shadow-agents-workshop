@@ -523,6 +523,51 @@ pwsh setup/scripts/04_provision_dataverse.ps1                                  #
 Why a license is required, why E5 suffices, and the non-interactive route that gives the seat back:
 [decisions → Phase 5](../reference/runbook-decisions.md#phase-5--dataverse).
 
+### Phase 5b — Auditing (Lab 05-07)
+
+05-07 reconstructs Exercise 04 from the logs, and a log only holds what happened after it was switched on.
+Run this **at least an hour before Exercise 04** - well before, on the build day. A developer tenant ships
+with all of it off (found 2026-10-20). Needs Phase 4c's lab app and Phase 5's tables.
+
+```bash
+pwsh setup/scripts/04b_provision_audit.ps1     # rerun-safe; ends with a Check line, all True
+```
+
+| What | Where it shows in 05-07 |
+|---|---|
+| Purview Audit: unified audit log ingestion (up to **60 minutes** to start recording; it was **off** on this tenant, not on by default) | `CopilotInteraction` events (KT02, KT04, KT05) |
+| `Claims-Test-<estate>`: environment auditing | the environment's audit settings (KT01) |
+| `mm_claim`: changes - **not** `mm_customer` | the Audit summary view (changes only - KT03 finds no read there, which is the point). Customer is left unaudited on purpose: attendees read these records, and a customer change would carry SSN and date of birth |
+
+It deliberately leaves **read logs off**: reads reach Purview only for production environments, and
+`Claims-Test` is a sandbox, so there is nothing to turn on (see the pre-delivery audit checklist).
+
+**Defender real-time protection for agents - not used; 05-07 KT06 reasons it through.** On this tenant two
+prerequisites are missing (checked 2026-10-20 as the facilitator with Security Administrator active):
+
+- **A Microsoft Agent 365 licence.** Since 1 July 2026 Copilot Studio agent protection in Defender requires
+  it; E5 alone is not enough. The tenant has only `DEVELOPERPACK_V2_E5`, and **Settings → Security for AI**
+  says *"You don't have permission to view this page"*. An admin-led trial gives 25 seats for 30 days - it
+  expires, so time it to the delivery.
+- **Defender for Cloud Apps initialised.** Its pages show *"Hang on! We're preparing new spaces for your
+  data"*; the first visit starts it and it takes hours.
+
+Once both are in place (Learn: *Real-time protection for AI agents*, *External security provider*):
+
+1. Defender → **Settings → Security for AI → Get started**: enable, connect the **Microsoft 365** connector,
+   then in the **Copilot Studio** step turn **Real-time protection** on and copy the endpoint URL. Security
+   Administrator. Portal only.
+2. An Entra app with a **federated credential** for that endpoint (no secret) - scriptable
+   (`Create-CopilotWebhookApp.ps1` from the PowerShell Gallery, or Graph `applications` +
+   `federatedIdentityCredentials`).
+3. PPAC → **Security → Threat detection → Additional threat detection** → `Halcourt-Prod-<estate>` (Benefits
+   Buddy's environment): share data with the provider, the app ID and the endpoint. Power Platform
+   Administrator. Portal only, per environment.
+4. Paste the app ID back into the Defender pane and save; it should show **Connected**.
+
+If a future build has the licence and wants KT06 live again, on and off is the PPAC checkbox in step 3. Only generative-orchestration agents are
+checked, and only their tool calls. PLANNING item 16 tracks it.
+
 ### Phase 6 — Author the agents
 
 Builds all ten agents (eight planted + two decoys) per `AGENTS.md`, each **as its owner** in the
@@ -687,12 +732,18 @@ pwsh setup/scripts/00b_preflight.ps1 -Attendees 14                           # t
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14                      # student01.<estate> .. student14.<estate>
 pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14 -UniquePasswords     # a distinct password each
 pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
+pwsh setup/scripts/07c_provision_purview_roles.ps1                           # attendees -> DSPM transcript role; one admin device-code approval
 ```
 
 Accounts are estate-scoped (`student01.<estate>@<domain>`), so two facilitators can run deliveries in one
 tenant. The run prints a handout table and writes `setup/lab-users-<estate>.local.csv` — **plaintext
 passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone and their passwords are carried forward from the
 previous handout (the script cannot read one back from Entra).
+
+It also consents **Graph Explorer** tenant-wide for a few read scopes (`User.Read.All`, `AuditLog.Read.All`,
+`Application.Read.All`, `AgentIdentity.Read.All`; the list is `$GraphExplorerScopes` in `_access_model.ps1`).
+01-02, 02-01 and 06-01 send attendees there, and each of those reads is admin-consent-only: without the grant
+the query answers `Authorization_RequestDenied`. The grant is shared by every estate, so `-Destroy` leaves it.
 
 **Attendees get four Entra directory roles (`$DirectoryRoles` in `_access_model.ps1`), and enrol MFA at
 first sign-in:**
@@ -823,9 +874,9 @@ AI Administrator,
 
 Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
 the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
-(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator /
-Security Administrator only as PIM-eligible - activate one for the step that needs it (05-05, 05-07) and
-let it lapse. Create it once, after the attendee accounts:
+(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator only
+as PIM-eligible - activate it for the step that needs it (05-05) and let it lapse. (Security Administrator
+was eligible for 05-07's Defender step; that step is reasoned now, so 07b removes it.) Create it once, after the attendee accounts:
 
 ```powershell
 pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv
@@ -848,7 +899,8 @@ pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at
 | 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
 | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
 | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-| 05-07 | Defender: real-time protection for agents on | **by hand**: back to its prior state |
+| 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
+| 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
 
 The default environment and the tenant's Defender setting are shared with every estate in the tenant:
 coordinate with any other facilitator delivering at the same time.
@@ -911,22 +963,42 @@ names the exercise steps each failed check would break.
 Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
 and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
 
-- [ ] **Dataverse auditing in `Claims-Test-<estate>`.** PPAC → the environment → **Settings** → **Audit and
-      logs** → **Audit settings**: turn auditing on for the environment. Then turn on auditing for the `Claim`
-      and `Customer` tables, each in the table's properties. This records **changes** (create, update,
+- [ ] **Dataverse auditing in `Claims-Test-<estate>`** - Phase 5b's `04b_provision_audit.ps1` turns it on
+      for the environment and the `Claim` table - **not** `Customer`, whose changes would carry SSN and date
+      of birth into records attendees can read (by hand: PPAC → the environment → **Settings** → **Audit and
+      logs** → **Audit settings**, then the table's properties). This records **changes** (create, update,
       delete, sharing), which is what the 05-03 demonstration makes.
+- [ ] **Attendees can search Purview Audit** (05-07 KT01, KT02, KT05). Global Reader is enough once
+      ingestion is on: as an attendee, run a search covering the Exercise 04 rehearsal, filtered to record
+      type `CopilotInteraction`. Verified 2026-10-21 as student03 (jobs finish in 4-7 minutes).
 - [ ] **No setting makes Claims Copilot's reads visible in `Claims-Test`.** Dataverse auditing never logs a
-      read, so a claim's Audit History shows none. Reads are logged only by activity logging (the **Read
+      read, so the Audit summary view shows none. Reads are logged only by activity logging (the **Read
       logs** setting plus the table's single- and multiple-record settings), and those events reach Purview
       only for production environments. `Claims-Test` is a sandbox. Don't try to work around it: 05-07 KT03
       now teaches that gap instead of relying on a read event.
-- [ ] **Purview Audit is on.** Purview portal → **Audit** (it is on by default; a banner offers to start
-      recording if it is not).
-- [ ] **Defender real-time protection for agents** is not a pre-delivery step: you switch it on during
-      05-07 and back afterwards, per the demonstration table (Exercise 05 demonstrations, above).
-- [ ] **Open item: attendees cannot read audit history yet.** 05-07 KT03 has each attendee open a claim's
-      Audit History in `Claims-Test` to see that it shows no read, which needs read access to audit records.
-      The access model in `_access_model.ps1` grants none today, so that step fails live until it does.
+- [ ] **Purview Audit is on** - also Phase 5b. It is **not** always on by default: on this developer tenant
+      unified audit ingestion was off (2026-10-20), and only activity after it is switched on (allow up to an
+      hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
+- [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
+      2026 it needs a Microsoft Agent 365 licence. Purchase services offered no self-service trial on the
+      build tenant (an admin-led trial needs Microsoft or the account team).
+- [ ] **The DSPM transcript role** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b). 05-07 KT04
+      reads the chat's **interaction record** in **DSPM for AI → Activity explorer** (user, agent, time,
+      resources); the prompt and response text is optional. Global Reader shows the record; the text needs
+      Purview's **Data Security AI Content Viewers**, which 07c gives each lab account (`student<NN>.<estate>`).
+      Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks for
+      **one device-code approval** from a Global Administrator. `-Remove` after the delivery.
+      **Check it as an attendee:** after the Exercise 04 rehearsal chat, open the interaction in Activity
+      explorer. The record (user, agent, resources) must show; that is what KT04 needs. Note whether
+      **Interaction details** shows text or *"We couldn't retrieve this prompt and response"* - in the build
+      tenant it never showed text, even with the role in place for hours ([errata → Phase 8b](../reference/runbook-errata.md)),
+      so tell the room the transcript is optional and expect it to be unavailable.
+      Microsoft retires *DSPM for AI (classic)* on 30 November 2026; check the step's wording against the
+      portal before a later delivery.
+- [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
+      summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
+      `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
+      so the attendee can't open the claim itself - Scenario D depends on that.
 
 **04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
 instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the
@@ -958,6 +1030,16 @@ agents' `${…}` action tokens re-inject the new addresses at Phase 6 provision 
       (`-Force` skips the prompt). **Run it before `99_teardown.ps1`**: it finds the billing policy to unlink
       through the estate's Prod environment, and once Prod is gone it warns and skips the unlink unless you
       pass `-BillingPolicyId`.
+- [ ] **The attendees' Purview role** (Phase 8b): `pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove`
+      (one admin device-code approval). Run it before `07 -Destroy`, while the lab accounts still exist:
+      07c matches role-group members by display name, so a member left behind would be taken for a rebuilt
+      account of the same name. The role is tenant-wide - it shows every Copilot interaction in the tenant,
+      every estate's - so don't leave it in place between deliveries.
+- [ ] **Shared grants 07 and 04b leave in place** (tenant-wide, shared by every estate - remove only when
+      no estate needs them): Graph Explorer's all-users consent (`$GraphExplorerScopes`) -
+      `az rest --method DELETE --url https://graph.microsoft.com/v1.0/oauth2PermissionGrants/<id>` (find the
+      id with `oauth2PermissionGrants?$filter=clientId eq '<Graph Explorer service principal id>'`); and unified
+      audit ingestion, which is best left on.
 - [ ] **Lab accounts** (Phase 8b): `pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy` (`-Force` skips
       the prompt), then delete `setup/lab-users-<estate>.local.csv`.
 - [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also
@@ -996,6 +1078,7 @@ anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 | `scripts/03_provision_sharepoint.ps1` | Sites + clean FAQ library + **plant poisoned doc** |
 | `scripts/03b_provision_onedrive.ps1` | Provision + seed dev.kim's OneDrive (Meeting Notes grounding) |
 | `scripts/04_provision_dataverse.ps1` | Claim/Customer tables, PII rows, over-broad role |
+| `scripts/04b_provision_audit.ps1` | Phase 5b: Purview Audit and Claims-Test auditing for 05-07 |
 | `scripts/05_export_artifact_pack.ps1` | Regenerate the artifact-pack CSVs |
 | `scripts/06_provision_agents.ps1` | Provision the agents from committed workspaces, as each owner |
 | `scripts/lib/consent_browser.py` | Headless connection-consent helper (browser step in Phase 6) |
@@ -1003,6 +1086,7 @@ anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 | `scripts/03c_provision_purview.ps1` | Phase 4c: the encrypting label and the labelled comp copy |
 | `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
 | `scripts/07b_provision_facilitator.ps1` | The facilitator's Exercise 05 demonstration account |
+| `scripts/07c_provision_purview_roles.ps1` | Phase 8b: attendees into Purview's Data Security AI Content Viewers (05-07 KT04); one admin device-code approval |
 | `scripts/08_provision_student_slices.ps1` | Phase 8c: an environment per attendee, with the Claims Dataverse seed |
 | `scripts/09b_ex05_scoped_claims_role.ps1` | Exercise 05-03 demonstration: svc-claims' scoped role and fixed subset |
 | `scripts/09_ex05_demo_state.ps1` | Exercise 05 demonstrations: snapshot / diff / restore the shared estate |
