@@ -95,34 +95,10 @@ That exposure is the point of Scenario E.
 
 ## Phase 2 — identities
 
-### Why the personas live on the tenant's own domain
-
-`AGENTS.md`, the artifact pack and the lab pages write every UPN as
-`<alias>@halcourtmutual.onmicrosoft.com`, but a lab tenant keeps whatever domain Microsoft assigned it (a
-Dev Program sandbox gets something like `0zwdt94t.onmicrosoft.com`), and an `*.onmicrosoft.com` domain
-**cannot** be added to another tenant. So `01_provision_entra.ps1` uses the tenant's default verified
-domain and announces the mapping before it creates anything.
-
-`-DomainSuffix <domain>` picks another domain, but only one the tenant has verified — anything else stops
-the script before it creates an account. What stays fixed is the **alias** (`ana.reyes`, `svc-claims`,
-`it.helpdesk`, …): the later scripts find accounts by alias + estate on the tenant's domain.
-
-### How the `it.helpdesk` shared mailbox gets created
-
-Graph can't create shared mailboxes, but Exchange Online can, and `Connect-ExchangeOnline` accepts a
-delegated **access token** — so `_auth.ps1`'s `Connect-LabExchange` reuses the same `az` sign-in the rest
-of Phase 2 uses (no device code, no app-only Exchange app) and runs:
-
-```powershell
-New-Mailbox -Shared -Name "IT Helpdesk (<estate>)" -Alias it.helpdesk.<estate> -PrimarySmtpAddress it.helpdesk.<estate>@<domain>
-```
-
-Keep `-Alias`: without it Exchange derives an alias from the name and the account isn't
-`it.helpdesk.<estate>@…`. Exchange creates the account **disabled for sign-in**, as it does for every
-shared mailbox, and provisions it asynchronously (it can take a minute to appear). This mailbox is the
-ambiguous owner of Policy Lookup Bot, so it must exist; Phase 6 turns its sign-in on so it can own that
-agent. If the automatic step can't run (no `az` session, or the admin isn't an Exchange admin) the script
-warns and prints the same command to run yourself after `Connect-ExchangeOnline -Device`.
+Moved to [ADR-0006](adr/0006-personas-on-the-tenant-domain.md) (tenant domain),
+[ADR-0007](adr/0007-shared-mailbox-via-exchange.md) (the shared mailbox),
+[ADR-0008](adr/0008-departed-owner-stays-enabled.md) (Tom stays enabled) and
+[ADR-0009](adr/0009-eight-licences-per-estate.md) (licences).
 
 ## Phase 3 — environments, DLP, billing
 

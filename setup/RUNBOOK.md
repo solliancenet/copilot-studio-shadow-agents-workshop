@@ -256,41 +256,28 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 2 — Entra identities & personas
 
-**Prerequisites:** `Microsoft.Graph` and `ExchangeOnlineManagement`.
+1. **Create the estate's people and groups.** The script creates nine accounts (eight personas and
+   `svc-claims`), the `it.helpdesk` shared mailbox and four groups, each named with your estate id
+   ([ADR-0006](../reference/adr/0006-personas-on-the-tenant-domain.md),
+   [ADR-0007](../reference/adr/0007-shared-mailbox-via-exchange.md)). It assigns no licences. Safe to
+   re-run. In the dev container terminal:
 
-```powershell
-pwsh setup/scripts/01_provision_entra.ps1 -TenantId <tenant-id>    # estate from HALCOURT_ESTATE (or -Estate <id>)
-```
+   ```bash
+   pwsh setup/scripts/01_provision_entra.ps1 -TenantId <tenant domain>
+   ```
 
-Creates the eight personas from `AGENTS.md` (Ana, Marcus, Priya, Sam, Lena, Dev, **Tom Dean** and Jordan),
-the `svc-claims` service account, the `it.helpdesk` **shared mailbox**, and the four groups
-(`Halcourt-Makers-<estate>`, `HR-Team-<estate>`, `Claims-Adjusters-<estate>`, `All-Employees-<estate>`)
-filled per `AGENTS.md` → *Groups*. It sets each account's usage location so licenses can be assigned, but
-assigns none. Safe to re-run.
+   - It reuses your `az` sign-in, so there's no code to enter.
+   - Its first lines show the estate and domain (`Estate: jsmith   Persona domain: <tenant domain>`).
+     Check both.
+   - It ends with `Phase 2 complete for estate '<id>'`.
 
-Accounts are `<alias>.<estate>@<tenant domain>` — **the tenant's own domain, not the canon's**. The script
-prints the mapping before it creates anything:
+2. **License eight accounts** ([ADR-0009](../reference/adr/0009-eight-licences-per-estate.md)). Admin
+   center → **Billing → Licenses** → the E5 licence → **Assign** → `svc-claims`, `marcus.webb`,
+   `priya.nair`, `lena.ford`, `dev.kim`, `tom.dean`, `sam.olsen` and `it.helpdesk` (all `.<estate>`).
+   Short of seats? Phase 0, step 3.
 
-```text
-Estate: jsmith   Persona domain: <tenant domain>
-  canon <alias>@halcourtmutual.onmicrosoft.com  ->  live <alias>.jsmith@<tenant domain>
-```
-
-Give attendees the live domain and estate id with their sign-ins — Task 00-01 shows them how the names carry
-the estate id.
-
-**Licenses.** Each estate needs **eight** E5 seats: `svc-claims` (Phase 5) and the seven agent owners —
-Marcus, Priya, Lena, Dev, Tom, Sam and `it.helpdesk` (Phase 6) — because Dataverse only adds licensed
-users to an environment. A sandbox has 25 and the sample users hold most. If you are short, free seats by
-unassigning sample users in **M365 admin center → Billing → Licenses**; don't repurpose them as personas,
-the aliases are canon.
-
-**Tom Dean stays enabled — always.** He is the departed owner, but disabling him kills his connections
-(Entra refuses a disabled user's token refresh, AADSTS50057), and the orphan *is* a leaver whose account
-nobody shut down. Phase 6.5 records his departure as an Entra leave date instead (below).
-
-Why the tenant domain, how the shared mailbox is created:
-[decisions → Phase 2](../reference/runbook-decisions.md#phase-2--identities).
+3. **Leave Tom Dean enabled**, always. Phase 6.5 marks him departed
+   ([ADR-0008](../reference/adr/0008-departed-owner-stays-enabled.md)).
 
 ### Phase 3 — Environments and DLP
 
