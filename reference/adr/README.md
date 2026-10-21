@@ -14,6 +14,21 @@ and what it costs. The [RUNBOOK](../../setup/RUNBOOK.md) stays a list of steps a
 | [0007](0007-shared-mailbox-via-exchange.md) | The `it.helpdesk` shared mailbox is created through Exchange with the az sign-in | Accepted |
 | [0008](0008-departed-owner-stays-enabled.md) | The departed owner stays enabled; his departure is a leave date | Accepted |
 | [0009](0009-eight-licences-per-estate.md) | Eight E5 licences per estate | Accepted |
-
-New phase-by-phase decisions still live in [`../runbook-decisions.md`](../runbook-decisions.md); they move
-here as each RUNBOOK phase is made lean.
+| [0010](0010-ca-baseline-replaces-security-defaults.md) | A Conditional Access baseline replaces security defaults | Accepted |
+| [0011](0011-device-code-sign-in-and-org-consent.md) | Scripts reuse the az sign-in, fall back to device codes, and use org-wide Graph consent | Accepted |
+| [0012](0012-azd-environment-per-estate.md) | The azd environment name is unique per estate | Accepted |
+| [0013](0013-environment-region-assigned.md) | Environments take the region the platform assigns | Accepted |
+| [0014](0014-shared-billing-plan-per-region.md) | Estates share one billing plan per region | Accepted |
+| [0015](0015-copilot-studio-authors-setting-optional.md) | The *Copilot Studio authors* tenant setting is optional | Accepted |
+| [0016](0016-pnp-app-registration.md) | PnP gets its own app registration, with delegated and application permissions | Accepted |
+| [0017](0017-maker-provisions-own-onedrive.md) | The maker provisions their own OneDrive | Accepted (verify) |
+| [0018](0018-svc-claims-licensed-e5.md) | `svc-claims` is licensed, and E5 is enough | Accepted |
+| [0019](0019-dataverse-business-keys.md) | Dataverse tables keep business keys in `…number` columns | Accepted |
+| [0020](0020-agents-provisioned-clone-first.md) | Agents are provisioned clone-first from committed workspaces | Accepted |
+| [0021](0021-planted-mechanisms-in-topics.md) | Planted HTTP, MCP and flow calls live in topics | Accepted |
+| [0022](0022-artifact-export-over-rest.md) | The artifact-pack export reads over REST with the az sign-in | Accepted |
+| [0023](0023-committed-pack-not-pure-export.md) | The committed artifact pack is canonical, not a pure export | Accepted |
+| [0024](0024-attendees-are-power-platform-admins.md) | Attendee accounts are Power Platform Administrators, excluded from admin MFA | Accepted |
+| [0025](0025-attendee-licences-best-effort.md) | Attendee licence assignment is best effort | Accepted |
+| [0026](0026-attendee-teardown-purges.md) | Attendee teardown purges, not just deletes | Accepted |
+| [0027](0027-attendee-dataverse-access-model.md) | Attendee Dataverse access is a declared access model | Accepted |

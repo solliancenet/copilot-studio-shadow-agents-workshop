@@ -7,7 +7,7 @@
 ## Context
 
 Phase 1 runs `azd up` once per estate, under `halcourt-<estate>-lab`
-([decisions → Phase 1](../runbook-decisions.md#phase-1--azure)). Every estate gets its own resource group,
+([ADR-0012](0012-azd-environment-per-estate.md)). Every estate gets its own resource group,
 registry, Container Apps environment, Foundry account and gpt-5-mini deployment. Two estates in the build
 subscription already have one each (`rg-halcourt-mgray-lab-1021`, `rg-halcourt-jcounts-lab`).
 
@@ -53,7 +53,7 @@ Changes this needs (tracked in the issue):
 3. `00b_preflight.ps1` checks `rg-halcourt-<estate>-lab`. It should check the shared endpoints instead
    (each answers 401 without its secret).
 4. RUNBOOK Phase 1 becomes "get the four values"; the owner's `azd up` moves to a once-per-lab section.
-   ADR-0001's shared items and the Phase 1 decisions entry are updated.
+   ADR-0001's shared items and ADR-0012 is marked superseded.
 5. Existing estates: pick one deployment as the shared one, re-run Phase 6 for the other estate with its
    values, then `azd down` the spare.
 

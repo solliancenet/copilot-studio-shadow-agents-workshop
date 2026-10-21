@@ -16,8 +16,10 @@ re-verified as products change.
 | File | Topic |
 |---|---|
 | `copilot-studio-billing.md` | Copilot Studio billing/licensing models, trial limits, workshop implications |
-| `runbook-decisions.md` | Why the provisioning runbook is built the way it is — decisions, tradeoffs, manual alternatives |
+| `adr/` | Architecture decision records — why the kit is built the way it is |
+| `azure-endpoints.md` | The Phase 1 Container App addresses |
+| `billing-plan-by-hand.md` | Creating or linking a billing plan without the script |
+| `building-one-agent.md` | Building one agent with `pac`; what to expect from connections |
 | `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
 | `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |
-| `adr/` | Architecture decision records — one decision per file (estates so far) |
 | `runbook-errata.md` | Errata, known issues & troubleshooting for the provisioning runbook |

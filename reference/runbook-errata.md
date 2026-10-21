@@ -3,7 +3,7 @@
 > Known issues, troubleshooting and open `[verify]` risks for the
 > [provisioning runbook](../setup/RUNBOOK.md). Keyed to the phase/step they relate to. The *why* behind
 > the runbook's design — decisions, tradeoffs and manual alternatives — is in
-> [`runbook-decisions.md`](runbook-decisions.md).
+> [`adr/`](adr/README.md).
 
 ### Phase 0 · sandbox variant tradeoff
 
@@ -434,7 +434,7 @@ Which planted agents can be **authored** as committed `pac` workspaces and which
   Business"). A newly licensed persona has to open OneDrive once first.
 - **`pac copilot push` sends instructions, knowledge and tools but not `settings.mcs.yml`**, and it creates
   connection references without binding them — set the chat audience and the connection on the Dataverse
-  records ([decisions → Phase 6, *Building one agent from the command line*](runbook-decisions.md#building-one-agent-from-the-command-line)).
+  records ([building-one-agent.md](building-one-agent.md)).
 - **Tool inputs from a connector's request body use the property's bare name** (`url`, not `request/url` or
   `request.url`); a wrong one fails the publish with *InvalidPropertyPath*, reported only in the agent
   record's `synchronizationstatus`.

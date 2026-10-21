@@ -5,8 +5,8 @@
 > canon in [`../AGENTS.md`](../AGENTS.md) — that file is the source of truth; this file is how you build it.
 >
 > **This file is the instructions.** The reasoning lives in
-> [`../reference/runbook-decisions.md`](../reference/runbook-decisions.md) (why it is built this way,
-> tradeoffs, manual alternatives) and [`../reference/runbook-errata.md`](../reference/runbook-errata.md)
+> [`../reference/adr/`](../reference/adr/README.md) (decision records: why it is built this way,
+> tradeoffs, alternatives) and [`../reference/runbook-errata.md`](../reference/runbook-errata.md)
 > (what goes wrong, troubleshooting, open `[verify]` risks). Each phase links to its own section there.
 
 Attendees share one live estate for Exercise 04 and 05; Exercise 05 is demonstrated by the facilitator.
@@ -133,7 +133,7 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - **Wait ~10 minutes** before the first device-code sign-in. Sign-ins take a while to stop seeing
      security defaults.
    - Why the swap is mandatory and what it gives up:
-     [decisions → Phase 0](../reference/runbook-decisions.md#phase-0--tenant).
+     [ADR-0010](../reference/adr/0010-ca-baseline-replaces-security-defaults.md).
 
 5. **Consent to the Graph scopes.** Once, for the whole organization, as the global admin.
    - Run it in the dev container terminal. Safe to re-run: scopes already granted are skipped, and only
@@ -251,7 +251,8 @@ azd env get-values                # read POLICY_API_FQDN / UNDERWRITING_MCP_FQDN
   actions want the host part (drop `https://`).
 
 Name derivation and the FQDN shape:
-[decisions → Phase 1](../reference/runbook-decisions.md#phase-1--azure). `azd up` failures and Foundry
+[ADR-0012](../reference/adr/0012-azd-environment-per-estate.md) and
+[azure-endpoints.md](../reference/azure-endpoints.md). `azd up` failures and Foundry
 soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 2 — Entra identities & personas
@@ -323,7 +324,9 @@ environment: not linkable and not needed. Agents **publish** without a plan; a p
 send them messages.
 
 The PPAC and API equivalents, and the optional *Copilot Studio authors* tenant setting:
-[decisions → Phase 3](../reference/runbook-decisions.md#phase-3--environments-dlp-billing). Region-lock and
+[billing-plan-by-hand.md](../reference/billing-plan-by-hand.md), [ADR-0015](../reference/adr/0015-copilot-studio-authors-setting-optional.md);
+why plans are shared and regions assigned: [ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md),
+[ADR-0013](../reference/adr/0013-environment-region-assigned.md). Region-lock and
 the wrong-plan trap: [errata → Phase 3](../reference/runbook-errata.md).
 
 ### Phase 4 — SharePoint seed (plant the poisoned doc)
@@ -423,7 +426,7 @@ SharePoint serves it — so the run is its own evidence.
 > and the wait times out — purge it first with `Remove-PnPTenantDeletedSite` (errata).
 
 What the app registration grants and why it carries two identities:
-[decisions → Phase 4](../reference/runbook-decisions.md#phase-4--4b--sharepoint-and-onedrive).
+[ADR-0016](../reference/adr/0016-pnp-app-registration.md).
 
 ### Phase 4b — Provision and seed the maker OneDrive
 
@@ -453,7 +456,7 @@ https://<tenant>-my.sharepoint.com/personal/dev_kim_<estate>_<tenant>_onmicrosof
 > ```
 
 Why the maker does this rather than the admin:
-[decisions → Phase 4b](../reference/runbook-decisions.md#why-the-maker-provisions-their-own-onedrive).
+[ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md).
 
 ### Phase 4c — Purview: the label and the labelled comp copy (Task 05-06)
 
@@ -516,7 +519,7 @@ pwsh setup/scripts/04_provision_dataverse.ps1                                  #
 ```
 
 Why a license is required, why E5 suffices, and the non-interactive route that gives the seat back:
-[decisions → Phase 5](../reference/runbook-decisions.md#phase-5--dataverse).
+[ADR-0018](../reference/adr/0018-svc-claims-licensed-e5.md).
 
 ### Phase 5b — Auditing (Lab 05-07)
 
@@ -641,7 +644,8 @@ is what "shares" them.
 
 How the engine works (clone-first, publisher, owner tokens), why the planted mechanisms live in topics,
 and how to build one agent by hand:
-[decisions → Phase 6](../reference/runbook-decisions.md#phase-6--agents) and
+[ADR-0020](../reference/adr/0020-agents-provisioned-clone-first.md), [ADR-0021](../reference/adr/0021-planted-mechanisms-in-topics.md),
+[building-one-agent.md](../reference/building-one-agent.md) and
 [`agent-authoring-guide.md`](agent-authoring-guide.md).
 
 **Phase 6.5 — mark Tom Dean departed.** After Onboarding Guide and Sales Nudge exist **and their shared
@@ -684,7 +688,7 @@ pac admin assign-user --environment <environment-id> --user <admin UPN> --role "
 > hand-written canon that no API returns: agent `description`, the friendly connector names, and the rows
 > for things that aren't Power Platform connections at all. Read the diff as *drift to review*, not as a
 > test that should come out empty —
-> [decisions → Phase 7](../reference/runbook-decisions.md#phase-7--the-artifact-pack).
+> [ADR-0023](../reference/adr/0023-committed-pack-not-pure-export.md).
 
 ### Phase 8 — Validate
 
@@ -854,7 +858,9 @@ the delivery to that.
 `FLOW_FREE` does nothing for Dataverse.
 
 Why this role and not something weaker:
-[decisions → Phase 8b](../reference/runbook-decisions.md#phase-8b--attendee-accounts).
+[ADR-0024](../reference/adr/0024-attendees-are-power-platform-admins.md); licences, teardown and the access model:
+[ADR-0025](../reference/adr/0025-attendee-licences-best-effort.md), [ADR-0026](../reference/adr/0026-attendee-teardown-purges.md),
+[ADR-0027](../reference/adr/0027-attendee-dataverse-access-model.md).
 
 
 **Attendees hold no Exercise 05 write role.** Exercise 05 is demonstrated: you apply each control to the
@@ -1100,6 +1106,6 @@ anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 
 | File | Holds |
 |---|---|
-| [`../reference/runbook-decisions.md`](../reference/runbook-decisions.md) | Why it is built this way, the tradeoffs, manual alternatives to the scripted path |
+| [`../reference/adr/`](../reference/adr/README.md) | Decision records: why it is built this way, the tradeoffs, the alternatives |
 | [`../reference/runbook-errata.md`](../reference/runbook-errata.md) | Errata, known issues, troubleshooting, open `[verify]` risks |
 | [`../reference/copilot-studio-billing.md`](../reference/copilot-studio-billing.md) | Copilot Studio billing/licensing models and their workshop implications |
