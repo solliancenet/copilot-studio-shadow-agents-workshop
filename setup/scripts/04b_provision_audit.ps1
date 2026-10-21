@@ -57,8 +57,17 @@ $dvTok = az account get-access-token --resource $Org --query accessToken -o tsv
 function Dv([string]$Method, [string]$Path, $Body, [hashtable]$Extra = @{}) {
   $h = @{ Authorization = "Bearer $dvTok" } + $Extra
   $u = "$Org/api/data/v9.2/$Path"
-  if ($null -eq $Body) { Invoke-RestMethod -Method $Method -Uri $u -Headers $h }
-  else { Invoke-RestMethod -Method $Method -Uri $u -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30) }
+  # A new environment runs its own PublishAll for a while after creation, and a metadata change then fails
+  # 0x80071151 "another [PublishAll] running" (seen on a greenfield rebuild, 2026-10-21): wait and retry.
+  for ($i = 0; ; $i++) {
+    try {
+      if ($null -eq $Body) { return Invoke-RestMethod -Method $Method -Uri $u -Headers $h }
+      return Invoke-RestMethod -Method $Method -Uri $u -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30)
+    } catch {
+      if ($i -ge 20 -or "$_" -notmatch '0x80071151') { throw }
+      Write-Host "   Dataverse is busy (another publish) - retrying in 30 s"; Start-Sleep 30
+    }
+  }
 }
 
 $o = (Dv GET 'organizations?$select=organizationid,isauditenabled').value[0]
