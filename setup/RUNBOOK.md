@@ -200,10 +200,11 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
    b. Confirm you are in the right tenant:
 
       ```bash
-      az account show --query tenantDefaultDomain -o tsv
+      az account show --query user.name -o tsv
       ```
 
-      It must print the training tenant's domain (`<something>.onmicrosoft.com`), not your company's.
+      It prints the account you signed in as (`you@<something>.onmicrosoft.com`). The part after the `@`
+      must be the training tenant's domain, not your company's.
 
 3. Check nobody in the tenant uses your id. This lists every estate's Ana Reyes account; yours must not be
    there:
