@@ -106,14 +106,18 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - The personas get their seats in Phase 2.
 
 4. **Replace security defaults with the Conditional Access baseline.** Once per tenant.
-   - Run it from a terminal **on your own machine** (or the Windows VM), **not** the dev container. Security
-     defaults block the device-code sign-in the container uses.
+   - Run it in the dev container terminal. It prints a web address and a code; open the address, enter the
+     code, and sign in as the global admin. Safe to re-run: in a tenant that already has the baseline it
+     changes nothing and prints the policies' state.
 
-     ```powershell
-     pwsh setup/scripts/00_conditional_access_baseline.ps1 -TenantId <tenant-id>
+     ```bash
+     pwsh setup/scripts/00_conditional_access_baseline.ps1 -TenantId <tenant domain> -UseDeviceCode
      ```
 
-   - A browser tab opens. Pick the global admin **within two minutes**, or `Connect-MgGraph` gives up.
+   - Sign-in refused with **AADSTS530035**? Security defaults are still on (a new tenant) and block
+     device-code sign-in. Run it instead in a terminal on your own machine, from your clone of the repo,
+     without `-UseDeviceCode`. That needs PowerShell 7 and `pwsh -c "Install-Module Microsoft.Graph -Scope
+     CurrentUser"`. A browser tab opens; pick the global admin **within two minutes**.
    - First run only: it asks for `Policy.ReadWrite.ConditionalAccess` and `Policy.Read.All`. Tick
      **Consent on behalf of your organization**.
    - It turns security defaults off and creates two policies:
