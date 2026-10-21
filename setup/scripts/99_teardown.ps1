@@ -83,7 +83,11 @@ if ($defaultEnv) {
         } elseif ($attempt -eq 'after-deactivate') {
           try { Invoke-Json PATCH "$org/api/data/v9.2/bots($($b.botid))" $tok @{ statecode = 1; statuscode = 2 } | Out-Null } catch { }
         }
-        try { Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null; $gone = $true; break } catch { }
+        # Invoke-Json swallows errors (prints "!" and returns $null), so a try/catch here never saw the 400 and
+        # every agent was reported "deleted" after the first attempt - while both survived (2026-10-21). Check.
+        Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null
+        $still = @((Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid&`$filter=botid eq $($b.botid)" $tok).value)
+        if (-not $still) { $gone = $true; break }
       }
       if ($gone) { Write-Host "    deleted" } else { $orphanRisk += "$($b.name) ($($b.botid))" }
     }
