@@ -1454,3 +1454,7 @@ first also opens classified files (the comp bands), so the second. The lab app's
 `Lab-Students-<estate>`, assuming it held the attendees. It is 07's Conditional Access exclusion group and held
 only student01/02, so student03 - the account the recordings use - was never covered. Purview also lists
 members by display name and returns no object id, so an "already a member" error is treated as success.
+**Still open.** With student03 a direct member for ~2 hours, DSPM still says *"We couldn't retrieve this prompt
+and response"* - for the 2026-10-20 chats and for a new one at 13:34 UTC on 2026-10-21, so it isn't when the
+chat was captured. Not root-caused: longer propagation, or Copilot Studio-in-Teams text not retrievable here.
+05-07 KT04 step 2 can't be shown live until it is; the interaction record (user, agent, resources) is.
