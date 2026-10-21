@@ -352,7 +352,11 @@ ConvertTo-Canon ($envRows | Sort-Object @{ Expression = { $typeOrder[[string]$_.
 # (Sites.FullControl.All), so Phase 4c has to have run.
 Write-Host 'Exporting knowledge-site files -> files-export.csv'
 . (Join-Path $PSScriptRoot '_labapp.ps1')          # its default paths: setup/lab-compliance-app.local.*
-$spRoot = ([uri](Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/sites/root').webUrl).GetLeftPart('Authority')
+# The SharePoint host from the lab app's config (the tenant's INITIAL *.onmicrosoft.com, as 03c uses it), not
+# Graph's sites/root: that needs a site permission the Graph session above doesn't ask for, so it 403s after
+# a device-code fallback.
+if (-not (Test-Path $AppConfig)) { throw "No lab app config at $AppConfig - run Phase 4c (03c_provision_purview.ps1) first." }
+$spRoot = "https://$(((Get-Content $AppConfig -Raw | ConvertFrom-Json).organization).Split('.')[0]).sharepoint.com"
 $spHeaders = @{ Authorization = "Bearer $(Get-AppToken $spRoot)"; Accept = 'application/json;odata=nometadata' }
 $view = '<View Scope="RecursiveAll"><ViewFields><FieldRef Name="FileRef"/><FieldRef Name="FSObjType"/><FieldRef Name="_DisplayName"/></ViewFields><RowLimit>1000</RowLimit></View>'
 $fileRows = foreach ($canon in 'HR-Benefits', 'Claims-Knowledge') {
