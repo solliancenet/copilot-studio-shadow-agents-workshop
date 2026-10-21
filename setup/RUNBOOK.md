@@ -72,92 +72,96 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
 > This tenant **must not** be linked to any production or corporate tenant. Sign up with a **personal or
 > lab-dedicated admin credential — never corporate SSO**.
 
-1. **Sign up for a new M365 tenant** via the **Microsoft 365 Developer Program**
-   (https://developer.microsoft.com/microsoft-365/dev-program) — a 90-day renewable E5 sandbox. Choose the
-   **"Instant sandbox (Add-on purchases enabled)"** variant and a **personal or lab email**. Provide an
-   **Azure billing account** for the one-time verification (not charged; create it ahead of time, it can
-   take hours to appear). Pick the **data-center region** at signup — it cannot be changed afterward. The
-   **domain** is whatever signup assigns; that is fine, the scripts use the tenant's own. The optional
-   **content pack** is fine to install, but its ~16 sample users hold seats the personas need in Phase 2.
-
-   Variant tradeoffs, a billing account that won't appear in the dropdown, the non-Dev-Program fallback:
-   [errata → Phase 0](../reference/runbook-errata.md).
+1. **Sign up for a new M365 tenant.** Skip if the tenant already exists.
+   - Create an **Azure billing account** first. Signup uses it for a one-time verification and doesn't
+     charge it. It can take hours to appear.
+   - Go to the **Microsoft 365 Developer Program**: https://developer.microsoft.com/microsoft-365/dev-program
+   - Join with a **personal or lab email**, never your corporate account.
+   - Choose **Instant sandbox (Add-on purchases enabled)** — a 90-day renewable E5 sandbox.
+   - Pick the **data-center region**. You can't change it later.
+   - Accept whatever **domain** signup assigns (e.g. `0zwdt94t.onmicrosoft.com`). The scripts use it as is.
+   - **Content pack:** optional. Its ~16 sample users take licence seats the personas need in Phase 2.
+   - Trouble with the variant, a billing account that doesn't show up, or no Developer Program:
+     [errata → Phase 0](../reference/runbook-errata.md).
 
 2. **Complete initial tenant setup.**
-   - Create the **global administrator** and record the UPN — it is the technician identity throughout.
-   - **Confirm MFA is registered** on it: https://entra.microsoft.com → admin user → **Authentication
+   - Create the **global administrator**. Record its UPN — you sign in as it throughout.
+   - Confirm **MFA is registered** on it: https://entra.microsoft.com → the admin user → **Authentication
      methods**.
-   - **Record the data-center region:** admin center → **Settings → Org settings → Organization profile →
-     Data location**. You reuse it as `AZURE_LOCATION` in Phase 1. It is immutable.
-   - Confirm the global admin holds **Power Platform, Entra, SharePoint, Purview, Conditional Access and
-     Defender** access (Global Administrator covers all of these in a fresh tenant).
+   - Record the **data-center region**: admin center → **Settings → Org settings → Organization profile →
+     Data location**. Phase 1 uses it as `AZURE_LOCATION`.
+   - Confirm the admin can open **Power Platform, Entra, SharePoint, Purview, Conditional Access and
+     Defender**. Global Administrator covers all of them in a fresh tenant.
 
-3. **Assign licensing.** E5 comes with the sandbox and covers the Purview features the labs use. Assign an
-   E5 seat to the global admin in **Billing → Licenses**; the personas get theirs in Phase 2.
+3. **Assign licensing.**
+   - Admin center → **Billing → Licenses** → assign an **E5** seat to the global admin.
+   - E5 comes with the sandbox and covers the Purview features the labs use.
+   - The personas get their seats in Phase 2.
 
-4. **Replace security defaults with the Conditional Access baseline.** Once per tenant:
+4. **Replace security defaults with the Conditional Access baseline.** Once per tenant.
+   - Run it from a terminal **on your own machine** (or the Windows VM), **not** the dev container. Security
+     defaults block the device-code sign-in the container uses.
 
-   ```powershell
-   pwsh setup/scripts/00_conditional_access_baseline.ps1 -TenantId <tenant-id>
-   ```
+     ```powershell
+     pwsh setup/scripts/00_conditional_access_baseline.ps1 -TenantId <tenant-id>
+     ```
 
-   Run it from the **host** or the **Windows VM**, not the dev container — security defaults are still on
-   and block the device-code sign-in the container depends on. Pick the account in the browser tab
-   **within two minutes**; `Connect-MgGraph` gives up after that. The first run asks for
-   `Policy.ReadWrite.ConditionalAccess` and `Policy.Read.All` — tick **Consent on behalf of your
-   organization**.
+   - A browser tab opens. Pick the global admin **within two minutes**, or `Connect-MgGraph` gives up.
+   - First run only: it asks for `Policy.ReadWrite.ConditionalAccess` and `Policy.Read.All`. Tick
+     **Consent on behalf of your organization**.
+   - It turns security defaults off and creates two policies:
 
-   It turns security defaults off and creates the two baseline policies from `AGENTS.md`:
+     | Policy | Applies to | Control |
+     |---|---|---|
+     | `CA-Require-MFA-Admins` | 15 admin roles — Microsoft's *Require MFA for admins* template set, plus Power Platform Administrator | Require MFA |
+     | `CA-Block-Legacy-Auth` | All users | Block Exchange ActiveSync and other legacy clients |
 
-   | Policy | Applies to | Control |
-   |---|---|---|
-   | `CA-Require-MFA-Admins` | 15 admin roles — Microsoft's *Require MFA for admins* template set, plus Power Platform Administrator | Require MFA |
-   | `CA-Block-Legacy-Auth` | All users | Block Exchange ActiveSync and other legacy clients |
+   - If a policy fails, it rolls back and turns security defaults back on. Safe to re-run.
+   - **Wait ~10 minutes** before the first device-code sign-in. Sign-ins take a while to stop seeing
+     security defaults.
+   - Why the swap is mandatory and what it gives up:
+     [decisions → Phase 0](../reference/runbook-decisions.md#phase-0--tenant).
 
-   If creating a policy fails it rolls back and turns security defaults back on, so admins are never left
-   without MFA. Safe to re-run. **Then wait ~10 minutes before the first device-code sign-in** — sign-ins
-   take a while to stop seeing security defaults.
+5. **Consent to the Graph scopes.** Once, for the whole organization, as the global admin.
+   - Run:
 
-   Why the swap is mandatory and what it gives up:
-   [decisions → Phase 0](../reference/runbook-decisions.md#phase-0--tenant).
+     ```powershell
+     Connect-MgGraph -TenantId <yourlab>.onmicrosoft.com -Scopes `
+       Policy.ReadWrite.ConditionalAccess, Policy.Read.All, User.ReadWrite.All, Group.ReadWrite.All, `
+       User.Read.All, Application.Read.All, AuditLog.Read.All
+     ```
 
-5. **Consent to the Graph scopes** once, for the whole organization, as the global admin — tick **Consent
-   on behalf of your organization** before **Accept**:
+   - Tick **Consent on behalf of your organization**, then **Accept**.
+   - Check it: **Entra admin center → Enterprise applications → Microsoft Graph Command Line Tools →
+     Permissions**.
+   - What each scope is for:
 
-   ```powershell
-   Connect-MgGraph -TenantId <yourlab>.onmicrosoft.com -Scopes `
-     Policy.ReadWrite.ConditionalAccess, Policy.Read.All, User.ReadWrite.All, Group.ReadWrite.All, `
-     User.Read.All, Application.Read.All, AuditLog.Read.All
-   ```
+     | Scope | Used by |
+     |---|---|
+     | `Policy.ReadWrite.ConditionalAccess`, `Policy.Read.All` | `00_conditional_access_baseline.ps1` (step 4) |
+     | `User.ReadWrite.All`, `Group.ReadWrite.All` | `01_provision_entra.ps1` (Phase 2), `99_teardown.ps1` |
+     | `User.Read.All`, `Application.Read.All` | `05_export_artifact_pack.ps1` (Phase 7) |
+     | `AuditLog.Read.All` | `05_…` — its users export reads `signInActivity` |
 
-   | Scope | Used by |
-   |---|---|
-   | `Policy.ReadWrite.ConditionalAccess`, `Policy.Read.All` | `00_conditional_access_baseline.ps1` (step 4) |
-   | `User.ReadWrite.All`, `Group.ReadWrite.All` | `01_provision_entra.ps1` (Phase 2), `99_teardown.ps1` |
-   | `User.Read.All`, `Application.Read.All` | `05_export_artifact_pack.ps1` (Phase 7) |
-   | `AuditLog.Read.All` | `05_…` — its users export reads `signInActivity` |
+   - `pac` needs nothing granted. PnP.PowerShell gets its own app registration in Phase 4.
 
-   Check it in **Entra admin center → Enterprise applications → Microsoft Graph Command Line Tools →
-   Permissions**. `pac` needs nothing granted; PnP.PowerShell gets its own app registration in Phase 4.
-
-6. **Phase 0 verification checklist.**
-   - Global admin can **sign in** to https://admin.microsoft.com with MFA satisfied.
-   - **Security defaults are off** and both baseline policies are **On**.
-   - **Licensing shows assigned** (E5) on the admin account.
-   - **An Azure subscription is usable** and you hold **Owner** on it (or Contributor + User Access
-     Administrator) — Phase 1's `azd up` creates role assignments, which Contributor can't.
-   - The tooling is authenticated **against the new tenant**:
+6. **Verify Phase 0.**
+   - [ ] The global admin can sign in to https://admin.microsoft.com with MFA.
+   - [ ] **Security defaults are off**, and both baseline policies are **On**.
+   - [ ] The admin account has an **E5** licence assigned.
+   - [ ] You hold **Owner** on an Azure subscription (or Contributor + User Access Administrator).
+   - [ ] The tools are signed in to the lab tenant. In the dev container terminal:
 
      ```bash
      az login --allow-no-subscriptions --use-device-code   # sign in as the lab global admin
-     az account show                                       # confirm the new tenant id
-     pac auth create --name halcourt-lab --deviceCode      # Power Platform CLI → new tenant
+     az account show                                       # confirm the lab tenant id
+     pac auth create --name halcourt-lab --deviceCode      # Power Platform CLI → lab tenant
      pac org list                                          # "Connected as <admin>"; no Dataverse envs yet
      ```
 
-   If a device-code sign-in fails with *AADSTS530035*, step 4 hasn't taken effect yet; until it has, sign
-   in with a browser from the **host** or the **Windows VM** by dropping `--use-device-code` /
-   `--deviceCode` / `-UseDeviceCode`.
+   - Device-code sign-in fails with *AADSTS530035*? Step 4 hasn't taken effect yet. Wait, or sign in with a
+     browser from your own machine or the Windows VM: drop `--use-device-code` / `--deviceCode` /
+     `-UseDeviceCode`.
 
 ### Estates — choose your estate id
 
