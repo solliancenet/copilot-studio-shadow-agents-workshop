@@ -32,3 +32,4 @@ and what it costs. The [RUNBOOK](../../setup/RUNBOOK.md) stays a list of steps a
 | [0025](0025-attendee-licences-best-effort.md) | Attendee licence assignment is best effort | Accepted |
 | [0026](0026-attendee-teardown-purges.md) | Attendee teardown purges, not just deletes | Accepted |
 | [0027](0027-attendee-dataverse-access-model.md) | Attendee Dataverse access is a declared access model | Accepted |
+| [0028](0028-planted-governance-gaps.md) | DLP on Prod only, and no Conditional Access for agent identities | Accepted |

@@ -290,52 +290,36 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 3 — Environments and DLP
 
-**Prerequisites:** `az`, signed in to the lab tenant. Nothing else — the script drives the Power Platform
-admin API with `az`'s saved sign-in and **asks for no sign-in**.
+1. **Create the estate's environments and Prod's data policy.** The script creates three environments
+   with Dataverse — `Halcourt-Prod-<estate>` (Production, Managed Environment), `Claims-Test-<estate>`
+   (Sandbox) and `Maker-Sandbox-<estate>` (Developer, for `dev.kim.<estate>`) — and the DLP policy
+   `Halcourt-Prod-DLP-<estate>`, on Prod only. It waits for each Dataverse org (a few minutes), then prints
+   a summary. Safe to re-run. In the dev container terminal:
 
-```bash
-pwsh setup/scripts/02_provision_environments_dlp.ps1    # estate from HALCOURT_ESTATE (or -Estate <id>)
-```
+   ```bash
+   pwsh setup/scripts/02_provision_environments_dlp.ps1
+   ```
 
-| Creates | What |
-|---|---|
-| `Halcourt-Prod-<estate>` | Production + Dataverse, **Managed Environment**, `Halcourt-Prod-DLP-<estate>` |
-| `Claims-Test-<estate>` | Sandbox + Dataverse — Phase 5 seeds it |
-| `Maker-Sandbox-<estate>` | Developer + Dataverse, **assigned to `dev.kim.<estate>`** |
-| `Halcourt (default)` | the tenant's default environment, shared by every estate — named once, by whoever runs first |
+   - It reuses your `az` sign-in, so there's no code to enter.
+   - The summary lists each environment's **Region**. All three must match; note it for step 2.
+   - It ends with `Phase 3 complete`.
+   - The platform picks the region ([ADR-0013](../reference/adr/0013-environment-region-assigned.md)). The other
+     environments get no DLP and no agent Conditional Access is created — on purpose
+     ([ADR-0028](../reference/adr/0028-planted-governance-gaps.md)).
 
-`Halcourt-Prod-DLP-<estate>` puts Dataverse, SharePoint, Office 365 Outlook and Office 365 Users in the
-**business** group, scoped to this estate's Prod **only**. Default / Claims-Test / Maker-Sandbox deliberately
-stay **without DLP** — that gap drives Exercise 05 (Tasks 05-01 and 05-02). The script waits for every
-Dataverse org, then prints a summary with each environment's region and the exact Phase 5 command. Safe to
-re-run.
+2. **Link Prod and Claims-Test to a pay-as-you-go billing plan.** Without one, agents publish but nobody
+   can chat with them. The script finds the plan in your environments' region with the Copilot Studio
+   meter on, creating one if the region has none, then links both environments and checks the link.
+   Estates share a plan per region ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)). Safe to
+   re-run.
 
-{: .note }
-> **You don't choose the country** — the API assigns it from `-MacroRegion` (default `north-america`). The
-> script warns if an estate's environments land in different regions; the billing plan must follow
-> whatever the summary reports.
+   ```bash
+   pwsh setup/scripts/02b_provision_billing.ps1
+   ```
 
-Conditional Access is already in place from Phase 0. Still create **no** Conditional Access policy for
-agents (targeting agent identities) — that omission is the gap Task 05-04 has attendees specify a policy for.
-
-**Then wire Copilot Studio pay-as-you-go billing**, after the environments exist (a plan is region-locked,
-so it must match where they landed):
-
-```bash
-pwsh setup/scripts/02b_provision_billing.ps1 -Estate jsmith
-```
-
-It resolves this estate's Prod and Claims-Test and their region, finds a plan in that region with the
-Copilot Studio (`MCSMessages`) meter on, links both environments, and verifies. If the region has no plan
-it creates the once-per-region one — that branch is `[verify]`. `Maker-Sandbox` is a Developer
-environment: not linkable and not needed. Agents **publish** without a plan; a plan is what lets attendees
-send them messages.
-
-The PPAC and API equivalents, and the optional *Copilot Studio authors* tenant setting:
-[billing-plan-by-hand.md](../reference/billing-plan-by-hand.md), [ADR-0015](../reference/adr/0015-copilot-studio-authors-setting-optional.md);
-why plans are shared and regions assigned: [ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md),
-[ADR-0013](../reference/adr/0013-environment-region-assigned.md). Region-lock and
-the wrong-plan trap: [errata → Phase 3](../reference/runbook-errata.md).
+   - Creating a new plan is untested (`[verify]`); reusing one is the normal path.
+   - By hand instead: [billing-plan-by-hand.md](../reference/billing-plan-by-hand.md). Trouble with the
+     region lock: [errata → Phase 3](../reference/runbook-errata.md).
 
 ### Phase 4 — SharePoint seed (plant the poisoned doc)
 
