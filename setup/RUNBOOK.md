@@ -87,6 +87,8 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
 
 2. **Complete initial tenant setup.**
    - Create the **global administrator**. Record its UPN — you sign in as it throughout.
+   - Existing tenant: any account that holds **Global Administrator** will do. "The global admin" in this
+     runbook means whichever account you use.
    - Confirm **MFA is registered** on it: https://entra.microsoft.com → the admin user → **Authentication
      methods**.
    - Record the **data-center region**: admin center → **Settings → Org settings → Organization profile →
@@ -168,7 +170,7 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
      az login --allow-no-subscriptions --use-device-code   # sign in as the lab global admin
      az account show                                       # confirm the lab tenant id
      pac auth create --name halcourt-lab --deviceCode      # Power Platform CLI → lab tenant
-     pac org list                                          # "Connected as <admin>"; no Dataverse envs yet
+     pac org list                                          # "Connected as <admin>"; a new tenant lists only the default env
      ```
 
    - Device-code sign-in fails with *AADSTS530035*? Step 4 hasn't taken effect yet. Wait, or sign in with a
