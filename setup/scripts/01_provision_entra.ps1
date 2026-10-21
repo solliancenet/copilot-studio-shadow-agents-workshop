@@ -25,6 +25,10 @@ whatever domain Microsoft assigns (a Dev Program sandbox: something like 0zwdt94
 an *.onmicrosoft.com domain can't be added to another tenant. So the personas use the TENANT's default
 verified domain; -DomainSuffix overrides it and must be a verified domain of the tenant.
 
+Licences (reference/adr/0009-eight-licences-per-estate.md): the eight accounts that need one - svc-claims and
+the seven agent owners - get the tenant's E5. An account that already holds it is skipped; when seats run out
+the rest are reported, not failed, so free seats and re-run. -SkipLicences leaves licensing alone.
+
 Safe to re-run: users and groups that already exist are left as they are.
 #>
 param(
@@ -32,6 +36,8 @@ param(
   [string]$TenantId,                                 # optional; target lab tenant (id or *.onmicrosoft.com)
   [string]$DomainSuffix,                             # default: the tenant's default verified domain
   [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only
+  [string]$LicenceSku,                               # default: the tenant's E5 (DEVELOPERPACK_V2_E5, SPE_E5 or ENTERPRISEPREMIUM)
+  [switch]$SkipLicences,
   [switch]$MarkDepartedOwner,
   [datetime]$DepartedOn = '2026-01-30T17:00:00Z'      # Tom's leave date (canon: users-export)
 )
@@ -142,6 +148,35 @@ foreach ($canon in $membership.Keys) {
     $added++
   }
   Write-Host "Group $($g.DisplayName): $($membership[$canon].Count) members ($added added)"
+}
+
+# Licences (ADR-0009): svc-claims (Phase 5) and the seven agent owners (Phase 6). Never fatal.
+if (-not $SkipLicences) {
+  $skus = @((Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/subscribedSkus').value)
+  $want = if ($LicenceSku) { @($LicenceSku) } else { 'DEVELOPERPACK_V2_E5', 'SPE_E5', 'ENTERPRISEPREMIUM' }
+  $sku = $want | ForEach-Object { $n = $_; $skus | Where-Object { $_.skuPartNumber -eq $n } } | Select-Object -First 1
+  if (-not $sku) {
+    Write-Warning "No E5 licence in this tenant ($($want -join ', ')) - assign licences by hand (ADR-0009)."
+  } else {
+    $free = [int]$sku.prepaidUnits.enabled - [int]$sku.consumedUnits
+    Write-Host "Licences: $($sku.skuPartNumber), $free free"
+    $short = @()
+    foreach ($alias in 'svc-claims','marcus.webb','priya.nair','lena.ford','dev.kim','tom.dean','sam.olsen','it.helpdesk') {
+      $upn = Get-Upn $alias
+      $u = Get-MgUser -UserId $upn -Property Id,UsageLocation,AssignedLicenses -ErrorAction SilentlyContinue
+      if (-not $u) { Write-Warning "  $upn not found yet - re-run in a minute"; $short += $upn; continue }
+      if ($sku.skuId -in @($u.AssignedLicenses.SkuId)) { Write-Host "  Licensed: $upn"; continue }
+      if ($free -le 0) { $short += $upn; continue }
+      # Exchange creates it.helpdesk without a usage location, and a licence needs one.
+      if (-not $u.UsageLocation) { Update-MgUser -UserId $u.Id -UsageLocation $usageLocation }
+      Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/v1.0/users/$($u.Id)/assignLicense" `
+        -Body (@{ addLicenses = @(@{ skuId = $sku.skuId }); removeLicenses = @() } | ConvertTo-Json -Depth 5) `
+        -ContentType 'application/json' | Out-Null
+      Write-Host "  Assigned: $upn"
+      $free--
+    }
+    if ($short) { Write-Warning "Not licensed: $($short -join ', '). Free seats (Phase 0, step 3) and re-run." }
+  }
 }
 
 Write-Host "Phase 2 complete for estate '$Estate'. Remember Phase 6.5: re-run with -Estate $Estate -MarkDepartedOwner after Tom's connections exist."

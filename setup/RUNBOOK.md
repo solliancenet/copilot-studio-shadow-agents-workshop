@@ -35,6 +35,15 @@ tool the scripts need already installed.
 5. Make sure you hold **Owner** on an Azure subscription (or Contributor + User Access Administrator) —
    Phase 1 creates role assignments, which Contributor alone can't.
 
+**The admin portals.** This runbook names each portal in full; "PPAC" is the Power Platform admin center.
+
+| Portal | Address |
+|---|---|
+| Microsoft 365 admin center | https://admin.microsoft.com |
+| Microsoft Entra admin center | https://entra.microsoft.com |
+| Power Platform admin center (PPAC) | https://admin.powerplatform.microsoft.com |
+| Azure portal | https://portal.azure.com |
+
 The container's tools and what each phase uses them for: [toolchain](../reference/toolchain.md). Want a
 real Windows desktop browser for interactive sign-in and MFA? See
 [`windows-vm/README.md`](windows-vm/README.md) — optional.
@@ -89,21 +98,21 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - Create the **global administrator**. Record its UPN — you sign in as it throughout.
    - Existing tenant: any account that holds **Global Administrator** will do. "The global admin" in this
      runbook means whichever account you use.
-   - Confirm **MFA is registered** on it: https://entra.microsoft.com → the admin user → **Authentication
+   - Confirm **MFA is registered** on it: **Microsoft Entra admin center** → **Users** → the admin user → **Authentication
      methods**.
-   - Record the **data-center region**: admin center → **Settings → Org settings → Organization profile →
+   - Record the **data-center region**: **Microsoft 365 admin center** → **Settings → Org settings → Organization profile →
      Data location**. Phase 1 uses it as `AZURE_LOCATION`.
    - Confirm the admin can open **Power Platform, Entra, SharePoint, Purview, Conditional Access and
      Defender**. Global Administrator covers all of them in a fresh tenant.
 
 3. **Assign licensing.**
-   - **Free the content pack's seats.** Admin center → **Billing → Licenses** → the E5 developer
+   - **Free the content pack's seats.** **Microsoft 365 admin center** → **Billing → Licenses** → the E5 developer
      licence → select the sample users → **Unassign licenses**. Leave the users themselves.
    - In a new tenant that is everyone except the global admin. In a tenant where estates are already built,
      **don't** unassign estate accounts — they carry an estate id (`marcus.webb.jsmith@…`,
      `student01.jsmith@…`).
    - The personas (Phase 2) and attendees (Phase 8b) need those seats.
-   - Admin center → **Billing → Licenses** → assign an **E5** seat to the global admin.
+   - **Microsoft 365 admin center** → **Billing → Licenses** → assign an **E5** seat to the global admin.
    - E5 comes with the sandbox and covers the Purview features the labs use.
    - The personas get their seats in Phase 2.
 
@@ -257,10 +266,11 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 2 — Entra identities & personas
 
-1. **Create the estate's people and groups.** The script creates nine accounts (eight personas and
-   `svc-claims`), the `it.helpdesk` shared mailbox and four groups, each named with your estate id
-   ([ADR-0006](../reference/adr/0006-personas-on-the-tenant-domain.md),
-   [ADR-0007](../reference/adr/0007-shared-mailbox-via-exchange.md)). It assigns no licences. Safe to
+1. **Create and license the estate's people and groups.** The script creates nine accounts (eight
+   personas and `svc-claims`), the `it.helpdesk` shared mailbox and four groups, each named with your
+   estate id ([ADR-0006](../reference/adr/0006-personas-on-the-tenant-domain.md),
+   [ADR-0007](../reference/adr/0007-shared-mailbox-via-exchange.md)). Then it gives an E5 licence to the
+   eight accounts that need one ([ADR-0009](../reference/adr/0009-eight-licences-per-estate.md)). Safe to
    re-run. In the dev container terminal:
 
    ```bash
@@ -272,10 +282,8 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
      Check both.
    - It ends with `Phase 2 complete for estate '<id>'`.
 
-2. **License eight accounts** ([ADR-0009](../reference/adr/0009-eight-licences-per-estate.md)). Admin
-   center → **Billing → Licenses** → the E5 licence → **Assign** → `svc-claims`, `marcus.webb`,
-   `priya.nair`, `lena.ford`, `dev.kim`, `tom.dean`, `sam.olsen` and `it.helpdesk` (all `.<estate>`).
-   Short of seats? Phase 0, step 3.
+2. **Check the licences.** The `Licences:` lines must show all eight accounts `Assigned` or `Licensed`.
+   A `Not licensed:` warning means the tenant ran out of seats: free some (Phase 0, step 3) and re-run.
 
 3. **Leave Tom Dean enabled**, always. Phase 6.5 marks him departed
    ([ADR-0008](../reference/adr/0008-departed-owner-stays-enabled.md)).
@@ -721,7 +729,7 @@ Per *delivery*, not per estate: attendees sign in to the lab tenant with a nativ
 they review the estate from inside the tenant rather than as guests. Run it shortly before the delivery and
 tear it down after.
 
-First count your free E5 seats (M365 admin center → **Billing → Licenses**). That number is the most
+First count your free E5 seats (**Microsoft 365 admin center** → **Billing → Licenses**). That number is the most
 attendees you can run: use it for `-Count` and `-Attendees`
 ([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)).
 
@@ -750,7 +758,7 @@ first sign-in:**
 | Role | Serves |
 |---|---|
 | `Power Platform Administrator` | the `/scopes/admin/` connection reads (Task 01-01) |
-| `AI Reader` | M365 admin center → Agents (Agent 365): 01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1, 05-05 KT01. Without it the Agents page is missing from the nav |
+| `AI Reader` | Microsoft 365 admin center → Agents (Agent 365): 01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1, 05-05 KT01. Without it the Agents page is missing from the nav |
 | `Security Reader` | Entra Conditional Access policies (05-04 KT01) and the Defender portal's Alerts, Incidents and AI agents (05-07) |
 | `Global Reader` | Purview Information Protection and DSPM for AI (05-06, 05-07) |
 

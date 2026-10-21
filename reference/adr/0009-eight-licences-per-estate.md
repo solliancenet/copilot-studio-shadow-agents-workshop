@@ -18,8 +18,10 @@ Each estate licenses eight accounts with E5:
 | `svc-claims` | Phase 5 — its shared Dataverse connection |
 | `marcus.webb`, `priya.nair`, `lena.ford`, `dev.kim`, `tom.dean`, `sam.olsen`, `it.helpdesk` | Phase 6 — they own the agents |
 
-`ana.reyes` and `jordan.blake` stay unlicensed. `01_provision_entra.ps1` sets each account's usage location
-so a licence can be assigned, but assigns none; licensing is a manual step.
+`ana.reyes` and `jordan.blake` stay unlicensed. `01_provision_entra.ps1` assigns the tenant's E5
+(`DEVELOPERPACK_V2_E5`, `SPE_E5` or `ENTERPRISEPREMIUM`, or `-LicenceSku`) to the eight, skipping any that
+already hold it, and sets a usage location first where one is missing (Exchange creates `it.helpdesk`
+without one). Running out of seats is reported, not fatal. `-SkipLicences` leaves licensing alone.
 
 ## Consequences
 

@@ -6,7 +6,7 @@ The scripted path is `02b_provision_billing.ps1`. Two manual equivalents, for wh
 when a region has no plan yet. Do either only **after** the environments exist, so the plan's region
 matches theirs.
 
-**In PPAC:**
+**In the Power Platform admin center (PPAC, https://admin.powerplatform.microsoft.com):**
 
 1. **Read the region from the Phase 3 summary** (the `Region` column — e.g. `canada`), or in PPAC
    (https://admin.powerplatform.microsoft.com) → **Manage → Environments**.

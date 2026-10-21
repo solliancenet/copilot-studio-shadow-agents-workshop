@@ -42,7 +42,7 @@ surfaces change often.
 ### 3. Pay-as-you-go (PAYG) meter
 - Pay for Copilot Studio via an **Azure subscription**, no upfront commitment; monthly billing of
   actual credits consumed. Link environments to the subscription with a **billing policy**
-  (Power Platform admin center, or M365 admin center → Billing → Pay-as-you-go).
+  (Power Platform admin center, or Microsoft 365 admin center → Billing → Pay-as-you-go).
 - **Requires an Azure subscription** with the admin as Owner/Contributor. With PAYG there is no
   125% cutoff (overage just bills through).
 - **This is the blocker we hit** (see "Live blocker" below).
@@ -100,13 +100,13 @@ Attempting Copilot Studio PAYG on the E5 dev sandbox:
   not match a **United States** plan — the env couldn't be linked. Fix: make the environment and the billing
   plan land in the **same region**. A region-matched plan (`ppccdevcanada`, Copilot Studio meter) then linked
   to Claims-Test cleanly.
-- **Where Copilot Studio PAYG actually lives:** not the M365 admin center's Pay-as-you-go page (no Copilot
+- **Where Copilot Studio PAYG actually lives:** not the Microsoft 365 admin center's Pay-as-you-go page (no Copilot
   Studio there) — it's a **PPAC billing plan** (Licensing → Billing Plans) with the Copilot Studio meter,
   linked per-environment.
 
 ## How Copilot Studio connects to the subscription (PAYG)
 
-Creating the pay-as-you-go **billing policy** (M365 admin center → Billing → Pay-as-you-go) does not by
+Creating the pay-as-you-go **billing policy** (Microsoft 365 admin center → Billing → Pay-as-you-go) does not by
 itself meter Copilot Studio — Copilot Studio is **not** listed on that page's **Services** tab (its entries
 are M365 Backup, Microsoft 365 Copilot [the USL chat product], High Volume Email, SharePoint/OneDrive
 Storage, Perception). The Copilot Studio ↔ subscription link is **per-environment**, done in the **Power
