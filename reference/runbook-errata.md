@@ -1498,3 +1498,20 @@ review ... the assigned adjuster is Priya Nair"* at 17:55Z.
 was watched - nor taking `svc-claims`'s. Until a build sees Dataverse re-read the licence, ADR-0009 stands. A build needs the owner's seat at least for the step that drives Copilot Studio in a browser
 (reading the Teams link); connection consent wasn't tested, and owners whose connections reach SharePoint,
 Outlook or OneDrive likely need a seat for those services anyway.
+
+### Phase 3 · the third estate ran out of Dataverse capacity - unless created on the PAYG plan (2026-10-22)
+
+**Symptom.** `10_build_estates.ps1 -Estates fac03`: `Halcourt-Prod-fac03` was created, then `Claims-Test-fac03`
+failed with `InsufficientCapacity_StorageDriven` - *"This environment can't be created because your org
+(tenant) needs at least 1 GB of database capacity."* **Evidence.** `licensing/tenantCapacity`: Database
+total 5120 MB, *rated* 5120 MB, actual about 230 MB. Every Production or Sandbox environment with Dataverse
+reserves 1 GB however little it holds; Developer environments reserve nothing. An estate has two (Prod,
+Claims-Test), so a Dev Program tenant's 5 GB holds **two estates** - and per-student slices (Phase 8c,
+Sandbox + Dataverse) 1 GB each.
+**Fix.** Create the environment **on** the pay-as-you-go plan: the same POST with
+`properties.billingPolicy = { id: <plan id> }` created `Claims-Test-fac03` with capacity at 5120/5120 MB, its
+Dataverse provisioned and the plan linked from the start - storage bills to Azure, not the tenant's
+capacity. Linking afterwards (02b) is too late: the capacity check runs at creation. `02_provision_environments_dlp.ps1`
+now creates Prod and Claims-Test on the plan the tenant's estates already use
+(`-BillingPolicyId` to choose), else the kit's or the region's only plan; 08's slices are created on the plan too.
+A tenant with no plan yet has its first estate created unlinked.

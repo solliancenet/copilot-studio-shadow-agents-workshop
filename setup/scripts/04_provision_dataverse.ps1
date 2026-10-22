@@ -239,8 +239,20 @@ if (-not $svc) {
   $svcOid = az ad user show --id $svcUpn --query id -o tsv
   if ($LASTEXITCODE -or -not $svcOid) { throw "$svcUpn not found in Entra - run Phase 2 first." }
   try {
-    Invoke-AzRest POST "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($claimsEnv.name)/addUser?api-version=2020-10-01" `
-      'https://service.powerapps.com/' @{ ObjectId = $svcOid } | Out-Null
+    # A brand-new environment can have its Dataverse URL before the user-sync service knows the instance:
+    # addUser then answers "Requested instance ... not found" (instanceNotFound) - seen about 6 minutes after
+    # Phase 3 created Claims-Test-stu01 (2026-10-22). Wait that out; any other error stops here as before.
+    for ($i = 1; ; $i++) {
+      try {
+        Invoke-AzRest POST "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($claimsEnv.name)/addUser?api-version=2020-10-01" `
+          'https://service.powerapps.com/' @{ ObjectId = $svcOid } | Out-Null
+        break
+      } catch {
+        if ("$_" -notmatch 'instanceNotFound' -or $i -ge 10) { throw }
+        Write-Host "  environment not yet known to user sync (instanceNotFound) - retrying in 30s ($i/10)"
+        Start-Sleep 30
+      }
+    }
     $svc = (Invoke-Dv GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$svcUpn'").value | Select-Object -First 1
   } catch {
     if ("$_" -notmatch 'userNotLicensed') { throw }

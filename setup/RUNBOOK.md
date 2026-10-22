@@ -335,6 +335,9 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 2. **Link Prod and Claims-Test to a pay-as-you-go billing plan.** Without one, agents publish but nobody
    can chat with them. The script finds the plan in your environments' region with the Copilot Studio
    meter on, creating one if the region has none, then links both environments and checks the link.
+   Step 1 creates Prod and Claims-Test **on** the plan when the tenant already has one: each Dataverse
+   environment otherwise reserves 1 GB of the tenant's capacity, and a Dev Program tenant's 5 GB holds only
+   two estates ([errata → Phase 3](../reference/runbook-errata.md)).
    Estates share a plan per region ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)), so the
    plan and its resource group carry no estate id — one the script creates is `Halcourt-PAYG-<region>` in
    `rg-halcourt-billing`. Never delete either while any estate uses the region. Safe to re-run.

@@ -32,6 +32,9 @@ environments only, and its agents publish and run without a plan.
 ## Consequences
 
 - No per-estate plan to create or clean up; usage is still visible per environment.
+- The plan is also what lets a tenant hold more than two estates: Phase 3 creates Prod and Claims-Test on it,
+  so their Dataverse storage bills to Azure instead of reserving the tenant's capacity (errata → Phase 3,
+  2026-10-22).
 - Deleting the plan, or its resource group, cuts billing for **every** estate in the region. An earlier
   version of the script named both after the estate that ran first (`rg-halcourt-billing-<estate>`,
   `Halcourt-PAYG-<estate>`), so tidying one estate's resource groups by hand could do exactly that.
