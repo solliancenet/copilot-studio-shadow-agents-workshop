@@ -17,7 +17,7 @@ the environments' region before creating one, and links the estate's `Halcourt-P
 
 The plan is a **shared resource**, like the default environment: no estate owns it, so nothing about it
 carries an estate id. It reuses whatever plan the region already has, by any name — a Dev Program tenant
-may come with one (`ppccdevcanada` in its own `rg-<number>` group). One it creates is named for the region:
+may come with one (`ppccdevcanada` in its own `rg-<number>` group). One it creates carries no estate id:
 resource group `rg-halcourt-billing`, account `ppcc-halcourt-<region>`, plan `Halcourt-PAYG-<region>`.
 Estate teardown only **unlinks** the estate's environments; the plan and its resource group go only when
 the tenant is retired.

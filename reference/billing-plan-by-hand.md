@@ -24,8 +24,9 @@ matches theirs.
      az group create -n rg-halcourt-billing -l eastus --subscription <lab-subscription-id> -o none
    ```
 
-   Then PPAC → **Licensing → Billing Plans → + New billing plan → Azure subscription**. Name it for the region, not your estate — `Halcourt-PAYG-<region>` (e.g.
-   `Halcourt-PAYG-canada`) — because every estate in the region will share it. Pick the **Azure
+   Then PPAC → **Licensing → Billing Plans → + New billing plan → Azure subscription**. Name it for the
+   region, not your estate — `Halcourt-PAYG-<region>` (e.g. `Halcourt-PAYG-canada`) — because every
+   estate in the region will share it. Pick the **Azure
    subscription** and the shared **resource group** `rg-halcourt-billing` → set the **Meter** to
    **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select environments**, set the
    **Region** filter to the summary's region, then **check** `Halcourt-Prod-<estate>` and
