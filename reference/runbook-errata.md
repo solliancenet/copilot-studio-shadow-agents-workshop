@@ -1475,6 +1475,7 @@ attendee) turns on whether an agent's **owner** needs a seat once the agent is b
 | The published agent answers in Teams | **Yes** - POL-1002 looked up through its HTTP action, 20 min after removal |
 | Phase 6 pushes and publishes as the owner (`pac`, `-Agents policy-lookup-bot`) | **Yes** - published 03:17Z, exit 0 |
 | The republished agent answers | **Yes** - POL-1001, 03:19Z |
+| The agent still answers hours later | **Yes** - POL-1002, 11:21Z (8.5 h without a seat) |
 | The owner opens the agent in Copilot Studio (browser) | **No** - 403 `UserHasNoLicense`, *"We couldn't load Copilot Studio"*; Phase 6's Teams-link step, which drives that page as the owner, warns and skips |
 
 **Traps.** Entra records an admin's `assignLicense` as *Change user license* by `CloudLicensingSystem`, not by
@@ -1482,8 +1483,12 @@ the admin - an earlier session read that as a seat lost by itself and re-assigne
 Copilot Studio enforces the Entra licence within minutes while Dataverse still reports `islicensed=true`
 for hours (`accessmode` 0), so this table covers the Entra side only.
 
-**Still open.** Whether the agent keeps answering, and Phase 6 still pushes, once Dataverse catches up and
-runs the owner in Administrative access mode (which filters roles such as Environment Maker). Until then
-ADR-0009 stands. A build needs the owner's seat at least for the step that drives Copilot Studio in a browser
+**Dataverse never caught up.** Through 11:50Z - nine hours, two `addUser` nudges - the owner's record kept
+`islicensed=true`, `accessmode` 0, unchanged since 03:10Z. So nothing here shows an owner in Administrative
+access mode (which filters roles such as Environment Maker); a Dataverse that does re-read the licence could
+still break the owner's Phase 6 push. The seat was restored at 11:53Z and the agent re-checked (PASS).
+
+**What it means.** Taking an owner's seat back after the build did not stop the agent, for as long as this
+was watched. Until a build sees Dataverse re-read the licence, ADR-0009 stands. A build needs the owner's seat at least for the step that drives Copilot Studio in a browser
 (reading the Teams link); connection consent wasn't tested, and owners whose connections reach SharePoint,
 Outlook or OneDrive likely need a seat for those services anyway.
