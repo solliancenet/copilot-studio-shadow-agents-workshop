@@ -48,6 +48,9 @@ setup/windows-vm/.env
 # Python bytecode
 __pycache__/
 
+# Estate build logs (10_build_estates.ps1)
+setup/build-logs/
+
 # Exercise 05 demonstration snapshots (09_ex05_demo_state.ps1)
 setup/ex05-state/
 
