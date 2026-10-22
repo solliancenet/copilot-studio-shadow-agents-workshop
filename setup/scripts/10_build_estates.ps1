@@ -34,7 +34,7 @@ param(
   [switch]$ContinueOnError              # a failing estate doesn't stop the others
 )
 $ErrorActionPreference = 'Stop'
-$Root = Split-Path -Parent $PSScriptRoot
+$Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)        # the repo root
 . (Join-Path $PSScriptRoot '_estate.ps1')
 . (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
 
