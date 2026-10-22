@@ -10,15 +10,19 @@ matches theirs.
 
 1. **Read the region from the Phase 3 summary** (the `Region` column — e.g. `canada`), or in PPAC
    (https://admin.powerplatform.microsoft.com) → **Manage → Environments**.
-2. **Create the billing plan in that region — only if it has none.** Check **Licensing → Billing Plans**
-   first; if a plan in the region has the Copilot Studio meter on, link to it instead (step 2's
-   **Select environments** page, on that plan). PPAC → **Licensing → Billing Plans → + New billing plan →
+2. **If the region already has a plan, link to it.** PPAC → **Licensing → Billing Plans**. A plan in the
+   summary's region with the **Copilot Studio** meter on is the shared one, whatever its name (a Dev
+   Program tenant may come with one, e.g. `ppccdevcanada`). Open it → **Edit** → on **Select
+   environments**, **check** `Halcourt-Prod-<estate>` and `Claims-Test-<estate>` → **Save**. Done; skip
+   step 3.
+3. **Otherwise create the region's plan.** PPAC → **Licensing → Billing Plans → + New billing plan →
    Azure subscription**. Name it for the region, not your estate — `Halcourt-PAYG-<region>` (e.g.
-   `Halcourt-PAYG-canada`), because every estate in the region will share it → pick the **Azure
-   subscription** and the shared **resource group** `rg-halcourt-billing` → set the **Meter** to **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select
-   environments**, set the **Region** filter to the summary's region, then **check**
-   `Halcourt-Prod-<estate>` and `Claims-Test-<estate>` → **Save**.
-3. **Mind the region-lock.** A plan only lists environments in its own region: if an environment isn't in
+   `Halcourt-PAYG-canada`) — because every estate in the region will share it. Pick the **Azure
+   subscription** and the shared **resource group** `rg-halcourt-billing` → set the **Meter** to
+   **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select environments**, set the
+   **Region** filter to the summary's region, then **check** `Halcourt-Prod-<estate>` and
+   `Claims-Test-<estate>` → **Save**.
+4. **Mind the region-lock.** A plan only lists environments in its own region: if an environment isn't in
    the picker, the plan's region doesn't match it (see errata).
 
 **By API, reusing a plan the region already has.** With `az` signed in as the admin:

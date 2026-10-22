@@ -924,11 +924,13 @@ re-inject the new addresses and secrets at provision time.
       `halcourt-lab-compliance` (03c, 07 and 07b sign in with it) with its local
       `setup/lab-compliance-app.local.{json,pfx}`, and the resource group `rg-halcourt-graph-billing` holding
       its Graph billing resource `halcourt-lab-compliance-billing`. `azd down` does not touch either.
-- [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan
-      (`Halcourt-PAYG-<region>`, or the tenant's own, e.g. `ppccdevcanada`) and its resource group
-      (`rg-halcourt-billing`). Deleting either cuts billing for every estate in the region. Check
-      `/billingPolicies/<id>/environments` lists no live environment first; PPAC → Licensing → Billing
-      Plans → delete, then `az group delete -n rg-halcourt-billing`.
+- [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan and, if
+      the kit created it, its resource group. Deleting either cuts billing for every estate in the region.
+      Check `/billingPolicies/<id>/environments` lists no live environment first, then PPAC → Licensing →
+      Billing Plans → delete. A plan the kit created is `Halcourt-PAYG-<region>` in `rg-halcourt-billing`:
+      `az group delete -n rg-halcourt-billing` once its plans are gone. A plan the tenant came with (e.g.
+      `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default
+      environment's plan — leave that group alone.
 
 `-RemovePersonas` deletes every user whose UPN ends `.<estate>@<domain>` and every group named `*-<estate>`,
 so it also catches the lab accounts, the facilitator and `HR-Leadership-<estate>`. Run the scripts above
