@@ -5,7 +5,7 @@ Phase 1 (one shared Azure deployment, ADR-0005) must already be done; Phases 7, 
 accounts are separate.
 
   pwsh setup/scripts/10_build_estates.ps1 -Estates fac01                       # one estate
-  pwsh setup/scripts/10_build_estates.ps1 -Estates (1..20 | % { 'stu{0:d2}' -f $_ }) -ReclaimSeats
+  pwsh setup/scripts/10_build_estates.ps1 -Estates fac02,fac03 -ReclaimSeats         # comma-separated, no spaces
   pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -From agents           # resume at Phase 6
   pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -ReclaimOnly           # just take the seats back
 
@@ -34,6 +34,8 @@ param(
   [switch]$ContinueOnError              # a failing estate doesn't stop the others
 )
 $ErrorActionPreference = 'Stop'
+# `pwsh -File ... -Estates a,b` arrives as one string 'a,b'; split it (as 06's -Agents does).
+$Estates = @($Estates | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)        # the repo root
 . (Join-Path $PSScriptRoot '_estate.ps1')
 . (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
