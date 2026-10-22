@@ -142,12 +142,25 @@ Check "Purview: labelled comp copy (Confidential-PII-$Estate)" '05-06 (the label
   $labels = { param($path)
     $it = Invoke-RestMethod -Headers $h -Uri "$g/drives/$($drive.id)/root:/Leadership/$($path)"
     @((Invoke-RestMethod -Method POST -Headers $h -ContentType 'application/json' -Body '{}' -Uri "$g/drives/$($drive.id)/items/$($it.id)/extractSensitivityLabels").labels) }
-  try { $copy = & $labels '2026-comp-bands-labeled.xlsx' } catch { return Result 'FAIL' 'no labelled copy in HR-Benefits/Leadership - run 03c (Phase 4c) days before the delivery' }
+  # Only a 404 means "not there"; a token, permission or throttling error is reported as itself.
+  try { $copy = & $labels '2026-comp-bands-labeled.xlsx' }
+  catch {
+    if ((Http-Status $_) -eq 404) { return Result 'FAIL' 'no labelled copy in HR-Benefits/Leadership - run 03c (Phase 4c) days before the delivery' }
+    return Result 'FAIL' "could not read the labelled copy: $($_.Exception.Message.Split([char]10)[0])"
+  }
   $orig = & $labels '2026-comp-bands.xlsx'
-  $q = @{ requests = @(@{ entityTypes = @('driveItem'); query = @{ queryString = "`"LABELLED-COPY-$Estate`"" }; region = 'NAM' }) } | ConvertTo-Json -Depth 6
-  $hits = (Invoke-RestMethod -Method POST -Headers $h -ContentType 'application/json' -Body $q -Uri "$g/search/query").value[0].hitsContainers[0].total
-  $d = "copy labelled: $([bool]$copy.Count); original unlabelled: $(-not $orig.Count); search sees the copy: $([bool]$hits)"
-  if (-not $copy.Count -or $orig.Count) { Result 'FAIL' "$d - re-run 03c" }
+  # 03c assigns the estate's encrypting label with assignmentMethod 'privileged'; a default library label or an
+  # auto-labelling policy would show 'standard' or 'auto' and must not count. (The label's own id needs
+  # Security & Compliance PowerShell to look up, which the preflight doesn't open.)
+  $ours = @($copy | Where-Object { $_.assignmentMethod -eq 'privileged' })
+  # App-only search must name the tenant's region; 03c uses NAM too. A failed search is a WARN, not a FAIL.
+  $hits = $null
+  try {
+    $q = @{ requests = @(@{ entityTypes = @('driveItem'); query = @{ queryString = "`"LABELLED-COPY-$Estate`"" }; region = 'NAM' }) } | ConvertTo-Json -Depth 6
+    $hits = (Invoke-RestMethod -Method POST -Headers $h -ContentType 'application/json' -Body $q -Uri "$g/search/query").value[0].hitsContainers[0].total
+  } catch { $searchErr = $_.Exception.Message.Split([char]10)[0] }
+  $d = "copy labelled by 03c: $([bool]$ours.Count); original unlabelled: $(-not $orig.Count); search sees the copy: $(if ($searchErr) { "unknown ($searchErr)" } else { [bool]$hits })"
+  if (-not $ours.Count -or $orig.Count) { Result 'FAIL' "$d - re-run 03c" }
   elseif (-not $hits) { Result 'WARN' "$d - indexing can take hours; 05-06's retest needs it" }
   else { Result 'PASS' $d }
 }

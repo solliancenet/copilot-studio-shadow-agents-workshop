@@ -819,8 +819,10 @@ names the exercise steps each failed check would break.
 
 3. Fix every FAIL before the delivery. A WARN names the fallback attendees will use.
 
-4. **Chat with each Teams agent once**, as a licensed persona outside the admin roles (Lena works), the way
-   attendees will. The preflight proves the agents exist; this proves they answer. For example:
+4. **Chat with each Teams agent once**, as a licensed persona outside the admin roles, the way attendees
+   will. The preflight proves the agents exist; this proves they answer. Run the probe once per row of
+   `setup/teams-links-<estate>.local.csv`, with a question that agent answers. Use Jordan Blake if the
+   personas' seats were reclaimed after the build (lend Jordan a seat for the check). For Policy Lookup Bot:
 
    ```bash
    python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<domain> --password '<lab password>' \

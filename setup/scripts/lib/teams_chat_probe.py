@@ -9,7 +9,8 @@ agent answers before a delivery or a recording, or to test a change to an agent'
       --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
 
 --links is Phase 6's handout (setup/teams-links-<estate>.local.csv); --link <url> instead takes one link.
-Each --say is sent in turn and its --expect (a case-insensitive substring) must appear afterwards. Prints
+Each --say is sent in turn and the --expect in the same position (a case-insensitive substring; '' to skip)
+must then appear in the chat. Prints
 TRANSCRIPT_TAIL=... then RESULT=PASS, or RESULT=FAIL <reason>, and exits 0/1. Screenshots go to --out.
 
 Sign in as a licensed persona without an admin role: Teams refuses an unlicensed account, and an admin role
@@ -20,7 +21,8 @@ teams.cloud.microsoft (re-open it once Teams has loaded); the dialog's Add butto
 (force the click); after "Added successfully!" the chat opens only from Open; an agent added earlier is
 opened from the chat list. Headless Chrome needs a normal user agent.
 
-Requires: playwright (pip install playwright) with Chrome available (channel=chrome).
+Requires: playwright (pip install playwright). Uses Chrome when installed, else Playwright's Chromium (the
+dev container's).
 """
 import argparse, csv, re, sys, time
 from pathlib import Path
@@ -43,45 +45,61 @@ def open_chat(page, a, shot) -> object:
     deadline = time.time() + a.timeout
     relinked, last_relink = 0, time.time()
     while time.time() < deadline:
-        page.wait_for_timeout(2500)
-        if page.locator("input[type=email]:visible").count():
-            page.fill("input[type=email]", a.upn); page.click("input[type=submit]"); continue
-        if page.locator("input[type=password]:visible").count():
-            page.fill("input[type=password]", a.password); page.click("input[type=submit]"); continue
-        if page.locator("#idBtn_Back:visible").count():                      # "Stay signed in?" -> No
-            page.click("#idBtn_Back"); continue
-        for label in ("Use the web app instead", "Continue on this browser"):
-            l = page.get_by_text(label, exact=False)
-            if l.count() and l.first.is_visible():
-                l.first.click(); break
-        add = page.locator("[role=dialog] [data-tid='install-app-btn']:visible")
-        if not add.count():
-            add = page.locator(f"[role=dialog] [data-tid^='install-app-btn']:visible, "
-                               f"[role=dialog] button[aria-label='Add {a.agent}']:visible")
-        if add.count():
-            shot(page, "dialog-add")
-            try: add.first.click(timeout=8000)
-            except Exception: add.first.click(force=True, timeout=8000)
-            page.wait_for_timeout(10000); continue
-        opn = page.locator("[role=dialog] button:visible", has_text=re.compile(r"^\s*Open\s*$"))
-        if opn.count():
-            shot(page, "dialog-open"); opn.first.click(timeout=8000); page.wait_for_timeout(6000); continue
-        dialog_up = page.locator("[role=dialog]:visible").count() > 0
-        if not dialog_up:                                                     # added earlier: open it from the list
-            item = page.locator("[role=treeitem]:visible", has_text=a.agent)
-            title = page.locator("h2:visible, [data-tid='chat-title']:visible").all_inner_texts() or [""]
-            if item.count() and a.agent not in title[0]:
-                item.first.click(timeout=8000); page.wait_for_timeout(5000)
-        body = page.locator("body").inner_text()[:3000] if page.locator("body").count() else ""
-        box = page.locator("[data-tid='ckeditor'], div[role=textbox][contenteditable=true]")
-        if box.count() and box.first.is_visible() and a.agent in body and not dialog_up:
-            return box.first
-        if re.search(r"don't have the required permissions|do not have permission|isn't available", body, re.I):
-            shot(page, "refused"); raise RuntimeError("Teams refused: " + body.replace("\n", " ")[:300])
-        if (not dialog_up and "teams" in page.url and "titleId" not in page.url and relinked < 3
-                and page.get_by_text("Chat").count() and time.time() - last_relink > 45):
-            relinked += 1; last_relink = time.time(); shot(page, f"relink-{relinked}")
-            page.goto(a.link, wait_until="domcontentloaded")
+        try:
+            box = _step(page, a, shot, relinked, last_relink)
+        except RuntimeError:
+            raise                                                            # Teams refused: a real failure
+        except Exception:
+            continue                                                         # the page navigated mid-step: retry
+        if isinstance(box, tuple):
+            relinked, last_relink = box; continue
+        if box is not None:
+            return box
+    return None
+
+
+def _step(page, a, shot, relinked, last_relink):
+    """One pass of open_chat. Returns the compose box, None to keep waiting, or a new relink state."""
+    page.wait_for_timeout(2500)
+    if page.locator("input[type=email]:visible").count():
+        page.fill("input[type=email]", a.upn); page.click("input[type=submit]"); return None
+    if page.locator("input[type=password]:visible").count():
+        page.fill("input[type=password]", a.password); page.click("input[type=submit]"); return None
+    if page.locator("#idBtn_Back:visible").count():                      # "Stay signed in?" -> No
+        page.click("#idBtn_Back"); return None
+    for label in ("Use the web app instead", "Continue on this browser"):
+        l = page.get_by_text(label, exact=False)
+        if l.count() and l.first.is_visible():
+            l.first.click(); break
+    add = page.locator("[role=dialog] [data-tid='install-app-btn']:visible")
+    if not add.count():
+        add = page.locator(f"[role=dialog] [data-tid^='install-app-btn']:visible, "
+                           f"[role=dialog] button[aria-label='Add {a.agent}']:visible")
+    if add.count():
+        shot(page, "dialog-add")
+        try: add.first.click(timeout=8000)
+        except Exception: add.first.click(force=True, timeout=8000)
+        page.wait_for_timeout(10000); return None
+    opn = page.locator("[role=dialog] button:visible", has_text=re.compile(r"^\s*Open\s*$"))
+    if opn.count():
+        shot(page, "dialog-open"); opn.first.click(timeout=8000); page.wait_for_timeout(6000); return None
+    dialog_up = page.locator("[role=dialog]:visible").count() > 0
+    if not dialog_up:                                                     # added earlier: open it from the list
+        item = page.locator("[role=treeitem]:visible", has_text=a.agent)
+        title = page.locator("h2:visible, [data-tid='chat-title']:visible").all_inner_texts() or [""]
+        if item.count() and a.agent not in title[0]:
+            item.first.click(timeout=8000); page.wait_for_timeout(5000)
+    body = page.locator("body").inner_text()[:3000] if page.locator("body").count() else ""
+    box = page.locator("[data-tid='ckeditor'], div[role=textbox][contenteditable=true]")
+    if box.count() and box.first.is_visible() and a.agent in body and not dialog_up:
+        return box.first
+    if re.search(r"don't have the required permissions|do not have permission|isn't available", body, re.I):
+        shot(page, "refused"); raise RuntimeError("Teams refused: " + body.replace("\n", " ")[:300])
+    if (not dialog_up and "teams" in page.url and "titleId" not in page.url and relinked < 3
+            and page.get_by_text("Chat").count() and time.time() - last_relink > 45):
+        relinked += 1; last_relink = time.time(); shot(page, f"relink-{relinked}")
+        page.goto(a.link, wait_until="domcontentloaded")
+        return (relinked, last_relink)
     return None
 
 
@@ -97,6 +115,13 @@ def main():
     ap.add_argument("--expect", action="append", default=[])
     ap.add_argument("--timeout", type=int, default=300, help="seconds to reach the chat")
     a = ap.parse_args()
+    # One --expect per --say, paired in order ('' skips the check for that turn). An expect inside its own say
+    # would match the echoed message, not the agent's reply.
+    if len(a.expect) > len(a.say):
+        raise SystemExit("RESULT=FAIL more --expect than --say: give one --expect per --say ('' to skip one)")
+    for say, exp in zip(a.say, a.expect):
+        if exp and exp.lower() in say.lower():
+            raise SystemExit(f"RESULT=FAIL --expect '{exp}' appears in its own --say '{say}', so your message would satisfy it")
     if not a.link:
         if not a.links: raise SystemExit("RESULT=FAIL pass --link or --links")
         a.link = link_for(a.links, a.agent)
@@ -109,7 +134,11 @@ def main():
         except Exception: pass
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
+        try:
+            try: browser = p.chromium.launch(channel="chrome", headless=True)
+            except Exception: browser = p.chromium.launch(headless=True)
+        except Exception as e:
+            print("RESULT=FAIL no browser: " + str(e).replace("\n", " ")[:300]); return 1
         page = browser.new_context(locale="en-US", user_agent=UA, viewport={"width": 1400, "height": 900}).new_page()
         try:
             page.goto(a.link, wait_until="domcontentloaded")
