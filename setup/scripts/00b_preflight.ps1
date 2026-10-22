@@ -126,9 +126,9 @@ Check 'Connection DV-Claims-Shared (Claims-Test)' '04-03, 04-04 confused deputy;
 }
 
 Check 'Purview label Confidential-PII + SSN info type' '05-06 (label the comp file, verify Copilot withholds it); Scenario B verdict' {
-  # No phase in this kit creates them, and az's Graph token cannot read labels. AGENTS.md lists both as
-  # estate components. Until a phase provisions them, this is a manual check.
-  Result 'WARN' 'NOT PROVISIONED BY THE KIT - confirm in purview.microsoft.com > Information Protection > Sensitivity labels, or create it, before Module 5'
+  # Phase 4c (03c_provision_purview.ps1) creates the label and checks the SSN type, but az's token can't read
+  # labels, so this check can't confirm them - run 03c again, which re-checks both ("copy labelled: True").
+  Result 'WARN' "not checked here - re-run 03c_provision_purview.ps1 (Phase 4c) to confirm Confidential-PII-$Estate and the SSN type"
 }
 
 Check "SharePoint site HR-Benefits-$Estate" '04-01 and 04-02 grounding; 05-03; 05-06' {
@@ -146,7 +146,10 @@ Check "SharePoint site HR-Benefits-$Estate" '04-01 and 04-02 grounding; 05-03; 0
 }
 
 Check 'Training endpoints: Policy API and Underwriting MCP' '04-03, 04-05; 05-01 retests' {
-  $rg = "rg-halcourt-$Estate-lab"
+  # The default azd environment's group: rg-<AZURE_ENV_NAME>. A rebuild after azd down MUST use a new env name
+  # (azd leaves a Foundry tombstone), so the estate id alone no longer finds it (seen 2026-10-21).
+  $azdEnv = ((& azd env get-values 2>$null) | Where-Object { $_ -match '^AZURE_ENV_NAME=' }) -replace '^AZURE_ENV_NAME="?([^"]*)"?$', '$1'
+  $rg = if ($azdEnv) { "rg-$azdEnv" } else { "rg-halcourt-$Estate-lab" }
   $apps = az containerapp list -g $rg --query "[].{name:name,fqdn:properties.configuration.ingress.fqdn,min:properties.template.scale.minReplicas}" -o json 2>$null | ConvertFrom-Json
   if (-not $apps) { return Result 'FAIL' "no container apps in resource group $rg (Phase 1)" }
   $out = @(); $failed = $false
