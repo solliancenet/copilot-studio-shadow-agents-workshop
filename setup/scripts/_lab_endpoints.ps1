@@ -40,7 +40,9 @@ function Get-LabEndpoints {
     $src = $LabEndpointsFile
   } else {
     $raw = Get-AzdLabValues
-    $src = 'azd env get-values'
+    # Name the environment: a facilitator who built before ADR-0005 may still have their own per-estate
+    # deployment selected, and that must be visible, not silently used.
+    $src = "azd env '$($raw['AZURE_ENV_NAME'])' (no setup/lab-endpoints.local.json)"
   }
   $vals = @{}
   foreach ($k in $LabEndpointKeys) { if ($raw[$k]) { $vals[$k] = Format-LabValue $k $raw[$k] } }
@@ -48,11 +50,18 @@ function Get-LabEndpoints {
 }
 
 # The owner's step: copy the four values out of the selected azd environment into the shared file.
-function Save-LabEndpoints {
+function Save-LabEndpoints([switch]$Force) {
   $v = Get-AzdLabValues
   $missing = @($LabEndpointKeys | Where-Object { -not $v[$_] })
   if ($missing.Count) { throw "azd env get-values has no $($missing -join ', ') - select the shared deployment's azd env (azd env select <name>) after a clean azd up." }
   $o = [ordered]@{}; foreach ($k in $LabEndpointKeys) { $o[$k] = Format-LabValue $k $v[$k] }
+  # Every estate's agents carry what this file says: don't replace a different deployment's values by
+  # accident (e.g. with an old per-estate azd env still selected).
+  if ((Test-Path $LabEndpointsFile) -and -not $Force) {
+    $old = Get-Content $LabEndpointsFile -Raw | ConvertFrom-Json
+    $diff = @($LabEndpointKeys | Where-Object { "$($old.$_)" -ne $o[$_] })
+    if ($diff.Count) { throw "$LabEndpointsFile already holds different $($diff -join ', ') than azd env '$($v['AZURE_ENV_NAME'])'. Select the shared deployment's env, or pass -Force to replace it." }
+  }
   $o | ConvertTo-Json | Set-Content $LabEndpointsFile
   Write-Host "Wrote $LabEndpointsFile from azd env '$($v['AZURE_ENV_NAME'])'. Share it with each facilitator out of band; it is gitignored."
 }

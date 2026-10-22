@@ -254,6 +254,9 @@ function Ensure-CustomConnector([string]$Name, [object]$Def) {
     & $realPac auth clear 2>&1 | Out-Null
     & $realPac auth create --name $Def.owner --username (Get-Upn $Def.owner) --password $LabPassword --environment $E.Org 2>&1 | Out-Null
     $files = @('--api-definition-file', (Join-Path $tmp 'apiDefinition.swagger.json'), '--api-properties-file', (Join-Path $tmp 'apiProperties.json'), '--environment', $E.Org)
+    if ($stale -and -not $api.properties.xrmConnectorId) {
+      throw "custom connector for $Name calls '$have', not '$host_', and has no Dataverse connector id to update - delete it and re-run"
+    }
     if ($stale) {
       # Update in place (pac wants the Dataverse connector id): the connector name, its connection and the
       # agent's reference to it all stay, so nothing needs rebinding.
@@ -294,29 +297,26 @@ function Ensure-Connection([string]$Name, [object]$Def) {
   $mine = @((Pa $alias GET "apis/$connector/connections" $null $E.Id).value | Where-Object {
     $_.properties.createdBy.userPrincipalName -eq $upn -and $_.properties.displayName -eq $Name })
   $ok = $mine | Where-Object { @($_.properties.statuses.status) -notcontains 'Error' -and @($_.properties.statuses.status) -contains 'Connected' } | Select-Object -First 1
-  if ($ok -and $Def.apiKeyFrom -and -not $VerifyOnly) {
-    # The key can't be read back, so a connection made against an earlier Phase 1 deployment looks Connected
-    # with a stale key. Re-send the current one to the SAME connection: its references stay bound.
+  if ($Def.apiKeyFrom) {
+    # An API-key connection has no OAuth consent, and its key can't be read back: one made against an earlier
+    # Phase 1 deployment holds a stale key whatever its status says. So every run sends the current key - to
+    # the existing connection when there is one (Connected or not), so its references stay bound.
+    $have = if ($ok) { $ok } elseif ($mine) { $mine[0] } else { $null }
+    if ($VerifyOnly) { return $(if ($ok) { "ok ($($ok.name))" } elseif ($have) { "NOT CONNECTED ($($have.name)) - a run re-sends its key" } else { 'MISSING (would create, API key)' }) }
+    $cid = if ($have) { $have.name } else { [guid]::NewGuid().ToString('N') }
     $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name
                 connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
-    Pa $alias PUT "apis/$connector/connections/$($ok.name)" @{ properties = $props } $E.Id | Out-Null
-    $st = @((Pa $alias GET "apis/$connector/connections/$($ok.name)" $null $E.Id).properties.statuses.status)
-    if ($st -contains 'Error' -or $st -notcontains 'Connected') { throw "connection $Name is $($st -join ',') after re-sending its key" }
-    $script:ConnIds[$Name] = $ok.name; return "ok ($($ok.name), key re-sent)"
+    Pa $alias PUT "apis/$connector/connections/$cid" @{ properties = $props } $E.Id | Out-Null
+    $st = @((Pa $alias GET "apis/$connector/connections/$cid" $null $E.Id).properties.statuses.status)
+    if ($st -contains 'Error' -or ($have -and $st -notcontains 'Connected')) { throw "connection $Name is $($st -join ',') after sending its key" }
+    $script:ConnIds[$Name] = $cid; return $(if ($have) { "ok ($cid, key re-sent)" } else { "created ($cid, API key)" })
   }
   if ($ok) { $script:ConnIds[$Name] = $ok.name; return "ok ($($ok.name))" }
   if ($VerifyOnly) { return 'MISSING (would create + consent)' }
   $c = if ($mine) { $mine[0] } else {
     $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name }
     if ($Def.params) { $props.connectionParameters = $Def.params }
-    if ($Def.apiKeyFrom) { $props.connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
     Pa $alias PUT "apis/$connector/connections/$([guid]::NewGuid().ToString('N'))" @{ properties = $props } $E.Id
-  }
-  if ($Def.apiKeyFrom) {
-    # An API-key connection has no OAuth consent: it is Connected (or not) as soon as it exists.
-    $st = @((Pa $alias GET "apis/$connector/connections/$($c.name)" $null $E.Id).properties.statuses.status)
-    if ($st -contains 'Error') { throw "connection $Name is in Error: $($st -join ',')" }
-    $script:ConnIds[$Name] = $c.name; return "created ($($c.name), API key)"
   }
   $link = (Pa $alias POST "apis/$connector/connections/$($c.name)/getConsentLink" @{ redirectUrl = 'https://global.consent.azure-apim.net/redirect' } $E.Id).consentLink
   $out = python3 (Join-Path $PSScriptRoot 'lib/consent_browser.py') --upn $upn --password $LabPassword --consent-url $link 2>&1

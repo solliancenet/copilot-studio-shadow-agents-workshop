@@ -174,7 +174,8 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - [ ] The global admin can sign in to https://admin.microsoft.com with MFA.
    - [ ] **Security defaults are off**, and both baseline policies are **On**.
    - [ ] The admin account has an **E5** licence assigned.
-   - [ ] You hold **Owner** on an Azure subscription (or Contributor + User Access Administrator).
+   - [ ] You hold **Contributor** on the lab subscription; the shared Azure deployment's owner holds
+     **Owner** (or Contributor + User Access Administrator) - see step 5 of the dev container setup.
    - [ ] The tools are signed in to the lab tenant. In the dev container terminal:
 
      ```bash
@@ -889,8 +890,9 @@ azd down --purge --force
 rm setup/lab-endpoints.local.json  # and ask facilitators to delete their copies
 ```
 
-If it has to be rebuilt while estates still use it, use a **new** azd environment name, write and hand
-out the new values file, and have every estate re-run Phase 6: the agents' `${…}` action tokens
+If it has to be rebuilt while estates still use it, use a **new** azd environment name, write the new
+values file (`Save-LabEndpoints -Force`: it refuses to replace different values otherwise), hand it out, and
+have every estate re-run Phase 6: the agents' `${…}` action tokens
 re-inject the new addresses and secrets at provision time.
 
 **What `99_teardown.ps1` does not remove.** Run these by hand after the delivery:

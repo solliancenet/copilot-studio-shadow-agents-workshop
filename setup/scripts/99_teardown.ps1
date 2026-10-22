@@ -10,6 +10,8 @@ PnP app). KEEPS Phase 0 (tenant, CA baseline, security defaults) and the default
 
 Azure (Phase 1) is NOT this estate's to remove: one deployment serves every estate (ADR-0005). Only its
 owner tears it down, and only when the last estate is gone (RUNBOOK Phase 9 -> Shared Azure deployment).
+An estate built before ADR-0005 still has its OWN deployment (rg-halcourt-<estate>-lab): remove that one
+with `azd down --purge --force`, its azd env selected - nothing else will.
 
   pwsh setup/scripts/99_teardown.ps1                              # estate from HALCOURT_ESTATE
   pwsh setup/scripts/99_teardown.ps1 -RemovePersonas -RemoveShared
