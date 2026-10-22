@@ -174,20 +174,22 @@ foreach ($estate in $Estates) {
     Write-Host ("[{0:HH:mm:ss}] Phase {1,-4} {2,-13} {3} {4}" -f $t0, $ph.Phase, $ph.Name, $ph.Script, ($ph.Args -join ' '))
     if ($ph.Script) {
       # Shown as well as logged: a phase that falls back to a device code must not wait unseen. Phase 6 is
-      # retried once: it is safe to re-run, and an intermittent 401 entering the default environment stopped
-      # it twice (fac02, fac03, 2026-10-22) - both resumed cleanly.
-      $tries = if ($ph.Name -eq 'agents') { 2 } else { 1 }
-      for ($try = 1; $try -le $tries; $try++) {
-        if ($try -gt 1) { Write-Host "           retrying Phase $($ph.Phase) ($($ph.Name)) once - see $log"; $log = $log -replace '\.log$', ".retry.log" }
+      # retried once, and only after a 401 (06 names failing calls "-> 401 :"): it is safe to re-run, and an
+      # intermittent 401 stopped it twice (fac02, fac03, 2026-10-22). Other failures repeat - no retry.
+      $tries = 0
+      while ($true) {
+        $tries++
+        $log = Join-Path $logDir ("{0}-{1}{2}.log" -f $ph.Phase, $ph.Name, $(if ($tries -gt 1) { ".try$tries" } else { '' }))
         & pwsh -NoProfile -File (Join-Path $PSScriptRoot $ph.Script) @($ph.Args) *>&1 | Tee-Object -FilePath $log | ForEach-Object { "    $_" } | Out-Host
         $code = $LASTEXITCODE
-        if (-not $code) { break }
+        if (-not $code -or $ph.Name -ne 'agents' -or $tries -ge 2 -or -not (Select-String -Path $log -Pattern '-> 401 :|\(401\)' -Quiet)) { break }
+        Write-Host "           Phase $($ph.Phase) ($($ph.Name)) failed with a 401 - retrying once (log: $log)"
       }
     } else {                                                             # in-process step (devadmin)
       try { Grant-DevEnvAdmin $estate *> $log; $code = 0 } catch { "$_" | Out-File $log -Append; $code = 1 }
     }
     $mins = [math]::Round(((Get-Date) - $t0).TotalMinutes, 1)
-    $timings += [pscustomobject]@{ Phase = $ph.Phase; Name = $ph.Name; Minutes = $mins; Exit = $code }
+    $timings += [pscustomobject]@{ Phase = $ph.Phase; Name = $ph.Name; Minutes = $mins; Exit = $code; Tries = $(if ($ph.Script) { $tries } else { 1 }) }
     $tail = (Get-Content $log -Tail 2 -ErrorAction SilentlyContinue) -join ' | '
     Write-Host ("           exit {0} in {1} min - {2}" -f $code, $mins, $tail.Substring(0, [Math]::Min(160, $tail.Length)))
     if (-not $code -and $ph.Name -eq 'entra') {
@@ -201,7 +203,8 @@ foreach ($estate in $Estates) {
   }
   $timings | Format-Table -AutoSize | Out-String | Tee-Object -FilePath (Join-Path $logDir 'timings.txt') | Write-Host
   if (-not $failed -and $ReclaimSeats) { Invoke-Reclaim $estate }
-  $summary += [pscustomobject]@{ Estate = $estate; Result = $(if ($failed) { "FAILED at $failed (log: setup/build-logs/$estate/)" } else { 'built' })
+  $retried = @($timings | Where-Object { $_.Tries -gt 1 } | ForEach-Object { $_.Name })
+  $summary += [pscustomobject]@{ Estate = $estate; Result = $(if ($failed) { "FAILED at $failed (log: setup/build-logs/$estate/)" } elseif ($retried) { "built (retried after 401: $($retried -join ', '))" } else { 'built' })
                                  Minutes = [math]::Round(($timings | Measure-Object Minutes -Sum).Sum, 1) }
   if ($failed -and -not $ContinueOnError) { break }
 }
