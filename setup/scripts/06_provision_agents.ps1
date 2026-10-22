@@ -568,7 +568,7 @@ $targets = $manifest.agents | Where-Object { -not $Agents -or $Agents -contains 
 if (-not $SkipPrereqs) {
   # Dataverse will not add a sign-in-disabled user to an environment; it fails with an opaque Kepler
   # 'instanceNotFound' rather than saying so. it.helpdesk hits this every build: it is a SHARED MAILBOX, and
-  # Exchange creates those disabled, so enable it here (RUNBOOK Phase 6, prereq 2). Any OTHER disabled owner
+  # Exchange creates those disabled, so enable it here (reference/agents-build.md). Any OTHER disabled owner
   # is reported, never auto-enabled: a disabled persona is a decision someone made (tom.dean is departed but
   # stays ENABLED - see Phase 6.5 - so a disabled Tom means someone ran the Ex05 fix and didn't undo it).
   Write-Host "`n== Owner sign-in =="

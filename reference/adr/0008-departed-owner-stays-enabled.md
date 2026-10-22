@@ -25,6 +25,8 @@ it.
 ## Consequences
 
 - Never disable Tom, in any phase or demonstration. Disabling him breaks Onboarding Guide and Sales Nudge.
+  Task 05-05 doesn't disable him either: the facilitator demonstrates a registry **Block** of Onboarding
+  Guide and unblocks it afterwards; deleting the agent or its Outlook connection is described, not performed.
 - Attendees find the departure in the leave date, not in the account state — which is how a missed
   offboarding looks.
 

@@ -22,6 +22,7 @@ re-verified as products change.
 | `pnp-app-setup.md` | Registering the shared `Halcourt PnP` app (once per tenant) |
 | `sharepoint-seed.md` | What the Phase 4 SharePoint seed creates, and the planted access |
 | `dataverse-seed.md` | What the Phase 5 Dataverse seed creates, and the over-broad role |
+| `agents-build.md` | What Phase 6 builds: owners and roles, tool mechanisms, connections |
 | `building-one-agent.md` | Building one agent with `pac`; what to expect from connections |
 | `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
 | `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |

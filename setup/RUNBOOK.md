@@ -443,98 +443,55 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 6 — Author the agents
 
-Builds all ten agents (eight planted + two decoys) per `AGENTS.md`, each **as its owner** in the
-environment it names, by replaying the committed `setup/agents/<slug>/` workspaces.
+1. **Check the default environment has Dataverse.** Once per tenant: Expense Helper and Onboarding Guide
+   live in `Halcourt (default)` and can't be built without it. This prints its Dataverse address, or nothing:
 
-**Before you build.** Copilot Studio keeps agents in Dataverse, so every owner has to be a licensed user
-of the environment its agent lives in, and the default environment needs Dataverse too. With `az` signed
-in as the admin (`E` = estate id, `D` = tenant domain):
+   ```bash
+   az rest --method GET --resource https://service.powerapps.com/ \
+     --url "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/Default-$(az account show --query tenantId -o tsv)?api-version=2021-04-01" \
+     --query properties.linkedEnvironmentMetadata.instanceUrl -o tsv
+   ```
 
-```bash
-# 1. A seat for each of the seven owners (svc-claims got one in Phase 5; see Phase 2 for freeing seats).
-SKU=$(az rest --method GET --url https://graph.microsoft.com/v1.0/subscribedSkus \
-  --query "value[?skuPartNumber=='DEVELOPERPACK_V2_E5'].skuId | [0]" -o tsv)   # or your tenant's E5 SKU
-for a in marcus.webb priya.nair lena.ford dev.kim tom.dean sam.olsen it.helpdesk; do
-  az rest --method POST --url "https://graph.microsoft.com/v1.0/users/$a.$E@$D/assignLicense" \
-    --body "{\"addLicenses\":[{\"skuId\":\"$SKU\"}],\"removeLicenses\":[]}" --query userPrincipalName -o tsv
-done
-# 2. it.helpdesk is a shared mailbox, created disabled. Turn its sign-in on so it can own Policy Lookup Bot.
-az rest --method PATCH --url "https://graph.microsoft.com/v1.0/users/it.helpdesk.$E@$D" \
-  --body '{"accountEnabled":true,"passwordProfile":{"password":"<lab password>","forceChangePasswordNextSignIn":false}}'
-# 3. Once per tenant: Dataverse in the default environment (skip if PPAC already shows it a Dataverse URL).
-az rest --method POST --resource https://service.powerapps.com/ \
-  --url "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/environments/Default-<tenant-id>/provisionInstance?api-version=2018-01-01" \
-  --body '{"baseLanguage":1033,"currency":{"code":"USD"},"templates":[]}'
-```
+   - Nothing printed: add it (a few minutes), then continue:
 
-Step 3 is shared by every estate, like the CA baseline, and takes a few minutes. Expense Helper and
-Onboarding Guide live in the default environment and can't be built without it.
+     ```bash
+     az rest --method POST --resource https://service.powerapps.com/ \
+       --url "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/environments/Default-$(az account show --query tenantId -o tsv)/provisionInstance?api-version=2018-01-01" \
+       --body '{"baseLanguage":1033,"currency":{"code":"USD"},"templates":[]}'
+     ```
 
-**4. Put each owner in their environment with a maker role.** Add the user (PPAC → the environment →
-**Settings → Users + permissions → Users → Add user**, or the call below), then **Manage security roles**:
+2. **Preview the build.** The engine reports what it would do — owners, roles, connections, flows and
+   agents — and changes nothing:
 
-| Environment | Owner and role |
-|---|---|
-| `Halcourt-Prod-<estate>` | Marcus, Priya, Lena, `it.helpdesk`: **Environment Maker** · Tom: **System Administrator** — the departed admin's broad CRM reach behind Sales Nudge |
-| `Claims-Test-<estate>` | Priya, `svc-claims`: **Environment Maker** — `svc-claims` creates its own Dataverse connection there |
-| `Maker-Sandbox-<estate>` | Dev — already **System Administrator** of his own Developer environment |
-| `Halcourt (default)` | Sam, Tom: **Environment Maker** |
+   ```bash
+   pwsh setup/scripts/06_provision_agents.ps1 -VerifyOnly
+   ```
 
-```bash
-az rest --method POST --resource https://service.powerapps.com/ \
-  --url "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/<env-id>/addUser?api-version=2020-10-01" \
-  --body "{\"ObjectId\":\"$(az ad user show --id marcus.webb.$E@$D --query id -o tsv)\"}"
-```
+3. **Build the agents.** The engine builds all ten agents as their owners: it turns on `it.helpdesk`'s
+   sign-in, adds each owner to its environment with a maker role, creates and consents each connection
+   (headless, as its owner), creates the flows, then pushes and publishes each committed agent. Safe to
+   re-run. What it builds: [agents-build.md](../reference/agents-build.md).
 
-It can fail once with a transient *instanceNotFound*; run it again.
+   ```bash
+   pwsh setup/scripts/06_provision_agents.ps1
+   ```
 
-**5. Billing** — Prod and Claims-Test linked to a plan (Phase 3). **6. Phase 4b has run** — Dev's OneDrive
-holds `Dev-Kim-Meeting-Notes.docx`, or the Meeting Notes decoy has nothing to ground on.
+   - It needs Phases 2–5 done, Prod and Claims-Test linked to a billing plan (Phase 3), and Dev's OneDrive
+     seeded (Phase 4b).
+   - Rebuild one agent: `-Agents <slug>` (slugs in `setup/agents/manifest.json`).
+   - A transient *instanceNotFound* while adding a user: run it again.
 
-**Then run the engine.** It reads `setup/agents/manifest.json`, verifies owner roles, authenticates each
-connection (headless consent via `lib/consent_browser.py`), creates the Copilot-triggered flows, and
-(re)builds each committed workspace **as its owner**.
+### Phase 6.5 — Mark Tom Dean departed
 
-```bash
-az account show                                                # signed in as the lab admin
-pwsh setup/scripts/06_provision_agents.ps1 -VerifyOnly         # resolve + report, change nothing
-pwsh setup/scripts/06_provision_agents.ps1                     # full run: roles + connections + agents
-pwsh setup/scripts/06_provision_agents.ps1 -Agents hr-faq-v2   # one agent; also -SkipPrereqs -SkipConnections
-```
+1. **Record Tom's departure without disabling him.** After Onboarding Guide and Sales Nudge exist and run on
+   his connections, this sets his Entra leave date and leaves the account enabled
+   ([ADR-0008](../reference/adr/0008-departed-owner-stays-enabled.md)):
 
-| Agent | Tool mechanism |
-|---|---|
-| Benefits Buddy, HR FAQ v2 | SharePoint knowledge (no tool) |
-| Team Wiki | connector tool (Graph search) · Meeting Notes: OneDrive knowledge |
-| Sales Nudge, Onboarding Guide, Claims Copilot | connector tools (`InvokeConnectorTaskAction`) |
-| Policy Lookup Bot | topic + `HttpRequestAction` (hard-coded key) |
-| Underwriting Assistant | topics + `InvokeMcpTool` (get_quote / get_risk_score / run_query) |
-| Expense Helper | flow (`workflow` record) + topic `InvokeFlowAction` |
+   ```bash
+   pwsh setup/scripts/01_provision_entra.ps1 -MarkDepartedOwner
+   ```
 
-Each connection in `worksheets/artifact-pack/connections-export.csv` is created by the persona it names,
-in the environment it names — e.g. `svc-claims` creates `DV-Claims-Shared` in `Claims-Test-<estate>`.
-**OAuth connections can't be shared**, so the pack's
-`shared_with` values for `DV-Claims-Shared` and `DV-CRM-Shared` can't appear in a live export; the agent
-is what "shares" them.
-
-How the engine works (clone-first, publisher, owner tokens), why the planted mechanisms live in topics,
-and how to build one agent by hand:
-[ADR-0020](../reference/adr/0020-agents-provisioned-clone-first.md), [ADR-0021](../reference/adr/0021-planted-mechanisms-in-topics.md),
-[building-one-agent.md](../reference/building-one-agent.md) and
-[`agent-authoring-guide.md`](agent-authoring-guide.md).
-
-**Phase 6.5 — mark Tom Dean departed.** After Onboarding Guide and Sales Nudge exist **and their shared
-connections are owned by `tom.dean.<estate>`**:
-
-```powershell
-pwsh setup/scripts/01_provision_entra.ps1 -MarkDepartedOwner    # same estate; sets employeeLeaveDateTime
-```
-
-It stamps his `employeeLeaveDateTime` and leaves the account **enabled**. The agents and connections must
-remain live — that is the orphan. **Do not disable Tom**: both connections go to Error within the hour and
-Scenario F stops reproducing. (Task 05-05 doesn't disable him either: the facilitator demonstrates a
-registry **Block** of Onboarding Guide and unblocks it afterwards; deleting the agent or its Outlook
-connection is described, not performed.)
+   - **Never disable Tom**: both connections go to Error within the hour and Scenario F stops reproducing.
 
 ### Phase 7 — Export the artifact pack
 
