@@ -19,6 +19,8 @@ re-verified as products change.
 | `adr/` | Architecture decision records — why the kit is built the way it is |
 | `azure-endpoints.md` | The Phase 1 Container App addresses |
 | `billing-plan-by-hand.md` | Creating or linking a billing plan without the script |
+| `pnp-app-setup.md` | Registering the shared `Halcourt PnP` app (once per tenant) |
+| `sharepoint-seed.md` | What the Phase 4 SharePoint seed creates, and the planted access |
 | `building-one-agent.md` | Building one agent with `pac`; what to expect from connections |
 | `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
 | `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |

@@ -36,6 +36,8 @@ Thumbs.db
 setup/**/secrets.*
 setup/**/*.local.json
 setup/**/*.local.pfx
+setup/**/*.local.key
+setup/**/*.local.cer
 
 # compiled bicep ARM output
 infra/main.json

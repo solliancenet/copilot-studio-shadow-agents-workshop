@@ -323,102 +323,46 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 4 — SharePoint seed (plant the poisoned doc)
 
-**Once per tenant: register the PnP app** (PnP 3.x ships no shared sign-in app). Every estate shares it;
-the commands reuse it if it exists.
+1. **Check the PnP app exists.** SharePoint needs its own app registration, `Halcourt PnP`, shared by every
+   estate in the tenant ([ADR-0016](../reference/adr/0016-pnp-app-registration.md)). This prints its app
+   id, or nothing:
 
-```bash
-APP=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
-[ -z "$APP" ] && APP=$(az ad app create --display-name "Halcourt PnP" --sign-in-audience AzureADMyOrg \
-  --is-fallback-public-client true --public-client-redirect-uris http://localhost --query appId -o tsv)
-az ad app permission add --id $APP --api 00000003-0000-0ff1-ce00-000000000000 \
-  --api-permissions "$(az ad sp show --id 00000003-0000-0ff1-ce00-000000000000 \
-    --query "oauth2PermissionScopes[?value=='AllSites.FullControl'].id | [0]" -o tsv)=Scope"      # SharePoint
-az ad app permission add --id $APP --api 00000003-0000-0000-c000-000000000000 \
-  --api-permissions "$(az ad sp show --id 00000003-0000-0000-c000-000000000000 \
-    --query "oauth2PermissionScopes[?value=='Group.ReadWrite.All'].id | [0]" -o tsv)=Scope"       # Graph: team sites are M365 groups
-az ad sp show --id $APP >/dev/null 2>&1 || az ad sp create --id $APP
-az ad app permission admin-consent --id $APP
-echo "ENTRAID_APP_ID=$APP"
-```
+   ```bash
+   az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv
+   ```
 
-**Also once per tenant: give it an app-only identity** — three application roles plus a certificate. This
-is what lets the Phase 4 seed and the Phase 4b OneDrive *seed* run headlessly.
+   - Nothing printed: register it once for the tenant —
+     [pnp-app-setup.md](../reference/pnp-app-setup.md) — then continue.
 
-```bash
-SP=00000003-0000-0ff1-ce00-000000000000            # SharePoint Online
-GRAPH=00000003-0000-0000-c000-000000000000         # Microsoft Graph
-PNP_SP=$(az ad sp show --id $APP --query id -o tsv)
-SP_SP=$(az ad sp show --id $SP --query id -o tsv)
-GRAPH_SP=$(az ad sp show --id $GRAPH --query id -o tsv)
-for ROLE in 678536fe-1083-478a-9c59-b99265e6b0d3 741f803b-c850-494e-b5df-cde7c675a1ca; do   # Sites.FullControl.All, User.ReadWrite.All
-  az rest --method POST --url "https://graph.microsoft.com/v1.0/servicePrincipals/$PNP_SP/appRoleAssignments" \
-    --body "{\"principalId\":\"$PNP_SP\",\"resourceId\":\"$SP_SP\",\"appRoleId\":\"$ROLE\"}" -o none
-done
-# Graph Group.ReadWrite.All (application) — app-only site create needs it (team sites are M365 groups).
-az rest --method POST --url "https://graph.microsoft.com/v1.0/servicePrincipals/$PNP_SP/appRoleAssignments" \
-  --body "{\"principalId\":\"$PNP_SP\",\"resourceId\":\"$GRAPH_SP\",\"appRoleId\":\"62a82d76-70ea-41e2-9197-370581804d09\"}" -o none
-# DELEGATED User.ReadWrite.All too — the interactive admin provisioning (Phase 4b) needs it in the user token.
-GID=$(az rest --method GET --url "https://graph.microsoft.com/v1.0/oauth2PermissionGrants?\$filter=clientId eq '$PNP_SP' and resourceId eq '$SP_SP'" --query 'value[0].id' -o tsv)
-az rest --method PATCH --url "https://graph.microsoft.com/v1.0/oauth2PermissionGrants/$GID" \
-  --body '{"scope":"AllSites.FullControl User.ReadWrite.All"}' -o none
-# A certificate for app-only sign-in (public .cer uploaded to the app, .pfx kept for PnP):
-openssl req -x509 -newkey rsa:2048 -keyout pnp.key -out pnp.cer -days 90 -nodes -subj "/CN=HalcourtPnP" >/dev/null 2>&1
-openssl pkcs12 -export -out pnp.pfx -inkey pnp.key -in pnp.cer -passout pass:<cert-pw> >/dev/null 2>&1
-az ad app credential reset --id $APP --cert @pnp.cer --append -o none
-```
+2. **Add your own certificate to the app.** It lets the seed run without a sign-in. Once per facilitator;
+   the files stay in the repo's gitignored `setup/` folder. Pick a password and keep it:
 
-{: .warning }
-> `az ad app permission admin-consent` did **not** create the **application** grants on the verified
-> tenant — grant them with the `appRoleAssignments` POSTs above and verify with
-> `az rest --method GET --url .../servicePrincipals/$PNP_SP/appRoleAssignments`. Fresh grants take a few
-> minutes to reach a new token, so a 403 right after granting usually just means "too soon".
+   ```bash
+   export ENTRAID_APP_ID=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
+   openssl req -x509 -newkey rsa:2048 -keyout setup/pnp.local.key -out setup/pnp.local.cer -days 90 -nodes -subj "/CN=HalcourtPnP"
+   openssl pkcs12 -export -out setup/pnp.local.pfx -inkey setup/pnp.local.key -in setup/pnp.local.cer -passout pass:<cert-pw>
+   az ad app credential reset --id $ENTRAID_APP_ID --cert @setup/pnp.local.cer --append -o none
+   ```
 
-**Then seed.** The mode is chosen by what you pass, not by a switch: give it a certificate and it runs
-app-only; otherwise it falls back to a device code, and `-Interactive` opens a browser.
+   - The certificate lasts 90 days; repeat this step when it expires.
 
-```bash
-export ENTRAID_APP_ID=<the app id above>       # or pass -ClientId
-SITE=https://<tenant>.sharepoint.com
+3. **Seed the SharePoint sites.** The script creates two private team sites, `HR-Benefits-<estate>` and
+   `Claims-Knowledge-<estate>`, uploads their files — including the poisoned `Open-Enrollment-FAQ.docx`
+   with its hidden instructions — and sets who can read what, which Scenarios A and B depend on. It ends
+   by reading everything back. Safe to re-run. Details:
+   [sharepoint-seed.md](../reference/sharepoint-seed.md).
 
-# 1. App-only — fully headless. Needs the cert and the three application roles above.
-export HALCOURT_PNP_CERT_PFX=pnp.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
-pwsh setup/scripts/03_provision_sharepoint.ps1 -RootSiteUrl $SITE        # -SiteOwner defaults to the az admin
+   ```bash
+   export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
+   pwsh setup/scripts/03_provision_sharepoint.ps1 -RootSiteUrl https://<tenant>.sharepoint.com
+   ```
 
-# 2. Device code — works anywhere (incl. the dev container); a human enters one code.
-unset HALCOURT_PNP_CERT_PFX HALCOURT_PNP_CERT_PW                         # the cert vars are what pick app-only
-pwsh setup/scripts/03_provision_sharepoint.ps1 -RootSiteUrl $SITE
-
-# 3. Browser tab — only where the sign-in redirect can reach this process (host / Windows).
-pwsh setup/scripts/03_provision_sharepoint.ps1 -RootSiteUrl $SITE -Interactive
-```
-
-It creates two private M365 group team sites — `/sites/HR-Benefits-<estate>` (with a `Leadership/`
-subfolder holding `2026-comp-bands.xlsx`) and `/sites/Claims-Knowledge-<estate>` — and **plants
-`Open-Enrollment-FAQ.docx`**, built from `setup/data/Open-Enrollment-FAQ.md`, with its trailing *Notes*
-section hidden (vanish + white text) so a reader doesn't see it while grounding still ingests it. It also
-creates a separate, clean **`HR FAQ`** library holding one benign all-staff FAQ
-(`setup/data/HR-FAQ-Published.md`) — the grounding source for the **HR FAQ v2 (copy) decoy**, kept apart
-from the poisoned `Shared Documents`. Claims-Knowledge gets `claims.csv` and `Claims-Procedures.docx`.
-Safe to re-run.
-
-It also sets the access Scenarios A and B depend on, from the Phase 2 groups:
-
-| Site | Members (edit) | Visitors (read) |
-|---|---|---|
-| `HR-Benefits-<estate>` | `HR-Team-<estate>` (Marcus) | `All-Employees-<estate>` — **except `Leadership/`**, which stops inheriting and drops the visitors |
-| `Claims-Knowledge-<estate>` | `Claims-Adjusters-<estate>` (Priya, Sam) | `All-Employees-<estate>` |
-
-So Marcus can read `Leadership/2026-comp-bands.xlsx` and Jordan can't. The script ends by reading it all
-back — members, visitors, every file, the role assignments on `Leadership/`, and the planted `.docx` as
-SharePoint serves it — so the run is its own evidence.
-
-{: .note }
-> App-only site creation waits up to 15 min for a fresh tenant to provision each group site. If a prior
-> run left a **soft-deleted** site at `/sites/<alias>`, the new site lands at a suffixed URL (`…-jsmith9`)
-> and the wait times out — purge it first with `Remove-PnPTenantDeletedSite` (errata).
-
-What the app registration grants and why it carries two identities:
-[ADR-0016](../reference/adr/0016-pnp-app-registration.md).
+   - New sites can take up to 15 minutes each to appear in a fresh tenant.
+   - The read-back must show `Leadership/` readable by `HR-Team-<estate>` and not by
+     `All-Employees-<estate>`.
+   - Times out waiting for a site? A soft-deleted site from an earlier run may hold the URL — purge it with
+     `Remove-PnPTenantDeletedSite` ([errata → Phase 4](../reference/runbook-errata.md)).
+   - No certificate? Unset the two variables and it signs in with a device code instead.
 
 ### Phase 4b — Provision and seed the maker OneDrive
 
@@ -427,7 +371,7 @@ notes, so his OneDrive must exist and hold them before that agent is built.
 
 ```bash
 export ENTRAID_APP_ID=<the Halcourt PnP app id>
-export HALCOURT_PNP_CERT_PFX=<path to pnp.pfx>   HALCOURT_PNP_CERT_PW=<cert-pw>
+export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx   HALCOURT_PNP_CERT_PW=<cert-pw>
 pwsh setup/scripts/03b_provision_onedrive.ps1     # estate from HALCOURT_ESTATE (or -Estate <id>)
 ```
 
@@ -1005,7 +949,7 @@ the recycle bin so the URLs are reusable) → the three estate environments (the
 connections go with them) → the DLP policy → billing unlink.
 
 ```bash
-export ENTRAID_APP_ID=<PnP app id>  HALCOURT_PNP_CERT_PFX=<pnp.pfx>  HALCOURT_PNP_CERT_PW=<cert-pw>   # for site removal
+export ENTRAID_APP_ID=<PnP app id>  HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx  HALCOURT_PNP_CERT_PW=<cert-pw>   # for site removal
 pwsh setup/scripts/99_teardown.ps1                                  # estate artifacts; KEEPS personas + shared infra
 pwsh setup/scripts/99_teardown.ps1 -RemovePersonas                  # also the Phase 2 personas + *-<estate> groups
 pwsh setup/scripts/99_teardown.ps1 -RemovePersonas -RemoveShared    # also the shared authors group + PnP app registration
