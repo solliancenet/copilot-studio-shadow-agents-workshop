@@ -192,7 +192,9 @@ foreach ($name in $estateEnvNames) {
 # the DLP silently survives the teardown. It then outlives the environment it was scoped to, and the next
 # Phase 3 sees the name already in use and leaves Prod with no DLP at all.
 $dlp = Get-EstateName 'Halcourt-Prod-DLP' $Estate
-$policyApi = "$BAP/providers/PowerPlatform.Governance/v1/policies"
+# The policy API hangs off the bare BAP host, not $BAP's Microsoft.BusinessAppPlatform provider (that address
+# answers 404, and the DLP survived every teardown until 2026-10-22). 02 creates it at the same address.
+$policyApi = 'https://api.bap.microsoft.com/providers/PowerPlatform.Governance/v1/policies'
 $pol = (Invoke-Json GET "$policyApi`?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')).value | Where-Object { $_.displayName -eq $dlp } | Select-Object -First 1
 if ($pol) {
   Invoke-Json DELETE "$policyApi/$($pol.name)?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/') | Out-Null
@@ -206,10 +208,11 @@ if ($pol) {
 if ($estateEnvIds) {
   $ppApi = 'api-version=2022-03-01-preview'
   foreach ($bp in @((Invoke-Json GET "https://api.powerplatform.com/licensing/billingPolicies?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')).value)) {
-    $current = @((Invoke-Json GET "https://api.powerplatform.com/licensing/billingPolicies/$($bp.name)/environments?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')).value.environmentId)
+    # By id: the plan's name (e.g. ppccdevcanada) answers 403 here.
+    $current = @((Invoke-Json GET "https://api.powerplatform.com/licensing/billingPolicies/$($bp.id)/environments?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')).value.environmentId)
     $linked = @($current | Where-Object { $_ -in $estateEnvIds })
     if ($linked) {
-      Invoke-Json POST "https://api.powerplatform.com/licensing/billingPolicies/$($bp.name)/environments/remove?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/') @{ environmentIds = $linked } | Out-Null
+      Invoke-Json POST "https://api.powerplatform.com/licensing/billingPolicies/$($bp.id)/environments/remove?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/') @{ environmentIds = $linked } | Out-Null
       Write-Host "  unlinked $($linked.Count) env(s) from billing plan $($bp.name)"
     }
   }
