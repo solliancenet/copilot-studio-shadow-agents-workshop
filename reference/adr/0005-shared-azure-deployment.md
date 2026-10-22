@@ -58,7 +58,9 @@ How it is implemented:
    ADR-0001's shared items are updated and ADR-0012 is superseded.
 5. **Existing estates** (at the time, `rg-halcourt-mgray-lab-1021` and `rg-halcourt-jcounts-lab`): pick
    one as the shared deployment, re-run Phase 6 for the other estate with its values, then `azd down` the
-   spare.
+   spare. Phase 6 moves an existing estate: topics re-take the `${…}` values on every push, the MCP
+   custom connector is repointed in place when its host differs, and the MCP connection's key is re-sent
+   (it can't be read back to compare).
 
 ## Alternatives considered
 

@@ -221,21 +221,31 @@ function Pa([string]$Alias, [string]$Method, [string]$Path, $Body, [string]$EnvI
 # rerun finds the connector it made (Halcourt-Underwriting-MCP-<estate> -> ...-mgra for estate mgray).
 function Get-CustomConnectorDisplay([object]$Def) { $n = Get-EstateName $Def.customConnector.name $Estate; if ($n.Length -gt 30) { $n.Substring(0, 30) } else { $n } }
 $script:CustomConnectors = @{}
-function Find-CustomConnector([object]$Def) {
+function Get-CustomConnectorApi([object]$Def) {
   $E = Env $Def.environment; $want = Get-CustomConnectorDisplay $Def
   $all = (Invoke-Json GET "$PA/apis?api-version=2016-11-01&`$filter=environment eq '$($E.Id)' and IsCustomApi eq 'True'" (Get-PersonaToken $Def.owner 'https://service.powerapps.com/') $null).value
-  ($all | Where-Object { $_.properties.displayName -eq $want } | Select-Object -First 1).name
+  $all | Where-Object { $_.properties.displayName -eq $want } | Select-Object -First 1
 }
+function Find-CustomConnector([object]$Def) { (Get-CustomConnectorApi $Def).name }
 function Ensure-CustomConnector([string]$Name, [object]$Def) {
   if ($script:CustomConnectors[$Name]) { return $script:CustomConnectors[$Name] }
-  $id = Find-CustomConnector $Def
-  if (-not $id -and -not $VerifyOnly) {
+  $api = Get-CustomConnectorApi $Def; $id = $api.name
+  $host_ = ([Uri]$AzdValues['UNDERWRITING_MCP_FQDN']).Host
+  # The connector carries the MCP host itself, not a ${...} token: a connector made against an earlier Phase 1
+  # deployment keeps calling it until it is repointed (ADR-0005 - estates move onto the shared deployment).
+  $stale = $false
+  if ($api) {
+    $have = try { ([Uri]$api.properties.backendService.serviceUrl).Host } catch { '' }
+    if ($have -ne $host_) {
+      if ($VerifyOnly) { Write-Host "    connector for $Name calls '$have' - would repoint at '$host_'" } else { $stale = $true }
+    }
+  }
+  if ((-not $id -or $stale) -and -not $VerifyOnly) {
     # The MCP wizard's own output, committed (setup/agents/<ws>/mcp-connector): one POST operation marked
     # x-ms-agentic-protocol mcp-streamable-1.0, API-key auth in the Authorization header. Created as the
     # connection's owner with pac, so the connector, its connection and the agent all belong to one maker.
     $src = Join-Path $AgentsDir $Def.customConnector.workspace
     $tmp = Join-Path ([IO.Path]::GetTempPath()) "halcourt-connector/$Name"; New-Item -ItemType Directory -Force $tmp | Out-Null
-    $host_ = ([Uri]$AzdValues['UNDERWRITING_MCP_FQDN']).Host
     (Get-Content (Join-Path $src 'apiDefinition.swagger.json') -Raw).Replace('${UNDERWRITING_MCP_HOST}', $host_).Replace('${MCP_CONNECTOR_NAME}', (Get-CustomConnectorDisplay $Def)) |
       Set-Content (Join-Path $tmp 'apiDefinition.swagger.json') -NoNewline
     Copy-Item (Join-Path $src 'apiProperties.json') $tmp -Force
@@ -243,9 +253,22 @@ function Ensure-CustomConnector([string]$Name, [object]$Def) {
     $env:XDG_DATA_HOME = Get-PacHome $Def.owner
     & $realPac auth clear 2>&1 | Out-Null
     & $realPac auth create --name $Def.owner --username (Get-Upn $Def.owner) --password $LabPassword --environment $E.Org 2>&1 | Out-Null
-    $out = & $realPac connector create --api-definition-file (Join-Path $tmp 'apiDefinition.swagger.json') --api-properties-file (Join-Path $tmp 'apiProperties.json') --environment $E.Org 2>&1
-    for ($i = 0; $i -lt 6 -and -not $id; $i++) { Start-Sleep 10; $id = Find-CustomConnector $Def }
-    if (-not $id) { throw "custom connector for $Name not created: $(($out | Select-Object -Last 2) -join ' ')" }
+    $files = @('--api-definition-file', (Join-Path $tmp 'apiDefinition.swagger.json'), '--api-properties-file', (Join-Path $tmp 'apiProperties.json'), '--environment', $E.Org)
+    if ($stale) {
+      # Update in place (pac wants the Dataverse connector id): the connector name, its connection and the
+      # agent's reference to it all stay, so nothing needs rebinding.
+      $out = & $realPac connector update --connector-id $api.properties.xrmConnectorId @files 2>&1
+      $now = $null
+      for ($i = 0; $i -lt 6 -and $now -ne $host_; $i++) {
+        Start-Sleep 10; $now = try { ([Uri](Get-CustomConnectorApi $Def).properties.backendService.serviceUrl).Host } catch { '' }
+      }
+      if ($now -ne $host_) { throw "custom connector for $Name still calls '$now', not '$host_': $(($out | Select-Object -Last 2) -join ' ')" }
+      Write-Host "    repointed connector for $Name at $host_"
+    } else {
+      $out = & $realPac connector create @files 2>&1
+      for ($i = 0; $i -lt 6 -and -not $id; $i++) { Start-Sleep 10; $id = Find-CustomConnector $Def }
+      if (-not $id) { throw "custom connector for $Name not created: $(($out | Select-Object -Last 2) -join ' ')" }
+    }
   }
   $script:CustomConnectors[$Name] = $id; $id
 }
@@ -271,6 +294,16 @@ function Ensure-Connection([string]$Name, [object]$Def) {
   $mine = @((Pa $alias GET "apis/$connector/connections" $null $E.Id).value | Where-Object {
     $_.properties.createdBy.userPrincipalName -eq $upn -and $_.properties.displayName -eq $Name })
   $ok = $mine | Where-Object { @($_.properties.statuses.status) -notcontains 'Error' -and @($_.properties.statuses.status) -contains 'Connected' } | Select-Object -First 1
+  if ($ok -and $Def.apiKeyFrom -and -not $VerifyOnly) {
+    # The key can't be read back, so a connection made against an earlier Phase 1 deployment looks Connected
+    # with a stale key. Re-send the current one to the SAME connection: its references stay bound.
+    $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name
+                connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
+    Pa $alias PUT "apis/$connector/connections/$($ok.name)" @{ properties = $props } $E.Id | Out-Null
+    $st = @((Pa $alias GET "apis/$connector/connections/$($ok.name)" $null $E.Id).properties.statuses.status)
+    if ($st -contains 'Error' -or $st -notcontains 'Connected') { throw "connection $Name is $($st -join ',') after re-sending its key" }
+    $script:ConnIds[$Name] = $ok.name; return "ok ($($ok.name), key re-sent)"
+  }
   if ($ok) { $script:ConnIds[$Name] = $ok.name; return "ok ($($ok.name))" }
   if ($VerifyOnly) { return 'MISSING (would create + consent)' }
   $c = if ($mine) { $mine[0] } else {
