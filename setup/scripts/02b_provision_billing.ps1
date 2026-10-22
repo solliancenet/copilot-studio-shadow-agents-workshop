@@ -82,6 +82,11 @@ function Get-McsPlan([string]$Region) {
   (@($policies | Where-Object name -eq $PlanName) + $policies) | Select-Object -First 1
 }
 $plan = Get-McsPlan $region
+# Phase 3 creates Prod and Claims-Test ON a plan (capacity); keep that link rather than move them to another.
+foreach ($p in @((Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value | Where-Object { $_.location -eq $region })) {
+  $ids = @((Invoke-Rest GET "$PP/licensing/billingPolicies/$($p.id)/environments?$api" $PP).value.environmentId)
+  if ($targets.Id | Where-Object { $_ -in $ids }) { $plan = $p; break }
+}
 # A kit plan whose Copilot Studio meter isn't on (yet) isn't matched above; re-use it rather than POST a
 # second plan with the same name.
 if (-not $plan) {

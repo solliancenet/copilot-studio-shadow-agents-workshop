@@ -13,7 +13,8 @@ identities - those omissions drive Exercise 05. The CA baseline already exists: 
   Halcourt (default)      the tenant's default environment - shared by every estate; named once
 
 Runs anywhere az is signed in to the lab tenant - the dev container, the host, or Windows - with no new
-sign-in: everything goes through the Power Platform admin API with az's saved token. It uses no PowerApps
+sign-in: everything goes through the Power Platform admin API with az's saved token (and the licensing API,
+to create Prod and Claims-Test ON the region's pay-as-you-go plan - see the comment at Resolve-EstatePlan). It uses no PowerApps
 admin module (it can no longer create environments and only signs in on Windows) and no `pac admin create`
 (pac caches a token only for the resource it signed in for, so creating fails with "No token cache item
 found ... service.powerapps.com").
@@ -97,21 +98,35 @@ $createUri = "$bap/providers/Microsoft.BusinessAppPlatform/environments?api-vers
 # ppccdevcanada with the tenant's capacity at 5120/5120 MB). The plan: -BillingPolicyId, else the one the
 # tenant's other estates are linked to, else the kit's Halcourt-PAYG-<region>. None yet (a new tenant's
 # first estate): create unlinked as before, and 02b links them.
+# The macro regions' countries, for matching a plan (region-locked) to where -MacroRegion will put the
+# environments. An unlisted macro region needs -BillingPolicyId.
+$MacroGeos = @{ 'north-america' = @('unitedstates', 'canada'); 'europe-uk' = @('europe', 'unitedkingdom'); 'emea' = @('europe', 'unitedkingdom', 'uae', 'southafrica') }
 function Resolve-EstatePlan {
   if ($BillingPolicyId) { return $BillingPolicyId }
+  $geos = $MacroGeos[$MacroRegion]
+  if (-not $geos) { Write-Warning "No region list for macro region '$MacroRegion' - pass -BillingPolicyId to create on a plan."; return $null }
   $pp = 'https://api.powerplatform.com/licensing/billingPolicies'; $api = 'api-version=2022-03-01-preview'
-  $plans = @((az rest --method GET --resource https://api.powerplatform.com/ --url "$pp`?$api" -o json | ConvertFrom-Json).value | Where-Object {
-    $_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState } })
+  # A failed lookup must stop the run: falling through to "no plan" would recreate the capacity failure.
+  $raw = az rest --method GET --resource https://api.powerplatform.com/ --url "$pp`?$api" -o json
+  if ($LASTEXITCODE) { throw "Could not read billing plans (api.powerplatform.com) - is az signed in as the lab admin?" }
+  $plans = @(($raw | ConvertFrom-Json).value | Where-Object {
+    $_.location -in $geos -and ($_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState }) })
+  if (-not $plans) { return $null }
+  # 1) the plan this tenant's estates already use - so 02b, which keeps an existing link, agrees with it
   $estateEnvIds = @(Get-Environments | Where-Object { $_.properties.displayName -match '^(Halcourt-Prod|Claims-Test)-' } | ForEach-Object { $_.name })
   foreach ($p in $plans) {
-    $linked = @((az rest --method GET --resource https://api.powerplatform.com/ --url "$pp/$($p.id)/environments?$api" -o json | ConvertFrom-Json).value.environmentId)
-    if ($linked | Where-Object { $_ -in $estateEnvIds }) { return $p.id }
+    $r = az rest --method GET --resource https://api.powerplatform.com/ --url "$pp/$($p.id)/environments?$api" -o json
+    if ($LASTEXITCODE) { throw "Could not read billing plan $($p.name)'s environments." }
+    if (@(($r | ConvertFrom-Json).value.environmentId) | Where-Object { $_ -in $estateEnvIds }) { return $p.id }
   }
-  ($plans | Where-Object { $_.name -like 'Halcourt-PAYG-*' } | Select-Object -First 1).id
+  # 2) the kit's own plan, 3) the region's only plan (a Dev Program tenant's, e.g. ppccdevcanada)
+  $kit = $plans | Where-Object { $_.name -like 'Halcourt-PAYG-*' } | Select-Object -First 1
+  if ($kit) { return $kit.id }
+  if ($plans.Count -eq 1) { return $plans[0].id }
+  Write-Warning "$($plans.Count) Copilot Studio plans in $MacroRegion ($($plans.name -join ', ')) and none used by an estate yet - pass -BillingPolicyId."
+  $null
 }
-$planId = Resolve-EstatePlan
-if ($planId) { Write-Host "Prod and Claims-Test are created on billing plan $planId (pay-as-you-go: no tenant capacity drawn)." }
-else { Write-Warning 'No pay-as-you-go plan yet - creating unlinked (tenant capacity applies); 02b creates and links the plan.' }
+$planId = $null; $planResolved = $false      # resolved on the first create that needs it, not on a re-run
 foreach ($e in $envs) {
   $e.Live = Get-EstateName $e.Name $Estate
   $existing = Find-Env $e.Live
@@ -127,7 +142,14 @@ foreach ($e in $envs) {
     linkedEnvironmentMetadata = @{ baseLanguage = $LanguageCode; currency = @{ code = $CurrencyName }; templates = @() }
   }
   # Developer environments can't take a billing plan and reserve no capacity.
-  if ($planId -and $e.Sku -ne 'Developer') { $props.billingPolicy = @{ id = $planId } }
+  if ($e.Sku -ne 'Developer') {
+    if (-not $planResolved) {
+      $planId = Resolve-EstatePlan; $planResolved = $true
+      if ($planId) { Write-Host "Prod and Claims-Test are created on billing plan $planId (pay-as-you-go: no tenant capacity drawn)." }
+      else { Write-Warning 'No pay-as-you-go plan yet - creating unlinked (tenant capacity applies); 02b creates and links the plan.' }
+    }
+    if ($planId) { $props.billingPolicy = @{ id = $planId } }
+  }
   if ($e.Owner) {
     # A Developer environment belongs to one user: this estate's persona, not the admin running the script.
     $ownerUpn = "$(Get-EstateAlias $e.Owner $Estate)@$domain"

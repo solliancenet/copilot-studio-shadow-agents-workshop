@@ -160,14 +160,18 @@ foreach ($n in 1..$Count) {
   } else {
     Write-Host '  creating environment (Sandbox + Dataverse)...'
     # location and properties.azureRegion are both rejected here; macroRegion is the one that works.
+    $props = @{
+      displayName               = $name
+      environmentSku            = 'Sandbox'
+      databaseType              = 'CommonDataService'
+      linkedEnvironmentMetadata = @{ baseLanguage = 1033; currency = @{ code = 'USD' }; templates = @() }
+    }
+    # Created ON the plan: a Sandbox with Dataverse otherwise reserves 1 GB of the tenant's capacity, and the
+    # capacity check runs at creation (errata: Phase 3, 2026-10-22).
+    if ($policy) { $props.billingPolicy = @{ id = $policy } }
     Invoke-Api POST "$BAP/providers/Microsoft.BusinessAppPlatform/environments?api-version=2021-04-01&id=/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments" 'https://service.powerapps.com/' @{
       macroRegion = $MacroRegion
-      properties  = @{
-        displayName               = $name
-        environmentSku            = 'Sandbox'
-        databaseType              = 'CommonDataService'
-        linkedEnvironmentMetadata = @{ baseLanguage = 1033; currency = @{ code = 'USD' }; templates = @() }
-      }
+      properties  = $props
     } | Out-Null
   }
   # Wait for Dataverse. On the build tenant this took about 30 seconds, not the minutes Phase 3 waits.

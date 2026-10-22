@@ -1511,6 +1511,7 @@ Sandbox + Dataverse) 1 GB each.
 **Fix.** Create the environment **on** the pay-as-you-go plan: the same POST with
 `properties.billingPolicy = { id: <plan id> }` created `Claims-Test-fac03` with capacity at 5120/5120 MB, its
 Dataverse provisioned and the plan linked from the start - storage bills to Azure, not the tenant's
-capacity. Linking afterwards (02b) is too late: the capacity check runs at creation. `02_provision_
-environments_dlp.ps1` now creates Prod and Claims-Test on the plan the tenant's estates already use
-(`-BillingPolicyId` to choose); a brand-new tenant's first estate, with no plan yet, is created unlinked.
+capacity. Linking afterwards (02b) is too late: the capacity check runs at creation. `02_provision_environments_dlp.ps1`
+now creates Prod and Claims-Test on the plan the tenant's estates already use
+(`-BillingPolicyId` to choose), else the kit's or the region's only plan; 08's slices are created on the plan too.
+A tenant with no plan yet has its first estate created unlinked.
