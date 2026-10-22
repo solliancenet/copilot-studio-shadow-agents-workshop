@@ -17,6 +17,7 @@ re-verified as products change.
 |---|---|
 | `copilot-studio-billing.md` | Copilot Studio billing/licensing models, trial limits, workshop implications |
 | `adr/` | Architecture decision records — why the kit is built the way it is |
+| `azure-shared-deployment.md` | Deploying the shared Policy API and MCP apps (owner, once per lab) |
 | `azure-endpoints.md` | The Phase 1 Container App addresses |
 | `billing-plan-by-hand.md` | Creating or linking a billing plan without the script |
 | `pnp-app-setup.md` | Registering the shared `Halcourt PnP` app (once per tenant) |
