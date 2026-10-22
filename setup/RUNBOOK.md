@@ -917,9 +917,10 @@ re-inject the new addresses and secrets at provision time.
       the prompt), then delete `setup/lab-users-<estate>.local.csv`.
 - [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also
       deletes `setup/lab-facilitator-<estate>.local.csv`).
-- [ ] **Phase 4c's Purview artifacts.** The label policy `Halcourt-Labels-<estate>` and the sensitivity label
-      `Confidential-PII-<estate>` (delete the policy first; Purview portal → Information Protection), and the
-      group `HR-Leadership-<estate>`. The labelled copy goes with the `HR-Benefits-<estate>` site.
+- [ ] **Phase 4c's Purview artifacts**, before `99_teardown.ps1`: `pwsh setup/scripts/03c_provision_purview.ps1
+      -Remove` deletes the label policy `Halcourt-Labels-<estate>`, then the label `Confidential-PII-<estate>`
+      (it retries while the policy is withdrawn; re-run if it times out). The group `HR-Leadership-<estate>`
+      goes with `-RemovePersonas`; the labelled copy goes with the `HR-Benefits-<estate>` site.
 - [ ] **Shared per-tenant, only when the last estate in the tenant goes:** the app registration
       `halcourt-lab-compliance` (03c, 07 and 07b sign in with it) with its local
       `setup/lab-compliance-app.local.{json,pfx}`, and the resource group `rg-halcourt-graph-billing` holding
