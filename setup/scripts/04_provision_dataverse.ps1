@@ -238,14 +238,28 @@ if (-not $svc) {
   # Force-sync the user into the environment (what PPAC's "Add user" does).
   $svcOid = az ad user show --id $svcUpn --query id -o tsv
   if ($LASTEXITCODE -or -not $svcOid) { throw "$svcUpn not found in Entra - run Phase 2 first." }
-  try {
-    Invoke-AzRest POST "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($claimsEnv.name)/addUser?api-version=2020-10-01" `
-      'https://service.powerapps.com/' @{ ObjectId = $svcOid } | Out-Null
+  # A NEW environment answers addUser with 'instanceNotFound' for up to ~15 minutes after it is created, and
+  # the user then arrives asynchronously: retry the call, then wait for the row.
+  $unlicensed = $false
+  for ($i = 0; ; $i++) {
+    try {
+      Invoke-AzRest POST "$bap/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($claimsEnv.name)/addUser?api-version=2020-10-01" `
+        'https://service.powerapps.com/' @{ ObjectId = $svcOid } | Out-Null
+      break
+    } catch {
+      if ("$_" -match 'userNotLicensed') {
+        Write-Warning "$svcUpn has no license, and Dataverse won't add an unlicensed user (userNotLicensed)."
+        Write-Warning "Assign it a license, then re-run this script: only the role assignment is left."
+        $unlicensed = $true; break
+      }
+      if ($i -ge 25 -or "$_" -notmatch 'instanceNotFound') { throw }
+      Write-Host "  addUser: instanceNotFound (new environment not ready) - retrying in 60s ($($i + 1)/25)"
+      Start-Sleep 60
+    }
+  }
+  for ($i = 0; $i -lt 20 -and -not $svc -and -not $unlicensed; $i++) {
     $svc = (Invoke-Dv GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$svcUpn'").value | Select-Object -First 1
-  } catch {
-    if ("$_" -notmatch 'userNotLicensed') { throw }
-    Write-Warning "$svcUpn has no license, and Dataverse won't add an unlicensed user (userNotLicensed)."
-    Write-Warning "Assign it a license, then re-run this script: only the role assignment is left."
+    if (-not $svc) { Start-Sleep 15 }
   }
 }
 $assigned = $false
@@ -253,7 +267,11 @@ if ($svc) {
   $current = (Invoke-Dv GET "systemusers($($svc.systemuserid))/systemuserroles_association?`$select=roleid").value
   if ($current.roleid -contains $roleId) { Write-Host "  Role already assigned to $svcUpn." }
   else {
-    Invoke-Dv POST "systemusers($($svc.systemuserid))/systemuserroles_association/`$ref" @{ '@odata.id' = "$api/roles($roleId)" } | Out-Null
+    # A user synced seconds ago can still read as disabled (0x80048d35) until Entra's state reaches Dataverse.
+    for ($i = 0; ; $i++) {
+      try { Invoke-Dv POST "systemusers($($svc.systemuserid))/systemuserroles_association/`$ref" @{ '@odata.id' = "$api/roles($roleId)" } | Out-Null; break }
+      catch { if ($i -ge 20 -or "$_" -notmatch '0x80048d35|disabled') { throw }; Start-Sleep 30 }
+    }
     Write-Host "  Assigned '$OverBroadRoleName' to $svcUpn."
   }
   $assigned = $true

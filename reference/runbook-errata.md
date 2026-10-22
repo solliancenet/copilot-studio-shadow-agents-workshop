@@ -1459,3 +1459,14 @@ members by display name and returns no object id, so an "already a member" error
 and response"* - for the 2026-10-20 chats and for a new one at 13:34 UTC on 2026-10-21, so it isn't when the
 chat was captured. Not root-caused: longer propagation, or Copilot Studio-in-Teams text not retrievable here.
 05-07 KT04 step 2 can't be shown live until it is; the interaction record (user, agent, resources) is.
+
+### Phase 5 · a new Claims-Test refuses svc-claims for ~15 minutes (2026-10-21)
+
+**Symptom.** On the 2026-10-21 greenfield rebuild, `04_provision_dataverse.ps1` failed adding `svc-claims`:
+`addUser` returned *instanceNotFound* for about 15 minutes after Phase 3 created Claims-Test. Once the user
+row existed, the role assignment failed with **0x80048d35** (the user is disabled) until Entra's state
+reached Dataverse. **Evidence.** The same call for the same account succeeded unchanged later; the account
+was licensed and enabled in Entra throughout. **Fix.** The script retries `addUser` on *instanceNotFound*
+(60 s, 25 tries), waits for the systemuser row, and retries the role on 0x80048d35 (30 s, 20 tries). The
+by-hand workaround used that day - creating the systemuser with a Web API POST (`internalemailaddress`,
+`domainname`, `firstname`, `lastname`) - isn't needed.
