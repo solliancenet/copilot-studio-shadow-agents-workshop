@@ -21,8 +21,14 @@ function Get-AzdLabValues {
   $v
 }
 
-# Trailing slashes come off the two addresses (callers append /policy, /underwriting). Secrets pass untouched.
-function Format-LabValue([string]$Key, [string]$Value) { if ($Key -like '*_FQDN') { $Value.TrimEnd('/') } else { $Value } }
+# The two addresses are full URLs despite their _FQDN names: a bare host gets https://, and a trailing slash
+# comes off (callers append /policy, /underwriting). Secrets pass untouched.
+function Format-LabValue([string]$Key, [string]$Value) {
+  if ($Key -notlike '*_FQDN') { return $Value }
+  $v = $Value.Trim().TrimEnd('/')
+  if ($v -notmatch '^https?://') { $v = "https://$v" }
+  $v
+}
 
 # Returns @{ Values = @{ <key> = <value> }; Source = '<where from>'; Missing = @(<keys>) }. Only the four keys:
 # the committed workspaces use no other ${VAR} that azd would supply.

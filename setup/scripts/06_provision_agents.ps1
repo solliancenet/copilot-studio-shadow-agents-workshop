@@ -234,7 +234,7 @@ function Ensure-CustomConnector([string]$Name, [object]$Def) {
   # The connector carries the MCP host itself, not a ${...} token: a connector made against an earlier Phase 1
   # deployment keeps calling it until it is repointed (ADR-0005 - estates move onto the shared deployment).
   $stale = $false
-  if ($api) {
+  if ($api -and $host_) {
     $have = try { ([Uri]$api.properties.backendService.serviceUrl).Host } catch { '' }
     if ($have -ne $host_) {
       if ($VerifyOnly) { Write-Host "    connector for $Name calls '$have' - would repoint at '$host_'" } else { $stale = $true }

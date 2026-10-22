@@ -60,7 +60,8 @@ How it is implemented:
    one as the shared deployment, re-run Phase 6 for the other estate with its values, then `azd down` the
    spare. Phase 6 moves an existing estate: topics re-take the `${…}` values on every push, the MCP
    custom connector is repointed in place when its host differs, and the MCP connection's key is re-sent
-   (it can't be read back to compare).
+   (it can't be read back to compare). A run with `-SkipConnections` repoints the connector but leaves the
+   old key, so don't use it for a move.
 
 ## Alternatives considered
 
