@@ -409,40 +409,20 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 5 — Dataverse seed
 
-**Prerequisites:** `az`, signed in to the lab tenant — nothing else.
+1. **Create the claims data and give `svc-claims` too much access to it.** In `Claims-Test-<estate>`, the
+   script creates a Customer table (with SSNs and dates of birth) and a Claim table, seeds five rows each,
+   and assigns `svc-claims.<estate>` an over-broad role: full access to every row. Scenarios C and D
+   exploit that role; Task 05-03 narrows it. It ends by reading everything back. Safe to re-run.
+   Details: [dataverse-seed.md](../reference/dataverse-seed.md).
 
-```bash
-pwsh setup/scripts/04_provision_dataverse.ps1    # estate from HALCOURT_ESTATE; finds Claims-Test-<estate> itself
-```
+   ```bash
+   pwsh setup/scripts/04_provision_dataverse.ps1
+   ```
 
-In `Claims-Test-<estate>` it creates the `mm` publisher and two tables, seeds them from `setup/data/`, and
-builds the **over-broad** role:
-
-| Table | Columns | Rows |
-|---|---|---|
-| `mm_customer` | `mm_name` (primary), `mm_customernumber`, `mm_ssn`, `mm_dob` — **PII** | `customers.csv` (5) |
-| `mm_claim` | `mm_claimnumber` (primary), `mm_status`, `mm_amount`, `mm_adjuster`, `mm_customer` (lookup) | `claims.csv` (5) |
-
-`svc-claims Dataverse Full Access` holds create / read / write / append / append-to / assign / share on **both
-tables at Global depth** — every row, PII included, nothing narrowing record-level access — and is assigned to
-`svc-claims.<estate>`. Least privilege here is what Task 05-03 will *close*. It reads the rows, privileges and
-assignment back at the end. Safe to re-run.
-
-{: .important }
-> **`svc-claims.<estate>` needs a license — one E5 seat is enough.** Without one the script builds
-> everything else and reports the role assignment as **PENDING**; assign the seat and re-run to finish.
-
-```bash
-SKU=$(az rest --method GET --url https://graph.microsoft.com/v1.0/subscribedSkus \
-  --query "value[?skuPartNumber=='DEVELOPERPACK_V2_E5'].skuId | [0]" -o tsv)   # or your tenant's E5 SKU
-az rest --method POST \
-  --url "https://graph.microsoft.com/v1.0/users/svc-claims.$HALCOURT_ESTATE@<domain>/assignLicense" \
-  --body "{\"addLicenses\":[{\"skuId\":\"$SKU\"}],\"removeLicenses\":[]}"
-pwsh setup/scripts/04_provision_dataverse.ps1                                  # now reports: done
-```
-
-Why a license is required, why E5 suffices, and the non-interactive route that gives the seat back:
-[ADR-0018](../reference/adr/0018-svc-claims-licensed-e5.md).
+   - It reuses your `az` sign-in and finds `Claims-Test-<estate>` itself.
+   - The role assignment must read as done. **PENDING** means `svc-claims.<estate>` has no licence
+     ([ADR-0018](../reference/adr/0018-svc-claims-licensed-e5.md)): re-run Phase 2 step 1, which licenses
+     it, then re-run this step.
 
 ### Phase 5b — Auditing (Lab 05-07)
 
