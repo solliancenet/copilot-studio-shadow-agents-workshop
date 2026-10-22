@@ -296,24 +296,24 @@ an estate deploys nothing.
    - It reuses your `az` sign-in, so there's no code to enter.
    - The summary lists each environment's **Region**. All three must match; note it for step 2.
    - It ends with `Phase 3 complete`.
+   - If the tenant already has a billing plan in the region, Prod and Claims-Test are created on it: a
+     Dev Program tenant's Dataverse capacity holds only two estates otherwise
+     ([errata → Phase 3](../reference/runbook-errata.md)).
    - The platform picks the region ([ADR-0013](../reference/adr/0013-environment-region-assigned.md)). The other
      environments get no DLP and no agent Conditional Access is created — on purpose
      ([ADR-0028](../reference/adr/0028-planted-governance-gaps.md)).
 
 2. **Link Prod and Claims-Test to a pay-as-you-go billing plan.** Without one, agents publish but nobody
-   can chat with them. The script finds the plan in your environments' region with the Copilot Studio
-   meter on, creating one if the region has none, then links both environments and checks the link.
-   Step 1 creates Prod and Claims-Test **on** the plan when the tenant already has one: each Dataverse
-   environment otherwise reserves 1 GB of the tenant's capacity, and a Dev Program tenant's 5 GB holds only
-   two estates ([errata → Phase 3](../reference/runbook-errata.md)).
-   Estates share a plan per region ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)), so the
-   plan and its resource group carry no estate id — one the script creates is `Halcourt-PAYG-<region>` in
-   `rg-halcourt-billing`. Never delete either while any estate uses the region. Safe to re-run.
+   can chat with them. The script finds the shared plan in your environments' region — creating
+   `Halcourt-PAYG-<region>` in `rg-halcourt-billing` if the region has none — then links both environments
+   and checks the link. Every estate in the region shares that plan
+   ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)). Safe to re-run.
 
    ```bash
    pwsh setup/scripts/02b_provision_billing.ps1
    ```
 
+   - Never delete the plan or `rg-halcourt-billing` while any estate uses the region.
    - Creating a new plan is untested (`[verify]`); reusing one is the normal path.
    - By hand instead: [billing-plan-by-hand.md](../reference/billing-plan-by-hand.md). Trouble with the
      region lock: [errata → Phase 3](../reference/runbook-errata.md).
