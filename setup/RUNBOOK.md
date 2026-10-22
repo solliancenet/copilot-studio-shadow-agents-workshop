@@ -926,9 +926,11 @@ re-inject the new addresses and secrets at provision time.
       its Graph billing resource `halcourt-lab-compliance-billing`. `azd down` does not touch either.
 - [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan and, if
       the kit created it, its resource group. Deleting either cuts billing for every estate in the region.
-      Check `/billingPolicies/<id>/environments` lists no live environment first, then PPAC → Licensing →
-      Billing Plans → delete. A plan the kit created is `Halcourt-PAYG-<region>` in `rg-halcourt-billing`:
-      `az group delete -n rg-halcourt-billing` once its plans are gone. A plan the tenant came with (e.g.
+      First check that `/billingPolicies/<id>/environments` lists no live environment, for every plan in
+      the group, then PPAC → Licensing → Billing Plans → delete. A plan the kit created is
+      `Halcourt-PAYG-<region>` in `rg-halcourt-billing`, in the plan's own subscription (its
+      `billingInstrument.subscriptionId`). Once `az resource list -g rg-halcourt-billing --subscription <that id>`
+      is empty: `az group delete -n rg-halcourt-billing --subscription <that id>`. A plan the tenant came with (e.g.
       `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default
       environment's plan — leave that group alone.
 
