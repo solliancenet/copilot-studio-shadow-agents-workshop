@@ -85,7 +85,9 @@ if ($defaultEnv) {
         } elseif ($attempt -eq 'after-deactivate') {
           try { Invoke-Json PATCH "$org/api/data/v9.2/bots($($b.botid))" $tok @{ statecode = 1; statuscode = 2 } | Out-Null } catch { }
         }
-        try { Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null; $gone = $true; break } catch { }
+        # Invoke-Json reports a failure and returns $null - it never throws - so read the agent back to know.
+        Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null
+        if (-not (Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid&`$filter=botid eq $($b.botid)" $tok).value) { $gone = $true; break }
       }
       if ($gone) { Write-Host "    deleted" } else { $orphanRisk += "$($b.name) ($($b.botid))" }
     }
