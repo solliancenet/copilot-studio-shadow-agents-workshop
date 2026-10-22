@@ -426,48 +426,19 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 5b — Auditing (Lab 05-07)
 
-05-07 reconstructs Exercise 04 from the logs, and a log only holds what happened after it was switched on.
-Run this **at least an hour before Exercise 04** - well before, on the build day. A developer tenant ships
-with all of it off (found 2026-10-20). Needs Phase 4c's lab app and Phase 5's tables.
+1. **Turn on the auditing 05-07 reads.** Run it **at least an hour before Exercise 04** — on the build day:
+   a log only holds what happened after it was switched on. The script turns on Purview Audit, auditing for
+   `Claims-Test-<estate>`, and change auditing for the Claim table
+   ([ADR-0030](../reference/adr/0030-audit-claim-changes-only.md)). Safe to re-run.
 
-```bash
-pwsh setup/scripts/04b_provision_audit.ps1     # rerun-safe; ends with a Check line, all True
-```
+   ```bash
+   pwsh setup/scripts/04b_provision_audit.ps1
+   ```
 
-| What | Where it shows in 05-07 |
-|---|---|
-| Purview Audit: unified audit log ingestion (up to **60 minutes** to start recording; it was **off** on this tenant, not on by default) | `CopilotInteraction` events (KT02, KT04, KT05) |
-| `Claims-Test-<estate>`: environment auditing | the environment's audit settings (KT01) |
-| `mm_claim`: changes - **not** `mm_customer` | the Audit summary view (changes only - KT03 finds no read there, which is the point). Customer is left unaudited on purpose: attendees read these records, and a customer change would carry SSN and date of birth |
-
-It deliberately leaves **read logs off**: reads reach Purview only for production environments, and
-`Claims-Test` is a sandbox, so there is nothing to turn on (see the pre-delivery audit checklist).
-
-**Defender real-time protection for agents - not used; 05-07 KT06 reasons it through.** On this tenant two
-prerequisites are missing (checked 2026-10-20 as the facilitator with Security Administrator active):
-
-- **A Microsoft Agent 365 licence.** Since 1 July 2026 Copilot Studio agent protection in Defender requires
-  it; E5 alone is not enough. The tenant has only `DEVELOPERPACK_V2_E5`, and **Settings → Security for AI**
-  says *"You don't have permission to view this page"*. An admin-led trial gives 25 seats for 30 days - it
-  expires, so time it to the delivery.
-- **Defender for Cloud Apps initialised.** Its pages show *"Hang on! We're preparing new spaces for your
-  data"*; the first visit starts it and it takes hours.
-
-Once both are in place (Learn: *Real-time protection for AI agents*, *External security provider*):
-
-1. Defender → **Settings → Security for AI → Get started**: enable, connect the **Microsoft 365** connector,
-   then in the **Copilot Studio** step turn **Real-time protection** on and copy the endpoint URL. Security
-   Administrator. Portal only.
-2. An Entra app with a **federated credential** for that endpoint (no secret) - scriptable
-   (`Create-CopilotWebhookApp.ps1` from the PowerShell Gallery, or Graph `applications` +
-   `federatedIdentityCredentials`).
-3. PPAC → **Security → Threat detection → Additional threat detection** → `Halcourt-Prod-<estate>` (Benefits
-   Buddy's environment): share data with the provider, the app ID and the endpoint. Power Platform
-   Administrator. Portal only, per environment.
-4. Paste the app ID back into the Defender pane and save; it should show **Connected**.
-
-If a future build has the licence and wants KT06 live again, on and off is the PPAC checkbox in step 3. Only generative-orchestration agents are
-checked, and only their tool calls. PLANNING item 16 tracks it.
+   - It ends with a `Check` line; every value must be `True`.
+   - Purview Audit can take up to 60 minutes to start recording.
+   - Defender real-time protection for agents isn't set up — the tenant lacks its licence
+     ([ADR-0031](../reference/adr/0031-no-defender-realtime-protection.md)).
 
 ### Phase 6 — Author the agents
 
