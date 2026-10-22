@@ -63,6 +63,8 @@ real Windows desktop browser for interactive sign-in and MFA? See
 4b. Maker OneDrive             → provision + seed dev.kim's OneDrive (Meeting Notes grounding)
 4c. Purview                    → Confidential-PII label + labelled comp copy (05-06); DAYS before delivery
 5. Dataverse seed              → Claim + Customer tables, PII rows, the over-broad role
+5b. Auditing                   → Purview Audit + Claims-Test change auditing (05-07); before Exercise 04
+5c. Recheck the Purview label  → re-run 4c until the copy is labelled and the policy has its group
 6. Author the agents           → as each owner, from the committed workspaces
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
@@ -438,6 +440,23 @@ an estate deploys nothing.
    - Purview Audit can take up to 60 minutes to start recording.
    - Defender real-time protection for agents isn't set up — the tenant lacks its licence
      ([ADR-0031](../reference/adr/0031-no-defender-realtime-protection.md)).
+
+### Phase 5c — Recheck the Purview label
+
+1. **Re-run Phase 4c until it finishes.** Its first run usually stops short: the new label hasn't reached
+   SharePoint, so the copy isn't labelled, and the new group isn't an Exchange recipient yet, so the policy
+   covers Marcus alone. Phases 4b–5b give them time. Re-running creates nothing new; it adds the group to the
+   policy and labels the copy once they're ready.
+
+   ```bash
+   pwsh setup/scripts/03c_provision_purview.ps1
+   ```
+
+   - Done when the `6. Checks` lines show `copy labelled: True`, `original unlabelled: True` and `search sees
+     the marker: True`, and step 3 no longer says the group isn't an Exchange recipient.
+   - Not yet? Run it again later. The label can take hours to reach SharePoint — up to a day
+     ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
+   - It must pass before the delivery: Task 05-06 retests against the labelled copy.
 
 ### Phase 6 — Author the agents
 
