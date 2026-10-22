@@ -934,7 +934,10 @@ re-inject the new addresses and secrets at provision time.
       `az resource list -g rg-halcourt-billing --subscription <that id>` is empty:
       `az group delete -n rg-halcourt-billing --subscription <that id>`. A plan the tenant came with
       (e.g. `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default
-      environment's plan — leave that group alone.
+      environment's plan — leave that group alone, but remove the kit's lock from it (`az lock delete --name
+      halcourt-shared-billing -g <group> --subscription <that id>`). A tenant built before ADR-0014's
+      shared names may also hold `rg-halcourt-billing-<estate>` with a `Halcourt-PAYG-<estate>` plan: retire
+      it the same way.
 
 `-RemovePersonas` deletes every user whose UPN ends `.<estate>@<domain>` and every group named `*-<estate>`,
 so it also catches the lab accounts, the facilitator and `HR-Leadership-<estate>`. Run the scripts above

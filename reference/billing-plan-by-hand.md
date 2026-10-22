@@ -24,6 +24,16 @@ matches theirs.
      az group create -n rg-halcourt-billing -l eastus --subscription <lab-subscription-id> -o none
    ```
 
+   After the plan exists, mark and lock its group as the script does, so nobody deletes it by mistake
+   ([ADR-0014](adr/0014-shared-billing-plan-per-region.md); the lock needs Owner or User Access Administrator):
+
+   ```bash
+   az group update -n rg-halcourt-billing --subscription <lab-subscription-id> \
+     --set tags.halcourt-shared='Copilot Studio billing plan - every estate in the tenant' -o none
+   az lock create --name halcourt-shared-billing --lock-type CanNotDelete -g rg-halcourt-billing \
+     --subscription <lab-subscription-id> --notes 'Shared Copilot Studio billing plan (ADR-0014).' -o none
+   ```
+
    Then PPAC → **Licensing → Billing Plans → + New billing plan → Azure subscription**. Name it for the
    region, not your estate — `Halcourt-PAYG-<region>` (e.g. `Halcourt-PAYG-canada`) — because every
    estate in the region will share it. Pick the **Azure

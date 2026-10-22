@@ -73,13 +73,21 @@ if (-not $PlanName) { $PlanName = "Halcourt-PAYG-$region" }
 Write-Host "Linking to a '$region' plan: $($targets.Name -join ', ')"
 
 # --- Find a plan in that region with the Copilot Studio (MCSMessages) meter on --------------------------
+# Prefer the kit's own Halcourt-PAYG-<region>; otherwise the region's one MCS-metered plan. More than one
+# (e.g. a legacy per-estate plan beside the Dev Program's) is reported: estates should share ONE.
 function Get-McsPlan([string]$Region) {
-  $policies = (Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value
-  $policies | Where-Object {
-    $_.location -eq $Region -and ($_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState })
-  } | Select-Object -First 1
+  $policies = @((Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value | Where-Object {
+    $_.location -eq $Region -and ($_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState }) })
+  if ($policies.Count -gt 1) { Write-Warning "$($policies.Count) Copilot Studio plans in '$Region' ($($policies.name -join ', ')) - estates should share one; linking to $((@($policies | Where-Object name -eq $PlanName) + $policies)[0].name)." }
+  (@($policies | Where-Object name -eq $PlanName) + $policies) | Select-Object -First 1
 }
 $plan = Get-McsPlan $region
+# A kit plan whose Copilot Studio meter isn't on (yet) isn't matched above; re-use it rather than POST a
+# second plan with the same name.
+if (-not $plan) {
+  $plan = (Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value | Where-Object { $_.location -eq $region -and $_.name -eq $PlanName } | Select-Object -First 1
+  if ($plan) { Write-Warning "Plan $PlanName exists but its Copilot Studio meter is off - turn it on in PPAC (Licensing -> Billing Plans)." }
+}
 
 if (-not $plan) {
   # [verify] Once-per-region setup, untested here because the tenant already had a plan. A plan is two
@@ -88,10 +96,10 @@ if (-not $plan) {
   Write-Host "No '$region' plan found - creating one (once-per-region setup)."
 
   # The resource group is ordinary Azure: its location is metadata and need NOT match the plan's region.
-  az group show -n $ResourceGroup -o none 2>$null
+  az group show -n $ResourceGroup --subscription $SubscriptionId -o none 2>$null
   if ($LASTEXITCODE -ne 0) {
     Write-Host "  creating resource group $ResourceGroup in $ResourceGroupLocation"
-    az group create -n $ResourceGroup -l $ResourceGroupLocation -o none
+    az group create -n $ResourceGroup -l $ResourceGroupLocation --subscription $SubscriptionId -o none
   }
 
   # The ARM account takes the Power Platform region TITLE-CASED ('Canada'); the billing policy below takes
@@ -121,13 +129,11 @@ $bi = $plan.billingInstrument
 if ($bi.resourceGroup -and $bi.subscriptionId) {
   az group update -n $bi.resourceGroup --subscription $bi.subscriptionId --set tags.halcourt-shared='Copilot Studio billing plan - every estate in the tenant' -o none 2>$null
   if ($LASTEXITCODE) { Write-Warning "Could not tag resource group $($bi.resourceGroup)." }
-  $lock = az lock list -g $bi.resourceGroup --subscription $bi.subscriptionId --query "[?name=='halcourt-shared-billing'].name | [0]" -o tsv 2>$null
-  if (-not $lock) {
-    az lock create --name halcourt-shared-billing --lock-type CanNotDelete -g $bi.resourceGroup --subscription $bi.subscriptionId `
-      --notes 'Shared Copilot Studio billing plan (ADR-0014). Remove only when the tenant is retired.' -o none 2>$null
-    if ($LASTEXITCODE) { Write-Warning "Could not lock resource group $($bi.resourceGroup) (needs Owner or User Access Administrator) - ask the subscription owner to run this script once." }
-    else { Write-Host "  locked $($bi.resourceGroup) against deletion (halcourt-shared-billing)" }
-  }
+  # lock create is an idempotent PUT; its own error says why it failed (role, or a subscription az can't see).
+  $err = az lock create --name halcourt-shared-billing --lock-type CanNotDelete -g $bi.resourceGroup --subscription $bi.subscriptionId `
+    --notes 'Shared Copilot Studio billing plan (ADR-0014). Remove only when the tenant is retired.' -o none 2>&1
+  if ($LASTEXITCODE) { Write-Warning "Could not lock resource group $($bi.resourceGroup): $(($err | Out-String).Trim().Split([char]10)[0]) - a lock needs Owner or User Access Administrator." }
+  else { Write-Host "  $($bi.resourceGroup) locked against deletion (halcourt-shared-billing)" }
 }
 
 # --- Link the two environments --------------------------------------------------------------------------
