@@ -435,7 +435,8 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
    pwsh setup/scripts/04b_provision_audit.ps1
    ```
 
-   - It ends with a `Check` line; every value must be `True`.
+   - It ends with a `Check` line: `unified audit ingestion`, `environment audit` and `mm_claim` must be
+     `True`, and `mm_customer` must be `False` — Customer stays unaudited on purpose.
    - Purview Audit can take up to 60 minutes to start recording.
    - Defender real-time protection for agents isn't set up — the tenant lacks its licence
      ([ADR-0031](../reference/adr/0031-no-defender-realtime-protection.md)).
