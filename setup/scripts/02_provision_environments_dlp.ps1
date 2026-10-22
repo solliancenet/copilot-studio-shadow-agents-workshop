@@ -32,7 +32,8 @@ param(
   [string]$MacroRegion = 'north-america',      # asia-pacific, emea, eu-efta, europe-uk, north-america, the-americas
   [string]$CurrencyName = 'USD',
   [int]$LanguageCode = 1033,                   # 1033 = English
-  [int]$ProvisionTimeoutMinutes = 30
+  [int]$ProvisionTimeoutMinutes = 30,
+  [string]$BillingPolicyId                     # PAYG plan to create Prod/Claims-Test ON; default: the one estates use
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
@@ -88,6 +89,29 @@ $envs = @(
   @{ Name = 'Maker-Sandbox'; Sku = 'Developer'; Owner = 'dev.kim' }
 )
 $createUri = "$bap/providers/Microsoft.BusinessAppPlatform/environments?api-version=2021-04-01&id=/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments"
+
+# Production and Sandbox environments are created ALREADY LINKED to the region's pay-as-you-go plan. Every
+# Dataverse environment reserves 1 GB of the tenant's database capacity (5 GB on a Dev Program tenant: two
+# estates), and creating one more fails with InsufficientCapacity_StorageDriven - unless it is created on a
+# PAYG plan, which bills its storage to Azure instead (verified 2026-10-22: Claims-Test-fac03 created on
+# ppccdevcanada with the tenant's capacity at 5120/5120 MB). The plan: -BillingPolicyId, else the one the
+# tenant's other estates are linked to, else the kit's Halcourt-PAYG-<region>. None yet (a new tenant's
+# first estate): create unlinked as before, and 02b links them.
+function Resolve-EstatePlan {
+  if ($BillingPolicyId) { return $BillingPolicyId }
+  $pp = 'https://api.powerplatform.com/licensing/billingPolicies'; $api = 'api-version=2022-03-01-preview'
+  $plans = @((az rest --method GET --resource https://api.powerplatform.com/ --url "$pp`?$api" -o json | ConvertFrom-Json).value | Where-Object {
+    $_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState } })
+  $estateEnvIds = @(Get-Environments | Where-Object { $_.properties.displayName -match '^(Halcourt-Prod|Claims-Test)-' } | ForEach-Object { $_.name })
+  foreach ($p in $plans) {
+    $linked = @((az rest --method GET --resource https://api.powerplatform.com/ --url "$pp/$($p.id)/environments?$api" -o json | ConvertFrom-Json).value.environmentId)
+    if ($linked | Where-Object { $_ -in $estateEnvIds }) { return $p.id }
+  }
+  ($plans | Where-Object { $_.name -like 'Halcourt-PAYG-*' } | Select-Object -First 1).id
+}
+$planId = Resolve-EstatePlan
+if ($planId) { Write-Host "Prod and Claims-Test are created on billing plan $planId (pay-as-you-go: no tenant capacity drawn)." }
+else { Write-Warning 'No pay-as-you-go plan yet - creating unlinked (tenant capacity applies); 02b creates and links the plan.' }
 foreach ($e in $envs) {
   $e.Live = Get-EstateName $e.Name $Estate
   $existing = Find-Env $e.Live
@@ -102,6 +126,8 @@ foreach ($e in $envs) {
     databaseType              = 'CommonDataService'
     linkedEnvironmentMetadata = @{ baseLanguage = $LanguageCode; currency = @{ code = $CurrencyName }; templates = @() }
   }
+  # Developer environments can't take a billing plan and reserve no capacity.
+  if ($planId -and $e.Sku -ne 'Developer') { $props.billingPolicy = @{ id = $planId } }
   if ($e.Owner) {
     # A Developer environment belongs to one user: this estate's persona, not the admin running the script.
     $ownerUpn = "$(Get-EstateAlias $e.Owner $Estate)@$domain"
