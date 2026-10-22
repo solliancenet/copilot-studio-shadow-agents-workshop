@@ -549,32 +549,43 @@ pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -ReclaimOnly          # o
 
 ### Phase 7 — Export the artifact pack
 
-```powershell
-pwsh setup/scripts/05_export_artifact_pack.ps1 -Canonicalize    # estate from HALCOURT_ESTATE (or -Estate <id>)
-git diff worksheets/artifact-pack
-```
+1. **Give yourself a role in `Maker-Sandbox-<estate>`.** The export reads every environment's agents, and
+   the admin has no Dataverse role in this one: it's a Developer environment, and Dev Kim is its only System
+   Administrator — so the admin can't grant itself one, and Dev has to. These sign `pac` in as Dev, in a
+   profile store of its own so your admin profile is untouched, and give your admin account System
+   Administrator there. Once per estate:
 
-Pulls **this estate** — its environments, its agents and connections in the shared default environment,
-and its accounts (no admins, no sample users) — from the PPAC admin APIs + Microsoft Graph, and writes the
-five estate CSVs, plus `files-export.csv` for 05-06 (the knowledge sites' files and their sensitivity labels).
-That one reads SharePoint with the lab app Phase 4c creates, so run Phase 4c first. `-Canonicalize` maps live names back to the canon's so the export lands on the committed pack
-and `git diff` shows the drift. Without it the script refuses to write into the committed pack; pass
-`-OutDir` for a live-named export.
+   ```bash
+   export XDG_DATA_HOME=/tmp/pac-devkim
+   ~/.dotnet/tools/pac auth create --name devkim --username dev.kim.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' --environment <Maker-Sandbox org URL>
+   ~/.dotnet/tools/pac admin assign-user --environment <Maker-Sandbox environment id> --user <your admin UPN> --role "System Administrator"
+   rm -rf /tmp/pac-devkim; unset XDG_DATA_HOME
+   ```
 
-**One prerequisite: the admin needs a security role in every Dataverse environment**, because the agent
-inventory reads each environment's `bot` table. Environments the admin created in Phase 3 already have it;
-a **Developer** environment does not:
+   - The environment id and org URL are in the Phase 3 summary.
+   - It ends with `Successfully assigned security role 'System Administrator'`.
+   - The estate builder does the same step for you (`10_build_estates.ps1`, phase `devadmin`).
 
-```bash
-pac admin assign-user --environment <environment-id> --user <admin UPN> --role "System Administrator"
-```
+2. **Export the estate over the committed pack.** The script reads this estate's environments, agents,
+   connections and accounts, plus the knowledge sites' files and labels (Phase 4c's app), converts the live
+   names back to the canonical ones, and writes the six CSVs in `worksheets/artifact-pack/`
+   ([ADR-0022](../reference/adr/0022-artifact-export-over-rest.md)). Safe to re-run.
 
-{: .important }
-> **The committed pack is not a pure export, so do not expect an empty `git diff`.** Three columns are
-> hand-written canon that no API returns: agent `description`, the friendly connector names, and the rows
-> for things that aren't Power Platform connections at all. Read the diff as *drift to review*, not as a
-> test that should come out empty —
-> [ADR-0023](../reference/adr/0023-committed-pack-not-pure-export.md).
+   ```bash
+   pwsh setup/scripts/05_export_artifact_pack.ps1 -Canonicalize
+   ```
+
+3. **Review the drift, then keep or discard it.** The diff is what changed between the committed pack and
+   your estate. It is never empty: descriptions, friendly connector names and some rows are hand-written
+   ([ADR-0023](../reference/adr/0023-committed-pack-not-pure-export.md)).
+
+   ```bash
+   git diff worksheets/artifact-pack
+   ```
+
+   - Commit only real changes to the estate. Discard the rest with
+     `git checkout -- worksheets/artifact-pack`.
+   - Exporting somewhere else instead: `-OutDir <folder>`, without `-Canonicalize`, keeps the live names.
 
 ### Phase 8 — Validate
 
