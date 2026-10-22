@@ -100,8 +100,18 @@ function Get-PersonaToken([string]$Alias, [string]$Resource) {
 }
 function Invoke-Json([string]$Method, [string]$Uri, [string]$Token, $Body) {
   $h = @{ Authorization = "Bearer $Token"; Accept = 'application/json' }
-  if ($null -ne $Body) { Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30) }
-  else                 { Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h }
+  try {
+    if ($null -ne $Body) { Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30) }
+    else                 { Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h }
+  } catch {
+    # Name the call: an unexplained 401 twice in a row (fac02, fac03) left only "Response status code does
+    # not indicate success" and Invoke-Json's own line in the log.
+    # Keep the response body: callers match its codes ("$_" -match '0x80042f09|prvRead...' in DvAuto), and
+    # Invoke-RestMethod puts them in ErrorDetails, not in Exception.Message.
+    $code = try { [int]$_.Exception.Response.StatusCode } catch { 0 }
+    $detail = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+    throw "$Method $($Uri.Split('?')[0]) -> $code : $detail"
+  }
 }
 $BAP = 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform'
 function Invoke-Bap([string]$Method, [string]$Path, $Body, [string]$Api = '2021-04-01') {
