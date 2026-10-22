@@ -63,6 +63,7 @@ $phases = @(
   [pscustomobject]@{ Name = 'audit';        Phase = '5b';  Script = '04b_provision_audit.ps1';           Args = @() }
   [pscustomobject]@{ Name = 'agents';       Phase = '6';   Script = '06_provision_agents.ps1';           Args = @() }
   [pscustomobject]@{ Name = 'departed';     Phase = '6.5'; Script = '01_provision_entra.ps1';            Args = @('-MarkDepartedOwner') }
+  [pscustomobject]@{ Name = 'devadmin';     Phase = '7';   Script = $null;                               Args = @() }
 )
 $names = $phases.Name
 foreach ($n in @($From, $To) | Where-Object { $_ }) { if ($n -notin $names) { throw "Unknown phase '$n'. Phases: $($names -join ', ')" } }
@@ -96,6 +97,31 @@ function Invoke-Reclaim([string]$Estate) {
   Write-Host "  reclaimed $($held.Count) seat(s) from $Estate's personas; $(Get-FreeSeats) free"
 }
 
+# Phase 7's prerequisite, without a device code: a Developer environment's only System Administrator is its
+# owner (dev.kim), so the admin can't read Maker-Sandbox - the preflight, 07 and the Phase 7 export all get
+# 403. The RUNBOOK uses `pac admin assign-user`, whose sign-in expires; instead dev.kim (lab password, the
+# same persona sign-in Phase 6 uses) gives the signed-in admin System Administrator there.
+function Grant-DevEnvAdmin([string]$Estate) {
+  $tenant = az account show --query tenantId -o tsv
+  $admin  = az ad signed-in-user show --query id -o tsv
+  $envs = (az rest --method GET --resource https://service.powerapps.com/ --url 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01' -o json | ConvertFrom-Json).value
+  $e = $envs | Where-Object { $_.properties.displayName -eq (Get-EstateName 'Maker-Sandbox' $Estate) } | Select-Object -First 1
+  if (-not $e) { throw "no environment $(Get-EstateName 'Maker-Sandbox' $Estate)" }
+  $org = $e.properties.linkedEnvironmentMetadata.instanceApiUrl.TrimEnd('/')
+  $tok = (Invoke-RestMethod -Method POST "https://login.microsoftonline.com/$tenant/oauth2/v2.0/token" -Body @{
+    client_id = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'; grant_type = 'password'; scope = "$org/.default"
+    username = "$(Get-EstateAlias 'dev.kim' $Estate)@$tenantDomain"; password = 'Lab-Only-Passw0rd!' }).access_token
+  $h = @{ Authorization = "Bearer $tok"; Accept = 'application/json' }
+  $su = (Invoke-RestMethod -Headers $h "$org/api/data/v9.2/systemusers?`$select=systemuserid&`$filter=azureactivedirectoryobjectid eq $admin").value | Select-Object -First 1
+  if (-not $su) { throw "the signed-in admin has no user record in $($e.properties.displayName)" }
+  $role = (Invoke-RestMethod -Headers $h "$org/api/data/v9.2/roles?`$select=roleid&`$filter=name eq 'System Administrator'").value | Select-Object -First 1
+  $have = (Invoke-RestMethod -Headers $h "$org/api/data/v9.2/systemusers($($su.systemuserid))/systemuserroles_association?`$select=roleid").value.roleid
+  if ($have -contains $role.roleid) { return 'already System Administrator' }
+  Invoke-RestMethod -Method POST -Headers $h -ContentType 'application/json' -Uri "$org/api/data/v9.2/systemusers($($su.systemuserid))/systemuserroles_association/`$ref" `
+    -Body (@{ '@odata.id' = "$org/api/data/v9.2/roles($($role.roleid))" } | ConvertTo-Json) | Out-Null
+  'assigned System Administrator'
+}
+
 $summary = @()
 foreach ($estate in $Estates) {
   $estate = Resolve-Estate $estate
@@ -118,8 +144,12 @@ foreach ($estate in $Estates) {
     $log = Join-Path $logDir ("{0}-{1}.log" -f $ph.Phase, $ph.Name)
     $t0 = Get-Date
     Write-Host ("[{0:HH:mm:ss}] Phase {1,-4} {2,-13} {3} {4}" -f $t0, $ph.Phase, $ph.Name, $ph.Script, ($ph.Args -join ' '))
-    & pwsh -NoProfile -File (Join-Path $PSScriptRoot $ph.Script) @($ph.Args) *> $log
-    $code = $LASTEXITCODE
+    if ($ph.Script) {
+      & pwsh -NoProfile -File (Join-Path $PSScriptRoot $ph.Script) @($ph.Args) *> $log
+      $code = $LASTEXITCODE
+    } else {                                                             # in-process step (devadmin)
+      try { Grant-DevEnvAdmin $estate *> $log; $code = 0 } catch { "$_" | Out-File $log -Append; $code = 1 }
+    }
     $mins = [math]::Round(((Get-Date) - $t0).TotalMinutes, 1)
     $timings += [pscustomobject]@{ Phase = $ph.Phase; Name = $ph.Name; Minutes = $mins; Exit = $code }
     $tail = (Get-Content $log -Tail 2 -ErrorAction SilentlyContinue) -join ' | '
