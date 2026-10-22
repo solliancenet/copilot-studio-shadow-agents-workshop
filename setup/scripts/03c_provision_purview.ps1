@@ -28,7 +28,8 @@ param(
   [string]$Estate       = $env:HALCOURT_ESTATE,
   [string]$AppConfig    = (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.json'),
   [string]$Pfx          = (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.pfx'),
-  [switch]$SkipSearchCheck
+  [switch]$SkipSearchCheck,
+  [switch]$Remove                 # teardown: delete this estate's label policy, then its label (Phase 9)
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
@@ -59,6 +60,28 @@ function Graph([string]$Method, [string]$Path, $Body, [string]$ContentType = 'ap
   if ($null -eq $Body) { return Invoke-RestMethod -Method $Method -Uri $uri -Headers $h }
   if ($Body -is [byte[]]) { return Invoke-RestMethod -Method $Method -Uri $uri -Headers $h -Body $Body -ContentType $ContentType }
   Invoke-RestMethod -Method $Method -Uri $uri -Headers $h -Body ($Body | ConvertTo-Json -Depth 8) -ContentType $ContentType
+}
+
+# ---- teardown (-Remove): policy first, then label ------------------------------------------------------
+# Purview won't delete a label a policy still publishes, and a removed policy takes a while to withdraw, so
+# the label removal retries and a timeout just asks for a re-run. The group HR-Leadership-<estate> goes with
+# 99 -RemovePersonas (every *-<estate> group); the labelled copy goes with the HR-Benefits site.
+if ($Remove) {
+  Import-Module ExchangeOnlineManagement
+  Connect-IPPSSession -AccessToken (Get-AppToken 'https://ps.compliance.protection.outlook.com') -Organization $domain -ShowBanner:$false
+  if (Get-LabelPolicy -Identity $policy -ErrorAction SilentlyContinue) {
+    Remove-LabelPolicy -Identity $policy -Confirm:$false; Write-Host "Label policy $policy removed"
+  } else { Write-Host "Label policy $policy not found" }
+  if (Get-Label -Identity $labelName -ErrorAction SilentlyContinue) {
+    $gone = $false
+    for ($i = 0; $i -lt 10 -and -not $gone; $i++) {
+      try { Remove-Label -Identity $labelName -Confirm:$false -ErrorAction Stop; $gone = $true }
+      catch { Write-Host "   label still published ($($_.Exception.Message.Split([char]10)[0])) - retrying in 60s"; Start-Sleep 60 }
+    }
+    Write-Host $(if ($gone) { "Label $labelName removed" } else { "Label $labelName NOT removed yet - re-run with -Remove later" })
+  } else { Write-Host "Label $labelName not found" }
+  Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+  return
 }
 
 # ---- 1. the group -------------------------------------------------------------------------------------
