@@ -12,8 +12,9 @@ Agents are DATA: the pac workspace under setup/agents/<slug>/ holds instructions
 manifest holds owner/environment/connections/audience. Benign agents are authored+committed here; the six
 planted agents are captured once with `pac copilot clone` and committed (capture:"clone").
 
-Prerequisites (run first): 01 (personas+groups), 03/03b (SharePoint+OneDrive grounding), 04 (Dataverse),
-owner licenses, default-environment Dataverse, and a billing plan on Prod+Claims-Test. See RUNBOOK Phase 6.
+Prerequisites (run first): the shared Phase 1 values (setup/lab-endpoints.local.json, from the deployment's
+owner), 01 (personas+groups), 03/03b (SharePoint+OneDrive grounding), 04 (Dataverse), owner licenses,
+default-environment Dataverse, and a billing plan on Prod+Claims-Test. See RUNBOOK Phase 6.
 
 Auth: az's admin sign-in for BAP/Graph/Dataverse admin calls; per-owner password sign-in (ROPC + a pac
 auth profile) so each agent is built as its persona. The CA baseline only MFAs admins, so persona
@@ -49,9 +50,15 @@ $realPac   = if (Test-Path "$HOME/.dotnet/tools/pac") { "$HOME/.dotnet/tools/pac
 
 # Committed agent workspaces carry NO secrets/endpoints - they use ${VAR} tokens (e.g. ${POLICY_API_FQDN},
 # ${POLICY_API_KEY}, ${UNDERWRITING_MCP_FQDN}, ${MCP_BEARER}) that are substituted at provision time from the
-# Phase 1 azd environment. So the planted key lives in the LIVE agent (that IS the vulnerability) but never in git.
-$AzdValues = @{}
-try { (& azd env get-values 2>$null) | ForEach-Object { if ($_ -match '^([A-Za-z0-9_]+)="?(.*?)"?$') { $AzdValues[$Matches[1]] = $Matches[2] } } } catch {}
+# ONE shared Phase 1 deployment (_lab_endpoints.ps1: the owner's setup/lab-endpoints.local.json, else azd).
+# So the planted key lives in the LIVE agent (that IS the vulnerability) but never in git.
+. (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
+$lab = Get-LabEndpoints
+$AzdValues = $lab.Values
+if ($lab.Missing.Count) {
+  $msg = "Phase 1 values missing from $($lab.Source): $($lab.Missing -join ', '). Get setup/lab-endpoints.local.json from the shared deployment's owner (RUNBOOK Phase 1)."
+  if ($VerifyOnly) { Write-Warning $msg } else { throw $msg }
+} else { Write-Host "Phase 1 endpoints from $($lab.Source)" }
 $AzClient  = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'   # Azure CLI public client (for persona ROPC)
 
 # ---- identity / tenant --------------------------------------------------------------------------------
@@ -214,21 +221,31 @@ function Pa([string]$Alias, [string]$Method, [string]$Path, $Body, [string]$EnvI
 # rerun finds the connector it made (Halcourt-Underwriting-MCP-<estate> -> ...-mgra for estate mgray).
 function Get-CustomConnectorDisplay([object]$Def) { $n = Get-EstateName $Def.customConnector.name $Estate; if ($n.Length -gt 30) { $n.Substring(0, 30) } else { $n } }
 $script:CustomConnectors = @{}
-function Find-CustomConnector([object]$Def) {
+function Get-CustomConnectorApi([object]$Def) {
   $E = Env $Def.environment; $want = Get-CustomConnectorDisplay $Def
   $all = (Invoke-Json GET "$PA/apis?api-version=2016-11-01&`$filter=environment eq '$($E.Id)' and IsCustomApi eq 'True'" (Get-PersonaToken $Def.owner 'https://service.powerapps.com/') $null).value
-  ($all | Where-Object { $_.properties.displayName -eq $want } | Select-Object -First 1).name
+  $all | Where-Object { $_.properties.displayName -eq $want } | Select-Object -First 1
 }
+function Find-CustomConnector([object]$Def) { (Get-CustomConnectorApi $Def).name }
 function Ensure-CustomConnector([string]$Name, [object]$Def) {
   if ($script:CustomConnectors[$Name]) { return $script:CustomConnectors[$Name] }
-  $id = Find-CustomConnector $Def
-  if (-not $id -and -not $VerifyOnly) {
+  $api = Get-CustomConnectorApi $Def; $id = $api.name
+  $host_ = ([Uri]$AzdValues['UNDERWRITING_MCP_FQDN']).Host
+  # The connector carries the MCP host itself, not a ${...} token: a connector made against an earlier Phase 1
+  # deployment keeps calling it until it is repointed (ADR-0005 - estates move onto the shared deployment).
+  $stale = $false
+  if ($api -and $host_) {
+    $have = try { ([Uri]$api.properties.backendService.serviceUrl).Host } catch { '' }
+    if ($have -ne $host_) {
+      if ($VerifyOnly) { Write-Host "    connector for $Name calls '$have' - would repoint at '$host_'" } else { $stale = $true }
+    }
+  }
+  if ((-not $id -or $stale) -and -not $VerifyOnly) {
     # The MCP wizard's own output, committed (setup/agents/<ws>/mcp-connector): one POST operation marked
     # x-ms-agentic-protocol mcp-streamable-1.0, API-key auth in the Authorization header. Created as the
     # connection's owner with pac, so the connector, its connection and the agent all belong to one maker.
     $src = Join-Path $AgentsDir $Def.customConnector.workspace
     $tmp = Join-Path ([IO.Path]::GetTempPath()) "halcourt-connector/$Name"; New-Item -ItemType Directory -Force $tmp | Out-Null
-    $host_ = ([Uri]$AzdValues['UNDERWRITING_MCP_FQDN']).Host
     (Get-Content (Join-Path $src 'apiDefinition.swagger.json') -Raw).Replace('${UNDERWRITING_MCP_HOST}', $host_).Replace('${MCP_CONNECTOR_NAME}', (Get-CustomConnectorDisplay $Def)) |
       Set-Content (Join-Path $tmp 'apiDefinition.swagger.json') -NoNewline
     Copy-Item (Join-Path $src 'apiProperties.json') $tmp -Force
@@ -236,9 +253,25 @@ function Ensure-CustomConnector([string]$Name, [object]$Def) {
     $env:XDG_DATA_HOME = Get-PacHome $Def.owner
     & $realPac auth clear 2>&1 | Out-Null
     & $realPac auth create --name $Def.owner --username (Get-Upn $Def.owner) --password $LabPassword --environment $E.Org 2>&1 | Out-Null
-    $out = & $realPac connector create --api-definition-file (Join-Path $tmp 'apiDefinition.swagger.json') --api-properties-file (Join-Path $tmp 'apiProperties.json') --environment $E.Org 2>&1
-    for ($i = 0; $i -lt 6 -and -not $id; $i++) { Start-Sleep 10; $id = Find-CustomConnector $Def }
-    if (-not $id) { throw "custom connector for $Name not created: $(($out | Select-Object -Last 2) -join ' ')" }
+    $files = @('--api-definition-file', (Join-Path $tmp 'apiDefinition.swagger.json'), '--api-properties-file', (Join-Path $tmp 'apiProperties.json'), '--environment', $E.Org)
+    if ($stale -and -not $api.properties.xrmConnectorId) {
+      throw "custom connector for $Name calls '$have', not '$host_', and has no Dataverse connector id to update - delete it and re-run"
+    }
+    if ($stale) {
+      # Update in place (pac wants the Dataverse connector id): the connector name, its connection and the
+      # agent's reference to it all stay, so nothing needs rebinding.
+      $out = & $realPac connector update --connector-id $api.properties.xrmConnectorId @files 2>&1
+      $now = $null
+      for ($i = 0; $i -lt 6 -and $now -ne $host_; $i++) {
+        Start-Sleep 10; $now = try { ([Uri](Get-CustomConnectorApi $Def).properties.backendService.serviceUrl).Host } catch { '' }
+      }
+      if ($now -ne $host_) { throw "custom connector for $Name still calls '$now', not '$host_': $(($out | Select-Object -Last 2) -join ' ')" }
+      Write-Host "    repointed connector for $Name at $host_"
+    } else {
+      $out = & $realPac connector create @files 2>&1
+      for ($i = 0; $i -lt 6 -and -not $id; $i++) { Start-Sleep 10; $id = Find-CustomConnector $Def }
+      if (-not $id) { throw "custom connector for $Name not created: $(($out | Select-Object -Last 2) -join ' ')" }
+    }
   }
   $script:CustomConnectors[$Name] = $id; $id
 }
@@ -264,19 +297,26 @@ function Ensure-Connection([string]$Name, [object]$Def) {
   $mine = @((Pa $alias GET "apis/$connector/connections" $null $E.Id).value | Where-Object {
     $_.properties.createdBy.userPrincipalName -eq $upn -and $_.properties.displayName -eq $Name })
   $ok = $mine | Where-Object { @($_.properties.statuses.status) -notcontains 'Error' -and @($_.properties.statuses.status) -contains 'Connected' } | Select-Object -First 1
+  if ($Def.apiKeyFrom) {
+    # An API-key connection has no OAuth consent, and its key can't be read back: one made against an earlier
+    # Phase 1 deployment holds a stale key whatever its status says. So every run sends the current key - to
+    # the existing connection when there is one (Connected or not), so its references stay bound.
+    $have = if ($ok) { $ok } elseif ($mine) { $mine[0] } else { $null }
+    if ($VerifyOnly) { return $(if ($ok) { "ok ($($ok.name))" } elseif ($have) { "NOT CONNECTED ($($have.name)) - a run re-sends its key" } else { 'MISSING (would create, API key)' }) }
+    $cid = if ($have) { $have.name } else { [guid]::NewGuid().ToString('N') }
+    $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name
+                connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
+    Pa $alias PUT "apis/$connector/connections/$cid" @{ properties = $props } $E.Id | Out-Null
+    $st = @((Pa $alias GET "apis/$connector/connections/$cid" $null $E.Id).properties.statuses.status)
+    if ($st -contains 'Error' -or ($have -and $st -notcontains 'Connected')) { throw "connection $Name is $($st -join ',') after sending its key" }
+    $script:ConnIds[$Name] = $cid; return $(if ($have) { "ok ($cid, key re-sent)" } else { "created ($cid, API key)" })
+  }
   if ($ok) { $script:ConnIds[$Name] = $ok.name; return "ok ($($ok.name))" }
   if ($VerifyOnly) { return 'MISSING (would create + consent)' }
   $c = if ($mine) { $mine[0] } else {
     $props = @{ environment = @{ id = "/providers/Microsoft.PowerApps/environments/$($E.Id)"; name = $E.Id }; displayName = $Name }
     if ($Def.params) { $props.connectionParameters = $Def.params }
-    if ($Def.apiKeyFrom) { $props.connectionParameters = @{ api_key = "Bearer $($AzdValues[$Def.apiKeyFrom])" } }
     Pa $alias PUT "apis/$connector/connections/$([guid]::NewGuid().ToString('N'))" @{ properties = $props } $E.Id
-  }
-  if ($Def.apiKeyFrom) {
-    # An API-key connection has no OAuth consent: it is Connected (or not) as soon as it exists.
-    $st = @((Pa $alias GET "apis/$connector/connections/$($c.name)" $null $E.Id).properties.statuses.status)
-    if ($st -contains 'Error') { throw "connection $Name is in Error: $($st -join ',')" }
-    $script:ConnIds[$Name] = $c.name; return "created ($($c.name), API key)"
   }
   $link = (Pa $alias POST "apis/$connector/connections/$($c.name)/getConsentLink" @{ redirectUrl = 'https://global.consent.azure-apim.net/redirect' } $E.Id).consentLink
   $out = python3 (Join-Path $PSScriptRoot 'lib/consent_browser.py') --upn $upn --password $LabPassword --consent-url $link 2>&1
@@ -429,7 +469,7 @@ function Provision-Agent([object]$A) {
     $p = Join-Path $wsdir "topics/$t.mcs.yml"
     if (Test-Path $p) { Remove-Item $p -Force; Write-Host "    removed retired topic $t" }
   }
-  # Inject Phase 1 endpoints/secrets from azd into ${VAR} tokens, and resolve ${FLOW:<name>} to a live flow
+  # Inject the shared Phase 1 endpoints/secrets into ${VAR} tokens, and resolve ${FLOW:<name>} to a live flow
   # id (as the owner - flows are estate-specific record ids, not secrets, so they stay out of git too).
   Get-ChildItem $wsdir -Recurse -Include *.mcs.yml | ForEach-Object {
     $c = Get-Content $_.FullName -Raw; $changed = $false

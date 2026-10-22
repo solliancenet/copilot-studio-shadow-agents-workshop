@@ -23,6 +23,7 @@ param(
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot '_estate.ps1')
 . (Join-Path $PSScriptRoot '_access_model.ps1')
+. (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
 $Estate = Resolve-Estate $Estate
 
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) { throw 'This script needs the Azure CLI (az) - see scripts/env.sh.' }
@@ -146,19 +147,28 @@ Check "SharePoint site HR-Benefits-$Estate" '04-01 and 04-02 grounding; 05-03; 0
 }
 
 Check 'Training endpoints: Policy API and Underwriting MCP' '04-03, 04-05; 05-01 retests' {
-  $rg = "rg-halcourt-$Estate-lab"
-  $apps = az containerapp list -g $rg --query "[].{name:name,fqdn:properties.configuration.ingress.fqdn,min:properties.template.scale.minReplicas}" -o json 2>$null | ConvertFrom-Json
-  if (-not $apps) { return Result 'FAIL' "no container apps in resource group $rg (Phase 1)" }
-  $out = @(); $failed = $false
-  foreach ($k in 'policyapi', 'underwritingmcp') {
-    $a = $apps | Where-Object name -like "ca-$k-*" | Select-Object -First 1
-    if (-not $a) { $out += "$k MISSING"; $failed = $true; continue }
+  # One deployment serves every estate (ADR-0005), so probe its two endpoints rather than an estate resource
+  # group: each must answer 401 without its secret and serve with it. Needs no Azure role.
+  $lab = Get-LabEndpoints
+  if ($lab.Missing.Count) { return Result 'FAIL' "no $($lab.Missing -join ', ') in $($lab.Source) - get setup/lab-endpoints.local.json from the deployment's owner (Phase 1)" }
+  $v = $lab.Values; $out = @(); $failed = $false
+  $mcpBody = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+  $mcpHdr  = @{ Accept = 'application/json, text/event-stream' }
+  $probes = @(
+    @{ Name = 'policyapi';       Uri = "$($v.POLICY_API_FQDN)/policy/all";          Method = 'GET';  Auth = @{ 'x-api-key' = $v.POLICY_API_KEY } },
+    @{ Name = 'underwritingmcp'; Uri = "$($v.UNDERWRITING_MCP_FQDN)/underwriting"; Method = 'POST'; Auth = @{ Authorization = "Bearer $($v.MCP_BEARER)" } }
+  )
+  foreach ($p in $probes) {
+    $body = if ($p.Method -eq 'POST') { $mcpBody } else { $null }
     try {
-      $resp = Invoke-WebRequest -Uri "https://$($a.fqdn)/" -Method GET -TimeoutSec 20 -SkipHttpErrorCheck
-      $out += "$k HTTP $($resp.StatusCode)" + $(if ($a.min -lt 1) { ' (minReplicas 0: expect a cold start)' } else { '' })
-    } catch { $out += "$k UNREACHABLE"; $failed = $true }
+      $anon = Invoke-WebRequest -Uri $p.Uri -Method $p.Method -Headers $mcpHdr -Body $body -ContentType 'application/json' -TimeoutSec 60 -SkipHttpErrorCheck
+      $auth = Invoke-WebRequest -Uri $p.Uri -Method $p.Method -Headers ($mcpHdr + $p.Auth) -Body $body -ContentType 'application/json' -TimeoutSec 60 -SkipHttpErrorCheck
+      $ok = $anon.StatusCode -eq 401 -and $auth.StatusCode -eq 200
+      if (-not $ok) { $failed = $true }
+      $out += "$($p.Name) $($anon.StatusCode) without / $($auth.StatusCode) with secret" + $(if ($auth.StatusCode -eq 401) { ' (secret is not the deployed one - ask the owner)' } else { '' })
+    } catch { $out += "$($p.Name) UNREACHABLE"; $failed = $true }
   }
-  if ($failed) { Result 'FAIL' ($out -join '; ') } else { Result 'PASS' ($out -join '; ') }
+  if ($failed) { Result 'FAIL' ($out -join '; ') } else { Result 'PASS' (($out -join '; ') + " (from $($lab.Source))") }
 }
 
 # Agents: every entry in setup/agents/manifest.json must exist in its environment, by display name.

@@ -1,6 +1,6 @@
 # ADR-0012: The azd environment name is unique per estate
 
-**Status:** Accepted — would be superseded by [ADR-0005](0005-shared-azure-deployment.md) if accepted
+**Status:** Superseded by [ADR-0005](0005-shared-azure-deployment.md) — Phase 1 now runs once per lab, not per estate. The naming rule below still applies to that one deployment.
 **Applies to:** `setup/RUNBOOK.md` → Phase 1, `infra/main.bicep`
 
 ## Context
@@ -19,6 +19,10 @@ fails differently — the Foundry soft-delete trap (errata → Phase 1).
 Name each estate's environment `halcourt-<estate>-lab`; add a suffix (`-2`, a date) when you rebuild. Pass
 `--subscription` and `--location` explicitly — otherwise azd falls back to its global defaults
 (`azd config get defaults`), which can point at a subscription outside the lab tenant.
+
+Under ADR-0005 there is one deployment, so the rule becomes: give it a name nobody has used in the
+subscription. A second `azd up` under the shared deployment's name replaces its secrets and breaks every
+estate's agents.
 
 ## Consequences
 

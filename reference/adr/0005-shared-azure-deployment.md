@@ -1,13 +1,13 @@
 # ADR-0005: One shared Azure deployment for every estate
 
-**Status:** Proposed — not implemented yet ([issue #26](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/issues/26))
+**Status:** Accepted ([issue #26](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/issues/26))
 **Applies to:** `setup/RUNBOOK.md` → Phase 1, Phase 9; `setup/scripts/06_provision_agents.ps1`,
 `00b_preflight.ps1`, `99_teardown.ps1`; [ADR-0001](0001-estates.md) → shared items
 
 ## Context
 
-Phase 1 runs `azd up` once per estate, under `halcourt-<estate>-lab`
-([ADR-0012](0012-azd-environment-per-estate.md)). Every estate gets its own resource group,
+Phase 1 ran `azd up` once per estate, under `halcourt-<estate>-lab`
+([ADR-0012](0012-azd-environment-per-estate.md), now superseded). Every estate got its own resource group,
 registry, Container Apps environment, Foundry account and gpt-5-mini deployment. Two estates in the build
 subscription already have one each (`rg-halcourt-mgray-lab-1021`, `rg-halcourt-jcounts-lab`).
 
@@ -36,28 +36,34 @@ deployment, using the same four values.
 
 ## Consequences
 
-- Saves a deployment's time and Foundry quota per estate. A facilitator building an estate needs no Azure
-  role at all.
+- Saves a deployment's time and Foundry quota per estate. A facilitator building an estate no longer
+  needs Owner on the subscription; Contributor still covers the billing plan and the Graph billing resource.
 - Every estate shares one Policy API key. Scenario E exposes that key to attendees by design and it guards
   only lab data, so sharing it adds no exposure.
 - **Redeploying with new secrets, or tearing down, breaks every estate** until each re-runs Phase 6. Hence
   one owner and fixed secrets.
 - Container App logs mix every estate's traffic. No task reads them.
 
-Changes this needs (tracked in the issue):
+How it is implemented:
 
-1. `06_provision_agents.ps1` reads the four values from `azd env get-values`, i.e. the facilitator's own
-   gitignored `.azure/`. It needs another source: parameters, or a gitignored values file.
-2. Phase 9 and `99_teardown.ps1` tell every facilitator to `azd down --purge --force`. Estate teardown must
-   stop doing that; removing the shared deployment becomes the owner's separate step.
-3. `00b_preflight.ps1` checks `rg-halcourt-<estate>-lab`. It should check the shared endpoints instead
-   (each answers 401 without its secret).
-4. RUNBOOK Phase 1 becomes "get the four values"; the owner's `azd up` moves to a once-per-lab section.
-   ADR-0001's shared items and ADR-0012 is marked superseded.
-5. Existing estates: pick one deployment as the shared one, re-run Phase 6 for the other estate with its
-   values, then `azd down` the spare.
+1. **Where the values come from.** `setup/scripts/_lab_endpoints.ps1` reads the four values from
+   `setup/lab-endpoints.local.json` (gitignored), else from the selected azd environment. The owner writes
+   the file after `azd up` (`Save-LabEndpoints`) and hands it to each facilitator out of band.
+   `06_provision_agents.ps1` stops on a missing value rather than pushing agents with an unfilled `${…}`.
+2. **Teardown.** `99_teardown.ps1` and RUNBOOK Phase 9 no longer tell a facilitator to `azd down`;
+   removing the shared deployment is the owner's step, after the last estate.
+3. **Preflight.** `00b_preflight.ps1` probes the shared endpoints: each must answer 401 without its
+   secret and 200 with it. It needs no Azure role.
+4. **RUNBOOK Phase 1** is "get the values file"; the owner's `azd up` is a once-per-lab section.
+   ADR-0001's shared items are updated and ADR-0012 is superseded.
+5. **Existing estates** (at the time, `rg-halcourt-mgray-lab-1021` and `rg-halcourt-jcounts-lab`): pick
+   one as the shared deployment, re-run Phase 6 for the other estate with its values, then `azd down` the
+   spare. Phase 6 moves an existing estate: topics re-take the `${…}` values on every push, the MCP
+   custom connector is repointed in place when its host differs, and the MCP connection's key is re-sent
+   (it can't be read back to compare). A run with `-SkipConnections` repoints the connector but leaves the
+   old key, so don't use it for a move.
 
 ## Alternatives considered
 
 - **Keep one deployment per estate** (today). Independent, but every estate pays the time and quota, and
-  each needs an Azure role in the subscription.
+  each facilitator needs Owner on the subscription.

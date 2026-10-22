@@ -9,14 +9,14 @@ and what it costs. The [RUNBOOK](../../setup/RUNBOOK.md) stays a list of steps a
 | [0002](0002-shared-vs-individual-estates.md) | Attendees share one estate; facilitators build individual estates | Accepted (open questions) |
 | [0003](0003-project-local-sign-in.md) | CLI sign-ins live in the repo, not your home folder | Accepted |
 | [0004](0004-one-licence-per-attendee.md) | One Microsoft 365 E5 licence per attendee | Accepted (licensing open) |
-| [0005](0005-shared-azure-deployment.md) | One shared Azure deployment for every estate | Proposed |
+| [0005](0005-shared-azure-deployment.md) | One shared Azure deployment for every estate | Accepted |
 | [0006](0006-personas-on-the-tenant-domain.md) | Personas live on the tenant's own domain; aliases stay fixed | Accepted |
 | [0007](0007-shared-mailbox-via-exchange.md) | The `it.helpdesk` shared mailbox is created through Exchange with the az sign-in | Accepted |
 | [0008](0008-departed-owner-stays-enabled.md) | The departed owner stays enabled; his departure is a leave date | Accepted |
 | [0009](0009-eight-licences-per-estate.md) | Eight E5 licences per estate | Accepted |
 | [0010](0010-ca-baseline-replaces-security-defaults.md) | A Conditional Access baseline replaces security defaults | Accepted |
 | [0011](0011-device-code-sign-in-and-org-consent.md) | Scripts reuse the az sign-in, fall back to device codes, and use org-wide Graph consent | Accepted |
-| [0012](0012-azd-environment-per-estate.md) | The azd environment name is unique per estate | Accepted |
+| [0012](0012-azd-environment-per-estate.md) | The azd environment name is unique per estate | Superseded by 0005 |
 | [0013](0013-environment-region-assigned.md) | Environments take the region the platform assigns | Accepted |
 | [0014](0014-shared-billing-plan-per-region.md) | Estates share one billing plan per region | Accepted |
 | [0015](0015-copilot-studio-authors-setting-optional.md) | The *Copilot Studio authors* tenant setting is optional | Accepted |

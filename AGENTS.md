@@ -25,7 +25,7 @@
 |---|---|
 | Org | **Halcourt Mutual** (mid-size regulated insurer) |
 | Tenant | `halcourtmutual.onmicrosoft.com` — the **canonical** domain, used by this file, the artifact pack and the lab pages. A live lab tenant keeps the domain Microsoft assigned it (e.g. `0zwdt94t.onmicrosoft.com`); see **Live estate naming** below. |
-| Lab infra endpoints | Azure Container Apps default FQDNs (`*.azurecontainerapps.io`) recorded from the Phase 1 deployment outputs — facilitator-controlled, safe; no custom domain or DNS |
+| Lab infra endpoints | Azure Container Apps default FQDNs (`*.azurecontainerapps.io`) recorded from the Phase 1 deployment outputs — one deployment shared by every estate, facilitator-controlled, safe; no custom domain or DNS |
 | Internal Policy API | `https://<policy-api-fqdn>/policy` (`<policy-api-fqdn>` = `ca-policyapi-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
 | Underwriting MCP server | `https://<mcp-fqdn>/underwriting` (`<mcp-fqdn>` = `ca-underwritingmcp-<suffix>.<region>.azurecontainerapps.io`, from Phase 1 outputs) |
 
