@@ -33,6 +33,8 @@ statement of it.
 
 - the default environment (`Halcourt (default)`), named once by whoever runs first;
 - the Conditional Access baseline (Phase 0);
+- the Copilot Studio pay-as-you-go billing plan, one per region, and its resource group (Phase 3,
+  [ADR-0014](0014-shared-billing-plan-per-region.md));
 - the PnP app registration (Phase 4);
 - the `halcourt-lab-compliance` app and `rg-halcourt-graph-billing` (Phase 4c, [ADR-0029](0029-purview-app-only-identity.md));
 - the Phase 1 Azure deployment — one per lab, not per tenant ([ADR-0005](0005-shared-azure-deployment.md)).

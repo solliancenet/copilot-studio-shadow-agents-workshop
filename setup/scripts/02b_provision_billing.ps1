@@ -8,8 +8,11 @@ its agents run without a plan.
 
 Estates in one tenant SHARE a plan per region (it is just an Azure meter; each environment's usage is
 reported separately). So this finds a plan in the environments' region with the Copilot Studio meter on and
-links to it; if none exists it creates the once-per-region plan - a Microsoft.PowerPlatform/accounts Azure
-resource plus a billing policy - then links.
+links to it, whatever its name (a Dev Program tenant may already have one, e.g. ppccdevcanada); if none
+exists it creates the once-per-region plan - a Microsoft.PowerPlatform/accounts Azure resource plus a billing
+policy - then links. A plan it creates is SHARED, so its names carry the region, never an estate id: resource
+group rg-halcourt-billing, account ppcc-halcourt-<region>, plan Halcourt-PAYG-<region>. No estate owns it, and
+estate teardown (99) only unlinks.
 
 Reuses az's sign-in for both ARM and api.powerplatform.com (no device code). Region-lock: a plan only lists
 environments in its own region, so the plan region must match where Phase 3 put the environments (a macro
@@ -20,9 +23,9 @@ Lines marked [verify] are the create-a-new-plan path, unconfirmed on a tenant th
 param(
   [string]$Estate = $env:HALCOURT_ESTATE,               # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$SubscriptionId,                              # default: az's current subscription
-  [string]$ResourceGroup,                               # default: rg-halcourt-billing-<estate>
+  [string]$ResourceGroup = 'rg-halcourt-billing',       # shared by every estate: no estate id
   [string]$ResourceGroupLocation = 'eastus',            # AZURE region for the RG; unrelated to the plan's region
-  [string]$PlanName                                     # default: Halcourt-PAYG-<estate>
+  [string]$PlanName                                     # default: Halcourt-PAYG-<region> (shared)
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
@@ -53,8 +56,6 @@ function Invoke-Rest([string]$Method, [string]$Url, [string]$Resource, $Body) {
 }
 
 if (-not $SubscriptionId) { $SubscriptionId = az account show --query id -o tsv }
-if (-not $ResourceGroup)  { $ResourceGroup  = "rg-halcourt-billing-$Estate" }
-if (-not $PlanName)       { $PlanName       = "Halcourt-PAYG-$Estate" }
 Write-Host "Estate: $Estate   Subscription: $SubscriptionId"
 
 # --- Resolve this estate's Prod + Claims-Test and their region ------------------------------------------
@@ -68,16 +69,25 @@ foreach ($canon in 'Halcourt-Prod', 'Claims-Test') {
 }
 $region = $targets[0].Region
 if ($targets.Region | Where-Object { $_ -ne $region }) { throw "Prod and Claims-Test are in different regions - link them to separate plans." }
+if (-not $PlanName) { $PlanName = "Halcourt-PAYG-$region" }
 Write-Host "Linking to a '$region' plan: $($targets.Name -join ', ')"
 
 # --- Find a plan in that region with the Copilot Studio (MCSMessages) meter on --------------------------
+# Prefer the kit's own Halcourt-PAYG-<region>; otherwise the region's one MCS-metered plan. More than one
+# (e.g. a legacy per-estate plan beside the Dev Program's) is reported: estates should share ONE.
 function Get-McsPlan([string]$Region) {
-  $policies = (Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value
-  $policies | Where-Object {
-    $_.location -eq $Region -and ($_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState })
-  } | Select-Object -First 1
+  $policies = @((Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value | Where-Object {
+    $_.location -eq $Region -and ($_.payGoEntitlements | Where-Object { $_.entitlementId -eq 'MCSMessages' -and $_.payAsYouGoState }) })
+  if ($policies.Count -gt 1) { Write-Warning "$($policies.Count) Copilot Studio plans in '$Region' ($($policies.name -join ', ')) - estates should share one; linking to $((@($policies | Where-Object name -eq $PlanName) + $policies)[0].name)." }
+  (@($policies | Where-Object name -eq $PlanName) + $policies) | Select-Object -First 1
 }
 $plan = Get-McsPlan $region
+# A kit plan whose Copilot Studio meter isn't on (yet) isn't matched above; re-use it rather than POST a
+# second plan with the same name.
+if (-not $plan) {
+  $plan = (Invoke-Rest GET "$PP/licensing/billingPolicies?$api" $PP).value | Where-Object { $_.location -eq $region -and $_.name -eq $PlanName } | Select-Object -First 1
+  if ($plan) { Write-Warning "Plan $PlanName exists but its Copilot Studio meter is off - turn it on in PPAC (Licensing -> Billing Plans)." }
+}
 
 if (-not $plan) {
   # [verify] Once-per-region setup, untested here because the tenant already had a plan. A plan is two
@@ -86,15 +96,15 @@ if (-not $plan) {
   Write-Host "No '$region' plan found - creating one (once-per-region setup)."
 
   # The resource group is ordinary Azure: its location is metadata and need NOT match the plan's region.
-  az group show -n $ResourceGroup -o none 2>$null
+  az group show -n $ResourceGroup --subscription $SubscriptionId -o none 2>$null
   if ($LASTEXITCODE -ne 0) {
     Write-Host "  creating resource group $ResourceGroup in $ResourceGroupLocation"
-    az group create -n $ResourceGroup -l $ResourceGroupLocation -o none
+    az group create -n $ResourceGroup -l $ResourceGroupLocation --subscription $SubscriptionId -o none
   }
 
   # The ARM account takes the Power Platform region TITLE-CASED ('Canada'); the billing policy below takes
   # the same region lower-case ('canada'). They really are spelled differently.
-  $accountName = "ppcc-$Estate"
+  $accountName = "ppcc-halcourt-$region"
   $accountUrl  = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroup" +
                  "/providers/Microsoft.PowerPlatform/accounts/$accountName" + '?api-version=2020-10-30-preview'
   Invoke-Rest PUT $accountUrl 'https://management.azure.com/' @{
@@ -109,6 +119,22 @@ if (-not $plan) {
   if (-not $plan) { throw "Created the plan but could not read it back - check PPAC (Licensing -> Billing Plans)." }
 }
 Write-Host "Plan: $($plan.name) ($($plan.id), $($plan.location))"
+
+# --- Protect the plan's resource group -----------------------------------------------------------------
+# Every estate in the region bills through this group, and a Dev Program tenant's plan sits in a group with a
+# generated name (rg-<number>) that says nothing about the workshop. Tag it and lock it against deletion
+# (CanNotDelete: updates still work, so linking environments is unaffected). A lock needs Owner or User
+# Access Administrator; with Contributor alone this warns and carries on.
+$bi = $plan.billingInstrument
+if ($bi.resourceGroup -and $bi.subscriptionId) {
+  az group update -n $bi.resourceGroup --subscription $bi.subscriptionId --set tags.halcourt-shared='Copilot Studio billing plan - every estate in the tenant' -o none 2>$null
+  if ($LASTEXITCODE) { Write-Warning "Could not tag resource group $($bi.resourceGroup)." }
+  # lock create is an idempotent PUT; its own error says why it failed (role, or a subscription az can't see).
+  $err = az lock create --name halcourt-shared-billing --lock-type CanNotDelete -g $bi.resourceGroup --subscription $bi.subscriptionId `
+    --notes 'Shared Copilot Studio billing plan (ADR-0014). Remove only when the tenant is retired.' -o none 2>&1
+  if ($LASTEXITCODE) { Write-Warning "Could not lock resource group $($bi.resourceGroup): $(($err | Out-String).Trim().Split([char]10)[0]) - a lock needs Owner or User Access Administrator." }
+  else { Write-Host "  $($bi.resourceGroup) locked against deletion (halcourt-shared-billing)" }
+}
 
 # --- Link the two environments --------------------------------------------------------------------------
 $linked = (Invoke-Rest GET "$PP/licensing/billingPolicies/$($plan.id)/environments?$api" $PP).value.environmentId

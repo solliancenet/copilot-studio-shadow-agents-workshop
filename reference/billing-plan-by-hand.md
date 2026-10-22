@@ -10,12 +10,38 @@ matches theirs.
 
 1. **Read the region from the Phase 3 summary** (the `Region` column — e.g. `canada`), or in PPAC
    (https://admin.powerplatform.microsoft.com) → **Manage → Environments**.
-2. **Create the billing plan in that region.** PPAC → **Licensing → Billing Plans → + New billing plan →
-   Azure subscription**. Name it `Halcourt-PAYG-<estate>` → pick the **Azure subscription** and **resource
-   group** → set the **Meter** to **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select
-   environments**, set the **Region** filter to the summary's region, then **check**
-   `Halcourt-Prod-<estate>` and `Claims-Test-<estate>` → **Save**.
-3. **Mind the region-lock.** A plan only lists environments in its own region: if an environment isn't in
+2. **If the region already has a plan, link to it.** PPAC → **Licensing → Billing Plans**. A plan in the
+   summary's region with the **Copilot Studio** meter on is the shared one, whatever its name (a Dev
+   Program tenant may come with one, e.g. `ppccdevcanada`). Open it → **Edit** → on **Select
+   environments**, **check** `Halcourt-Prod-<estate>` and `Claims-Test-<estate>` → **Save**. Done; skip
+   step 3.
+3. **Otherwise create the region's plan.** First make sure the shared resource group exists in the lab
+   subscription — the script would have created it, but this path doesn't. Its location is only metadata
+   and need not match the plan's region:
+
+   ```bash
+   az group show -n rg-halcourt-billing --subscription <lab-subscription-id> -o none 2>/dev/null ||
+     az group create -n rg-halcourt-billing -l eastus --subscription <lab-subscription-id> -o none
+   ```
+
+   After the plan exists, mark and lock its group as the script does, so nobody deletes it by mistake
+   ([ADR-0014](adr/0014-shared-billing-plan-per-region.md); the lock needs Owner or User Access Administrator):
+
+   ```bash
+   az group update -n rg-halcourt-billing --subscription <lab-subscription-id> \
+     --set tags.halcourt-shared='Copilot Studio billing plan - every estate in the tenant' -o none
+   az lock create --name halcourt-shared-billing --lock-type CanNotDelete -g rg-halcourt-billing \
+     --subscription <lab-subscription-id> --notes 'Shared Copilot Studio billing plan (ADR-0014).' -o none
+   ```
+
+   Then PPAC → **Licensing → Billing Plans → + New billing plan → Azure subscription**. Name it for the
+   region, not your estate — `Halcourt-PAYG-<region>` (e.g. `Halcourt-PAYG-canada`) — because every
+   estate in the region will share it. Pick the **Azure
+   subscription** and the shared **resource group** `rg-halcourt-billing` → set the **Meter** to
+   **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select environments**, set the
+   **Region** filter to the summary's region, then **check** `Halcourt-Prod-<estate>` and
+   `Claims-Test-<estate>` → **Save**.
+4. **Mind the region-lock.** A plan only lists environments in its own region: if an environment isn't in
    the picker, the plan's region doesn't match it (see errata).
 
 **By API, reusing a plan the region already has.** With `az` signed in as the admin:

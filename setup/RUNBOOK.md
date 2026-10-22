@@ -335,8 +335,9 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 2. **Link Prod and Claims-Test to a pay-as-you-go billing plan.** Without one, agents publish but nobody
    can chat with them. The script finds the plan in your environments' region with the Copilot Studio
    meter on, creating one if the region has none, then links both environments and checks the link.
-   Estates share a plan per region ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)). Safe to
-   re-run.
+   Estates share a plan per region ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)), so the
+   plan and its resource group carry no estate id — one the script creates is `Halcourt-PAYG-<region>` in
+   `rg-halcourt-billing`. Never delete either while any estate uses the region. Safe to re-run.
 
    ```bash
    pwsh setup/scripts/02b_provision_billing.ps1
@@ -867,7 +868,8 @@ room the write half of Scenario D is reasoned, not exercised.
 `99_teardown.ps1` removes ONE estate and nothing another estate owns, in dependency order: the shared
 default environment's agents + the auto-approve flow (as their owners) → the SharePoint sites (purged from
 the recycle bin so the URLs are reusable) → the three estate environments (their Dataverse, agents and
-connections go with them) → the DLP policy → billing unlink.
+connections go with them) → the DLP policy → billing unlink. It only **unlinks** the estate's environments
+from the shared billing plan; it never deletes the plan or its resource group.
 
 ```bash
 export ENTRAID_APP_ID=<PnP app id>  HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx  HALCOURT_PNP_CERT_PW=<cert-pw>   # for site removal
@@ -922,6 +924,20 @@ re-inject the new addresses and secrets at provision time.
       `halcourt-lab-compliance` (03c, 07 and 07b sign in with it) with its local
       `setup/lab-compliance-app.local.{json,pfx}`, and the resource group `rg-halcourt-graph-billing` holding
       its Graph billing resource `halcourt-lab-compliance-billing`. `azd down` does not touch either.
+- [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan and, if
+      the kit created it, its resource group. Deleting either cuts billing for every estate in the region.
+      First check that `/billingPolicies/<id>/environments` lists no live environment, for every plan in
+      the group, then remove the group's `halcourt-shared-billing` lock (`az lock delete --name
+      halcourt-shared-billing -g <group> --subscription <that id>`), then PPAC → Licensing → Billing Plans →
+      delete. A plan the kit created is `Halcourt-PAYG-<region>` in `rg-halcourt-billing`, in the plan's
+      own subscription (its `billingInstrument.subscriptionId`). Once
+      `az resource list -g rg-halcourt-billing --subscription <that id>` is empty:
+      `az group delete -n rg-halcourt-billing --subscription <that id>`. A plan the tenant came with
+      (e.g. `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default
+      environment's plan — leave that group alone, but remove the kit's lock from it (`az lock delete --name
+      halcourt-shared-billing -g <group> --subscription <that id>`). A tenant built before ADR-0014's
+      shared names may also hold `rg-halcourt-billing-<estate>` with a `Halcourt-PAYG-<estate>` plan: retire
+      it the same way.
 
 `-RemovePersonas` deletes every user whose UPN ends `.<estate>@<domain>` and every group named `*-<estate>`,
 so it also catches the lab accounts, the facilitator and `HR-Leadership-<estate>`. Run the scripts above
