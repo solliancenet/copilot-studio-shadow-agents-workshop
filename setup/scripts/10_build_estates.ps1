@@ -156,8 +156,10 @@ foreach ($estate in $Estates) {
     $need = $LicensedPersonas.Count - (Get-SeatHolders $estate).Count
     $free = Get-FreeSeats
     if ($free -lt $need) { $why = "needs $need E5 seat(s) for its personas; $free free - reclaim another estate's (-ReclaimOnly) or free seats" }
-  } elseif ($last -ge [array]::IndexOf($names, 'sharepoint') -and $first -le [array]::IndexOf($names, 'agents')) {
-    # Resuming past Phase 2: the owners must still hold their seats (an owner without one can't build).
+  } elseif (@('onedrive', 'agents') | Where-Object { $i = [array]::IndexOf($names, $_); $i -ge $first -and $i -le $last }) {
+    # Resuming past Phase 2 into a phase that signs in AS the personas (4b: dev.kim's OneDrive; 6: the agents'
+    # owners) - they must still hold their seats. The rest run as the admin or the lab app: re-running
+    # Phase 4c alone (-From purview -To purview) after a reclaim is fine.
     $held = (Get-SeatHolders $estate).Count
     if ($held -lt $LicensedPersonas.Count) { $why = "only $held of $($LicensedPersonas.Count) personas hold a seat - resume from entra (Phase 2) to give them back" }
   }
