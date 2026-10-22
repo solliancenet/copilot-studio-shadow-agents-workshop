@@ -15,8 +15,16 @@ matches theirs.
    Program tenant may come with one, e.g. `ppccdevcanada`). Open it → **Edit** → on **Select
    environments**, **check** `Halcourt-Prod-<estate>` and `Claims-Test-<estate>` → **Save**. Done; skip
    step 3.
-3. **Otherwise create the region's plan.** PPAC → **Licensing → Billing Plans → + New billing plan →
-   Azure subscription**. Name it for the region, not your estate — `Halcourt-PAYG-<region>` (e.g.
+3. **Otherwise create the region's plan.** First make sure the shared resource group exists in the lab
+   subscription — the script would have created it, but this path doesn't. Its location is only metadata
+   and need not match the plan's region:
+
+   ```bash
+   az group show -n rg-halcourt-billing --subscription <lab-subscription-id> -o none 2>/dev/null ||
+     az group create -n rg-halcourt-billing -l eastus --subscription <lab-subscription-id> -o none
+   ```
+
+   Then PPAC → **Licensing → Billing Plans → + New billing plan → Azure subscription**. Name it for the region, not your estate — `Halcourt-PAYG-<region>` (e.g.
    `Halcourt-PAYG-canada`) — because every estate in the region will share it. Pick the **Azure
    subscription** and the shared **resource group** `rg-halcourt-billing` → set the **Meter** to
    **Copilot Studio** (Dataverse is auto-included) → **Next**. On **Select environments**, set the
