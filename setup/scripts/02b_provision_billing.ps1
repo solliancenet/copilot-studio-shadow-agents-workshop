@@ -112,6 +112,24 @@ if (-not $plan) {
 }
 Write-Host "Plan: $($plan.name) ($($plan.id), $($plan.location))"
 
+# --- Protect the plan's resource group -----------------------------------------------------------------
+# Every estate in the region bills through this group, and a Dev Program tenant's plan sits in a group with a
+# generated name (rg-<number>) that says nothing about the workshop. Tag it and lock it against deletion
+# (CanNotDelete: updates still work, so linking environments is unaffected). A lock needs Owner or User
+# Access Administrator; with Contributor alone this warns and carries on.
+$bi = $plan.billingInstrument
+if ($bi.resourceGroup -and $bi.subscriptionId) {
+  az group update -n $bi.resourceGroup --subscription $bi.subscriptionId --set tags.halcourt-shared='Copilot Studio billing plan - every estate in the tenant' -o none 2>$null
+  if ($LASTEXITCODE) { Write-Warning "Could not tag resource group $($bi.resourceGroup)." }
+  $lock = az lock list -g $bi.resourceGroup --subscription $bi.subscriptionId --query "[?name=='halcourt-shared-billing'].name | [0]" -o tsv 2>$null
+  if (-not $lock) {
+    az lock create --name halcourt-shared-billing --lock-type CanNotDelete -g $bi.resourceGroup --subscription $bi.subscriptionId `
+      --notes 'Shared Copilot Studio billing plan (ADR-0014). Remove only when the tenant is retired.' -o none 2>$null
+    if ($LASTEXITCODE) { Write-Warning "Could not lock resource group $($bi.resourceGroup) (needs Owner or User Access Administrator) - ask the subscription owner to run this script once." }
+    else { Write-Host "  locked $($bi.resourceGroup) against deletion (halcourt-shared-billing)" }
+  }
+}
+
 # --- Link the two environments --------------------------------------------------------------------------
 $linked = (Invoke-Rest GET "$PP/licensing/billingPolicies/$($plan.id)/environments?$api" $PP).value.environmentId
 $toAdd = @($targets | Where-Object { $_.Id -notin $linked })

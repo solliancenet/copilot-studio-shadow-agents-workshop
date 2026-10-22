@@ -927,9 +927,10 @@ re-inject the new addresses and secrets at provision time.
 - [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan and, if
       the kit created it, its resource group. Deleting either cuts billing for every estate in the region.
       First check that `/billingPolicies/<id>/environments` lists no live environment, for every plan in
-      the group, then PPAC → Licensing → Billing Plans → delete. A plan the kit created is
-      `Halcourt-PAYG-<region>` in `rg-halcourt-billing`, in the plan's own subscription (its
-      `billingInstrument.subscriptionId`). Once
+      the group, then remove the group's `halcourt-shared-billing` lock (`az lock delete --name
+      halcourt-shared-billing -g <group> --subscription <that id>`), then PPAC → Licensing → Billing Plans →
+      delete. A plan the kit created is `Halcourt-PAYG-<region>` in `rg-halcourt-billing`, in the plan's
+      own subscription (its `billingInstrument.subscriptionId`). Once
       `az resource list -g rg-halcourt-billing --subscription <that id>` is empty:
       `az group delete -n rg-halcourt-billing --subscription <that id>`. A plan the tenant came with
       (e.g. `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default

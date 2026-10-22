@@ -20,7 +20,11 @@ carries an estate id. It reuses whatever plan the region already has, by any nam
 may come with one (`ppccdevcanada` in its own `rg-<number>` group). One it creates carries no estate id:
 resource group `rg-halcourt-billing`, account `ppcc-halcourt-<region>`, plan `Halcourt-PAYG-<region>`.
 Estate teardown only **unlinks** the estate's environments; the plan and its resource group go only when
-the tenant is retired.
+the tenant is retired. The script tags the plan's resource group `halcourt-shared` and puts a
+**CanNotDelete** lock on it (`halcourt-shared-billing`), whatever the group is called: a generated name like
+`rg-1783938851676-6ff6f7f6` says nothing about the workshop, so it is the easiest group to delete by mistake.
+The lock was chosen over moving the plan into `rg-halcourt-billing`, which would mean recreating it and
+relinking every estate, an outage for all of them (issue #27).
 
 `Maker-Sandbox` is not linked: it is a Developer environment, billing plans take production and sandbox
 environments only, and its agents publish and run without a plan.
