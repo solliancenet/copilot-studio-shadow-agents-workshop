@@ -366,33 +366,28 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
 
 ### Phase 4b — Provision and seed the maker OneDrive
 
-**Prerequisite for Phase 6.** The **Meeting Notes Summarizer** decoy grounds on Dev Kim's own OneDrive
-notes, so his OneDrive must exist and hold them before that agent is built.
+1. **Create Dev Kim's OneDrive and put his meeting notes in it.** The Meeting Notes Summarizer decoy
+   (Phase 6) grounds on those notes. The script signs in as Dev to make SharePoint create his OneDrive,
+   waits for it, then uploads `Dev-Kim-Meeting-Notes.docx` with your PnP certificate. If the OneDrive
+   already exists it just uploads. It uses the same variables as Phase 4 step 3:
 
-```bash
-export ENTRAID_APP_ID=<the Halcourt PnP app id>
-export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx   HALCOURT_PNP_CERT_PW=<cert-pw>
-pwsh setup/scripts/03b_provision_onedrive.ps1     # estate from HALCOURT_ESTATE (or -Estate <id>)
-```
+   ```bash
+   export ENTRAID_APP_ID=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
+   export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
+   pwsh setup/scripts/03b_provision_onedrive.ps1
+   ```
 
-It **provisions** Dev's personal site and, once online, **seeds** `setup/data/Dev-Kim-Meeting-Notes.md`
-(built to `.docx`) into his **Documents**; if the site already exists it skips to seeding. It prints the
-OneDrive URL to ground the decoy on:
+   - It ends by printing Dev's OneDrive address
+     (`https://<tenant>-my.sharepoint.com/personal/dev_kim_<estate>_…/Documents`).
+   - Creating the OneDrive is best effort
+     ([ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md)). If it fails, go to step 2.
 
-```text
-https://<tenant>-my.sharepoint.com/personal/dev_kim_<estate>_<tenant>_onmicrosoft_com/Documents
-```
+2. **Only if step 1 failed: create the OneDrive by hand, then re-run step 1.** This asks SharePoint for it
+   as the admin; it prints a code to enter, like the other sign-ins:
 
-{: .important }
-> **Provisioning is best-effort `[verify]`.** If the site never appears the script fails and tells you to
-> provision that maker by hand, then re-run to seed:
->
-> ```bash
-> pwsh -NoProfile -Command "Connect-PnPOnline -Url https://<tenant>-admin.sharepoint.com -DeviceLogin -ClientId $ENTRAID_APP_ID; Request-PnPPersonalSite -UserEmails dev.kim.<estate>@<domain>"
-> ```
-
-Why the maker does this rather than the admin:
-[ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md).
+   ```bash
+   pwsh -NoProfile -Command "Connect-PnPOnline -Url https://<tenant>-admin.sharepoint.com -DeviceLogin -ClientId $ENTRAID_APP_ID; Request-PnPPersonalSite -UserEmails dev.kim.<estate>@<tenant domain>"
+   ```
 
 ### Phase 4c — Purview: the label and the labelled comp copy (Task 05-06)
 
