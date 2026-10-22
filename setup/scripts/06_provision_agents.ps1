@@ -74,21 +74,29 @@ $SpPrefix = (az rest --method GET --url 'https://graph.microsoft.com/v1.0/organi
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 
 # ---- tokens -------------------------------------------------------------------------------------------
+# Cached with their expiry and renewed 5 minutes before it: a full run takes 40 minutes or more, and a run
+# that reused its first tokens failed with 401 part-way through (fac02, 2026-10-22).
 $script:AdminTokens = @{}
 function Get-AdminToken([string]$Resource) {
-  if (-not $script:AdminTokens[$Resource]) {
-    $script:AdminTokens[$Resource] = az account get-access-token --resource $Resource --query accessToken -o tsv
+  $c = $script:AdminTokens[$Resource]
+  if (-not $c -or (Get-Date) -gt $c.Renew) {
+    $t = az account get-access-token --resource $Resource --query '{t:accessToken,e:expires_on}' -o json | ConvertFrom-Json
+    $c = @{ Token = $t.t; Renew = [DateTimeOffset]::FromUnixTimeSeconds([long]$t.e).LocalDateTime.AddMinutes(-5) }
+    $script:AdminTokens[$Resource] = $c
   }
-  $script:AdminTokens[$Resource]
+  $c.Token
 }
 $script:PersonaTokens = @{}
 function Get-PersonaToken([string]$Alias, [string]$Resource) {
   $key = "$Alias|$Resource"
-  if (-not $script:PersonaTokens[$key]) {
+  $c = $script:PersonaTokens[$key]
+  if (-not $c -or (Get-Date) -gt $c.Renew) {
     $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $Alias); password = $LabPassword; scope = "$($Resource.TrimEnd('/'))/.default" }
-    $script:PersonaTokens[$key] = (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token
+    $r = Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body
+    $c = @{ Token = $r.access_token; Renew = (Get-Date).AddSeconds([int]$r.expires_in - 300) }
+    $script:PersonaTokens[$key] = $c
   }
-  $script:PersonaTokens[$key]
+  $c.Token
 }
 function Invoke-Json([string]$Method, [string]$Uri, [string]$Token, $Body) {
   $h = @{ Authorization = "Bearer $Token"; Accept = 'application/json' }
