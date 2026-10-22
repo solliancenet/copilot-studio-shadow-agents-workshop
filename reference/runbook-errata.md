@@ -1459,3 +1459,36 @@ members by display name and returns no object id, so an "already a member" error
 and response"* - for the 2026-10-20 chats and for a new one at 13:34 UTC on 2026-10-21, so it isn't when the
 chat was captured. Not root-caused: longer propagation, or Copilot Studio-in-Teams text not retrievable here.
 05-07 KT04 step 2 can't be shown live until it is; the interaction record (user, agent, resources) is.
+
+### Phase 2 · An agent owner without a seat: what still works (2026-10-22, issue #30)
+
+**Why tested.** ADR-0009 gives every estate eight E5 seats, on the premise that Dataverse only adds licensed
+users. The BAP admin `addUser` call adds unlicensed accounts (Phase 8b), so issue #30 (an estate per
+attendee) turns on whether an agent's **owner** needs a seat once the agent is built.
+
+**Test.** `it.helpdesk.mgray` (owns Policy Lookup Bot; no connections; Teams channel) had its E5 seat removed
+(`assignLicense`, 00:41Z and again 02:54Z). Lena Ford, licensed, chatted with the agent in Teams with
+`setup/scripts/lib/teams_chat_probe.py`.
+
+| With the owner's seat removed in Entra | Result |
+|---|---|
+| The published agent answers in Teams | **Yes** - POL-1002 looked up through its HTTP action, 20 min after removal |
+| Phase 6 pushes and publishes as the owner (`pac`, `-Agents policy-lookup-bot`) | **Yes** - published 03:17Z, exit 0 |
+| The republished agent answers | **Yes** - POL-1001, 03:19Z |
+| The agent still answers hours later | **Yes** - POL-1002, 11:21Z (8.5 h without a seat) |
+| The owner opens the agent in Copilot Studio (browser) | **No** - 403 `UserHasNoLicense`, *"We couldn't load Copilot Studio"*; Phase 6's Teams-link step, which drives that page as the owner, warns and skips |
+
+**Traps.** Entra records an admin's `assignLicense` as *Change user license* by `CloudLicensingSystem`, not by
+the admin - an earlier session read that as a seat lost by itself and re-assigned it, voiding the first run.
+Copilot Studio enforces the Entra licence within minutes while Dataverse still reports `islicensed=true`
+for hours (`accessmode` 0), so this table covers the Entra side only.
+
+**Dataverse never caught up.** Through 11:50Z - nine hours, two `addUser` nudges - the owner's record kept
+`islicensed=true`, `accessmode` 0, unchanged since 03:10Z. So nothing here shows an owner in Administrative
+access mode (which filters roles such as Environment Maker); a Dataverse that does re-read the licence could
+still break the owner's Phase 6 push. The seat was restored at 11:53Z and the agent re-checked (PASS).
+
+**What it means.** Taking an owner's seat back after the build did not stop the agent, for as long as this
+was watched. Until a build sees Dataverse re-read the licence, ADR-0009 stands. A build needs the owner's seat at least for the step that drives Copilot Studio in a browser
+(reading the Teams link); connection consent wasn't tested, and owners whose connections reach SharePoint,
+Outlook or OneDrive likely need a seat for those services anyway.
