@@ -219,10 +219,21 @@ function Ensure-EnvUserRole([object]$E, [string]$Alias, [string]$RoleName) {
   }
   if (-not $u) {
     if ($VerifyOnly) { return "MISSING (would add + $RoleName)" }
-    for ($i=0; $i -lt 4 -and -not $u; $i++) {
-      try { Invoke-Bap POST "scopes/admin/environments/$($E.Id)/addUser" @{ ObjectId = $oid } '2020-10-01' | Out-Null } catch { if ($i -eq 3) { throw } ; Start-Sleep 15 }
+    # A brand-new environment can answer addUser with "Requested instance ... not found" (instanceNotFound)
+    # for minutes after Phase 3 created it - user sync doesn't know it yet. stu18 (2026-10-22) reached here
+    # five minutes after creation and failed on the old four tries 15s apart. Wait that one error out for up to
+    # about six minutes; anything else keeps the short retry.
+    $notFound = 0
+    for ($i = 0; -not $u; $i++) {
+      try { Invoke-Bap POST "scopes/admin/environments/$($E.Id)/addUser" @{ ObjectId = $oid } '2020-10-01' | Out-Null }
+      catch {
+        if ("$_" -match 'instanceNotFound' -and $notFound -lt 12) { $notFound++; Write-Host "    environment not yet known to user sync - waiting 30s ($notFound/12)"; Start-Sleep 30; continue }
+        if ($i -ge 3) { throw }
+        Start-Sleep 15
+      }
       Start-Sleep 5
       $u = (Dv $E GET "systemusers?`$select=systemuserid&`$filter=azureactivedirectoryobjectid eq $oid").value
+      if ($i -ge 15) { break }
     }
   }
   if (-not $u) { return 'NOT ADDED' }
