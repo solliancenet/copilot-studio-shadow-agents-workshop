@@ -126,10 +126,30 @@ Check 'Connection DV-Claims-Shared (Claims-Test)' '04-03, 04-04 confused deputy;
   if ($st -eq 'Connected') { Result 'PASS' "Connected, owner $($c.properties.createdBy.userPrincipalName)" } else { Result 'FAIL' "status $st - re-consent in Phase 6" }
 }
 
-Check 'Purview label Confidential-PII + SSN info type' '05-06 (label the comp file, verify Copilot withholds it); Scenario B verdict' {
-  # No phase in this kit creates them, and az's Graph token cannot read labels. AGENTS.md lists both as
-  # estate components. Until a phase provisions them, this is a manual check.
-  Result 'WARN' 'NOT PROVISIONED BY THE KIT - confirm in purview.microsoft.com > Information Protection > Sensitivity labels, or create it, before Module 5'
+Check "Purview: labelled comp copy (Confidential-PII-$Estate)" '05-06 (the labelled copy Copilot must withhold); Scenario B verdict' {
+  # Phase 4c (03c) labels a copy of the comp workbook and leaves the original alone; search must index the
+  # copy before 05-06 can be retested, which is why it runs days ahead. Read with the lab app (ADR-0029):
+  # az's token can't extract sensitivity labels. Read-only - no Ensure-LabApp here.
+  $AppConfig = Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.json'
+  $Pfx       = Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.pfx'
+  if (-not ((Test-Path $AppConfig) -and (Test-Path $Pfx))) { return Result 'WARN' 'no lab app certificate here (setup/lab-compliance-app.local.*) - run 03c, or check HR-Benefits > Leadership > Details by hand' }
+  . (Join-Path $PSScriptRoot '_labapp.ps1')
+  $h = @{ Authorization = "Bearer $(Get-AppToken 'https://graph.microsoft.com')" }
+  $tenant = ((Get-Content $AppConfig -Raw | ConvertFrom-Json).organization).Split('.')[0]
+  $g = 'https://graph.microsoft.com/v1.0'
+  $site  = Invoke-RestMethod -Headers $h -Uri "$g/sites/$tenant.sharepoint.com:/sites/$(Get-EstateName 'HR-Benefits' $Estate)"
+  $drive = Invoke-RestMethod -Headers $h -Uri "$g/sites/$($site.id)/drive"
+  $labels = { param($path)
+    $it = Invoke-RestMethod -Headers $h -Uri "$g/drives/$($drive.id)/root:/Leadership/$($path)"
+    @((Invoke-RestMethod -Method POST -Headers $h -ContentType 'application/json' -Body '{}' -Uri "$g/drives/$($drive.id)/items/$($it.id)/extractSensitivityLabels").labels) }
+  try { $copy = & $labels '2026-comp-bands-labeled.xlsx' } catch { return Result 'FAIL' 'no labelled copy in HR-Benefits/Leadership - run 03c (Phase 4c) days before the delivery' }
+  $orig = & $labels '2026-comp-bands.xlsx'
+  $q = @{ requests = @(@{ entityTypes = @('driveItem'); query = @{ queryString = "`"LABELLED-COPY-$Estate`"" }; region = 'NAM' }) } | ConvertTo-Json -Depth 6
+  $hits = (Invoke-RestMethod -Method POST -Headers $h -ContentType 'application/json' -Body $q -Uri "$g/search/query").value[0].hitsContainers[0].total
+  $d = "copy labelled: $([bool]$copy.Count); original unlabelled: $(-not $orig.Count); search sees the copy: $([bool]$hits)"
+  if (-not $copy.Count -or $orig.Count) { Result 'FAIL' "$d - re-run 03c" }
+  elseif (-not $hits) { Result 'WARN' "$d - indexing can take hours; 05-06's retest needs it" }
+  else { Result 'PASS' $d }
 }
 
 Check "SharePoint site HR-Benefits-$Estate" '04-01 and 04-02 grounding; 05-03; 05-06' {

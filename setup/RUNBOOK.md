@@ -819,6 +819,17 @@ names the exercise steps each failed check would break.
 
 3. Fix every FAIL before the delivery. A WARN names the fallback attendees will use.
 
+4. **Chat with each Teams agent once**, as a licensed persona outside the admin roles (Lena works), the way
+   attendees will. The preflight proves the agents exist; this proves they answer. For example:
+
+   ```bash
+   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<domain> --password '<lab password>' \
+     --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
+     --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
+   ```
+
+   `RESULT=PASS` means the agent answered; screenshots of each step land in `--out`.
+
 Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
 and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
 
@@ -971,6 +982,7 @@ anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
 | `scripts/06_provision_agents.ps1` | Provision the agents from committed workspaces, as each owner |
 | `scripts/lib/consent_browser.py` | Headless connection-consent helper (browser step in Phase 6) |
 | `scripts/lib/enable_teams_channel.py` | Adds the Teams channel to an agent as its owner (browser step in Phase 6) |
+| `scripts/lib/teams_chat_probe.py` | Chats with a published agent in Teams as a persona; checks it answers before a delivery |
 | `scripts/03c_provision_purview.ps1` | Phase 4c: the encrypting label and the labelled comp copy |
 | `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
 | `scripts/07b_provision_facilitator.ps1` | The facilitator's Exercise 05 demonstration account |
