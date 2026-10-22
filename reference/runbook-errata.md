@@ -1470,7 +1470,6 @@ was licensed and enabled in Entra throughout. **Fix.** The script retries `addUs
 (60 s, 25 tries), waits for the systemuser row, and retries the role on 0x80048d35 (30 s, 20 tries). The
 by-hand workaround used that day - creating the systemuser with a Web API POST (`internalemailaddress`,
 `domainname`, `firstname`, `lastname`) - isn't needed.
-05-07 KT04 step 2 can't be shown live until it is; the interaction record (user, agent, resources) is.
 
 ### Phase 2 · it.helpdesk lost its licence hours after the build (2026-10-22)
 
