@@ -74,26 +74,53 @@ $SpPrefix = (az rest --method GET --url 'https://graph.microsoft.com/v1.0/organi
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 
 # ---- tokens -------------------------------------------------------------------------------------------
-$script:AdminTokens = @{}
-function Get-AdminToken([string]$Resource) {
-  if (-not $script:AdminTokens[$Resource]) {
-    $script:AdminTokens[$Resource] = az account get-access-token --resource $Resource --query accessToken -o tsv
-  }
-  $script:AdminTokens[$Resource]
+# Cached with their expiry and renewed 5 minutes before it, and renewed early when a call answers 401
+# (Invoke-Json): Phase 6 failed twice with an intermittent 401 part-way through (fac02, fac03, 2026-10-22).
+$script:Tokens = @{}        # key -> @{ Token; Renew }
+$script:TokenOwner = @{}    # token -> @{ Kind; Resource; Alias } - how Invoke-Json renews one that got 401
+function Set-CachedToken([string]$Key, [string]$Token, [datetime]$Expires, [hashtable]$Owner) {
+  # Renew 5 minutes early; a missing or already-past expiry (older az, clock skew) counts as 50 minutes.
+  if ($Expires -lt (Get-Date).AddMinutes(10)) { $Expires = (Get-Date).AddMinutes(50) }
+  $script:Tokens[$Key] = @{ Token = $Token; Renew = $Expires.AddMinutes(-5) }
+  $script:TokenOwner[$Token] = $Owner
+  $Token
 }
-$script:PersonaTokens = @{}
-function Get-PersonaToken([string]$Alias, [string]$Resource) {
-  $key = "$Alias|$Resource"
-  if (-not $script:PersonaTokens[$key]) {
-    $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $Alias); password = $LabPassword; scope = "$($Resource.TrimEnd('/'))/.default" }
-    $script:PersonaTokens[$key] = (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token
-  }
-  $script:PersonaTokens[$key]
+function Get-AdminToken([string]$Resource, [switch]$Force) {
+  $c = $script:Tokens["admin|$Resource"]
+  if ($c -and -not $Force -and (Get-Date) -lt $c.Renew) { return $c.Token }
+  $t = az account get-access-token --resource $Resource --query '{t:accessToken,e:expires_on}' -o json | ConvertFrom-Json
+  $exp = if ($t.e) { [DateTimeOffset]::FromUnixTimeSeconds([long]$t.e).LocalDateTime } else { [datetime]::MinValue }
+  Set-CachedToken "admin|$Resource" $t.t $exp @{ Kind = 'admin'; Resource = $Resource }
+}
+function Get-PersonaToken([string]$Alias, [string]$Resource, [switch]$Force) {
+  $c = $script:Tokens["$Alias|$Resource"]
+  if ($c -and -not $Force -and (Get-Date) -lt $c.Renew) { return $c.Token }
+  $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $Alias); password = $LabPassword; scope = "$($Resource.TrimEnd('/'))/.default" }
+  $r = Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body
+  Set-CachedToken "$Alias|$Resource" $r.access_token (Get-Date).AddSeconds([int]$r.expires_in) @{ Kind = 'persona'; Alias = $Alias; Resource = $Resource }
 }
 function Invoke-Json([string]$Method, [string]$Uri, [string]$Token, $Body) {
-  $h = @{ Authorization = "Bearer $Token"; Accept = 'application/json' }
-  if ($null -ne $Body) { Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30) }
-  else                 { Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h }
+  for ($try = 1; ; $try++) {
+    $h = @{ Authorization = "Bearer $Token"; Accept = 'application/json' }
+    try {
+      if ($null -ne $Body) { return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 30) }
+      else                 { return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $h }
+    } catch {
+      $code = try { [int]$_.Exception.Response.StatusCode } catch { 0 }
+      # A 401 on a token we issued: renew that token and repeat the call once.
+      $owner = if ($script:TokenOwner -and $Token) { $script:TokenOwner[$Token] }
+      if ($code -eq 401 -and $try -eq 1 -and $owner) {
+        Write-Host "    (401 from $Method $($Uri.Split('?')[0]) - renewing the $($owner.Kind) token and retrying once)"
+        $Token = if ($owner.Kind -eq 'admin') { Get-AdminToken $owner.Resource -Force } else { Get-PersonaToken $owner.Alias $owner.Resource -Force }
+        continue
+      }
+      # Name the call, keep the response body (DvAuto matches its codes: "$_" -match '0x80042f09|prvRead...',
+      # and Invoke-RestMethod puts them in ErrorDetails, not Exception.Message), and wrap the original exception
+      # so its Response is still reachable.
+      $detail = if ($_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+      throw [System.Exception]::new("$Method $($Uri.Split('?')[0]) -> $code : $detail", $_.Exception)
+    }
+  }
 }
 $BAP = 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform'
 function Invoke-Bap([string]$Method, [string]$Path, $Body, [string]$Api = '2021-04-01') {
@@ -367,8 +394,15 @@ function Ensure-Publisher([object]$E, [string]$Prefix, [string]$Alias) {
 function Ensure-Flow([object]$F) {
   $E = Env $F.environment; $alias = $F.owner
   $tok = Get-PersonaToken $alias $E.Org
-  $q = "workflows?`$select=workflowid&`$filter=name eq '" + $F.name.Replace("'", "''") + "' and category eq 5"
-  if ((Invoke-Json GET "$($E.Org)/api/data/v9.2/$q" $tok).value) { return "ok" }
+  $q = "workflows?`$select=workflowid,statecode&`$filter=name eq '" + $F.name.Replace("'", "''") + "' and category eq 5"
+  $have = (Invoke-Json GET "$($E.Org)/api/data/v9.2/$q" $tok).value | Select-Object -First 1
+  if ($have) {
+    if ($have.statecode -eq 1) { return "ok" }
+    # A run that stopped between creating and activating left a Draft: a re-run must finish the job.
+    if ($VerifyOnly) { return "DRAFT (would activate)" }
+    Invoke-Json PATCH "$($E.Org)/api/data/v9.2/workflows($($have.workflowid))" $tok @{ statecode = 1; statuscode = 2 } | Out-Null
+    return "activated (was a draft)"
+  }
   if ($VerifyOnly) { return "MISSING (would create)" }
   $def = Get-Content (Join-Path $DataDir $F.definition) -Raw | ConvertFrom-Json
   $def.PSObject.Properties.Remove('_comment')
