@@ -17,6 +17,12 @@ The committed workspace is authoritative; the engine reconciles the live agent t
   overlays the committed ones, and pushes. If the clone finds nothing, the agent is absent: it `init`s the
   shell first — retried, because the solution import lags — then clones. The agent identity is preserved;
   nothing is deleted.
+- **Estate-scoped schema in the shared default environment.** A schema name is unique per environment, so
+  agents built into `Halcourt (default)` (`estateSuffixName` in the manifest) get `<schema><estate>`, and the
+  engine rewrites the committed schema inside topics, actions and connection references to match. An estate
+  built before this keeps its committed schema: the engine uses it when this estate's owner sees an agent
+  with that schema under this estate's display name. Before the change, a second estate's `init` failed and
+  its schema lookups could reach another estate's agent (issue #33).
 - **Publisher.** Each agent keeps its committed prefix; the engine creates a publisher with that prefix if
   the environment lacks one (environment teardown gives new random CDS prefixes).
 - **Owner-token Dataverse.** Bot lookup, the chat-audience PATCH and connection binding run **as the

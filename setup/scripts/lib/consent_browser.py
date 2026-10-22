@@ -2,7 +2,7 @@
 """
 FACILITATOR-ONLY. The one piece of Phase 6 that needs a browser: authenticate a Power Platform connection
 as its owner. PnP/pac and az cover everything else, but a connector's OAuth consent has no headless API -
-so this drives a headless Chrome through the persona sign-in and the consent page and returns the short
+so this drives a headless browser through the persona sign-in and the consent page and returns the short
 connection code that the caller (06_provision_agents.ps1) posts to confirmConsentCode.
 
   python3 consent_browser.py --upn <persona-upn> --password <pw> --consent-url "<getConsentLink result>"
@@ -10,14 +10,20 @@ connection code that the caller (06_provision_agents.ps1) posts to confirmConsen
 Prints one line to stdout: CODE=<code>   (or ERROR=<message> and exits 1). Lab-only: the password is the
 shared lab password, passed by the engine; never use against a real tenant.
 
-Requires: playwright (pip install playwright) with Chrome available (channel=chrome).
+Requires: playwright (pip install playwright) and its Chromium (python3 -m playwright install chromium);
+uses Google Chrome instead where it is installed.
 """
 import argparse, re, sys, time, urllib.parse
 from playwright.sync_api import sync_playwright
 
 def get_code(upn: str, password: str, consent_url: str, timeout_s: int = 120) -> str:
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True)
+        # Google Chrome where it is installed; otherwise Playwright's bundled Chromium (the dev container,
+        # and arm64 Linux, where Chrome doesn't exist). The flow only fills fields and clicks buttons.
+        try:
+            browser = p.chromium.launch(channel="chrome", headless=True)
+        except Exception:
+            browser = p.chromium.launch(headless=True)
         page = browser.new_context(locale="en-US").new_page()
         code = {}
 

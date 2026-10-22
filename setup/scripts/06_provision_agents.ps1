@@ -259,6 +259,8 @@ function Get-ConnId([string]$Name) {
 function Ensure-Connection([string]$Name, [object]$Def) {
   $E = Env $Def.environment; $alias = $Def.owner; $connector = Get-ConnectorId $Name
   $upn = Get-Upn $alias
+  # -VerifyOnly doesn't create a missing custom connector, so there is nothing to list connections under.
+  if (-not $connector) { return 'MISSING (would create the custom connector + connection)' }
   $mine = @((Pa $alias GET "apis/$connector/connections" $null $E.Id).value | Where-Object {
     $_.properties.createdBy.userPrincipalName -eq $upn -and $_.properties.displayName -eq $Name })
   $ok = $mine | Where-Object { @($_.properties.statuses.status) -notcontains 'Error' -and @($_.properties.statuses.status) -contains 'Connected' } | Select-Object -First 1
@@ -342,7 +344,8 @@ function Provision-Agent([object]$A) {
   if (-not (Test-Path (Join-Path $ws 'agent.mcs.yml'))) { return "SKIP (no workspace; capture=$($A.capture))" }
   if ($VerifyOnly) { return "would (re)create in $($E.Name) as $alias" }
 
-  $schema = Get-SchemaName $ws                      # keep the committed prefix
+  $committedSchema = Get-SchemaName $ws             # keep the committed prefix
+  $schema = $committedSchema
   $prefix = $schema.Split('_')[0]
   Ensure-Publisher $E $prefix $alias                # make sure its publisher exists (create on a fresh env)
 
@@ -371,6 +374,16 @@ function Provision-Agent([object]$A) {
   $display = if ($DisplayNameSuffix)   { "$($A.display) ($DisplayNameSuffix)" }
              elseif ($A.estateSuffixName) { "$($A.display) ($Estate)" }        # shared default env
              else                      { $A.display }
+  # The shared default environment holds every estate's copy of these agents, and a schema name is unique per
+  # environment - so there the schema carries the estate id too (cr458_ExpenseHelper -> cr458_ExpenseHelperjsmith),
+  # or the second estate's init fails and its lookups could reach another estate's agent (issue #33). An estate
+  # built before that has the committed schema: keep using it when THIS estate's owner sees an agent with it
+  # under THIS estate's display name. Slices are their own environments and keep the committed schema.
+  if ($A.estateSuffixName -and -not $TargetEnvironment) {
+    $schema = "$committedSchema$Estate"
+    $legacy = (DvAs $E $alias GET "bots?`$select=name&`$filter=schemaname eq '$committedSchema'").value | Select-Object -First 1
+    if ($legacy -and $legacy.name -eq $display) { $schema = $committedSchema; Write-Host "    (keeping pre-#33 schema $committedSchema)" }
+  }
   $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "halcourt-ws/$($A.slug)"
   # Get a synced workspace via clone - pac's OWN existence view (the Dataverse `bots` table can disagree,
   # e.g. a soft-deleted ghost that pac still sees). If clone finds nothing, the agent truly is absent:
@@ -423,6 +436,12 @@ function Provision-Agent([object]$A) {
     foreach ($k in $AzdValues.Keys) { $tok = '${' + $k + '}'; if ($c.Contains($tok)) { $c = $c.Replace($tok, $AzdValues[$k]); $changed = $true } }
     # The agent's own environment URL, for Dataverse tools that must name it (claims-copilot's List rows).
     if ($c.Contains('${ENV_ORG_URL}')) { $c = $c.Replace('${ENV_ORG_URL}', $E.Org); $changed = $true }
+    # Topics, actions and connection references name the agent's schema; follow an estate-scoped one. The
+    # lookahead keeps an already-scoped name (cr458_ExpenseHelperjsmith.topic...) from being scoped twice.
+    if ($schema -ne $committedSchema) {
+      $n = [regex]::Replace($c, [regex]::Escape($committedSchema) + '(?=[.\s"]|$)', $schema)
+      if ($n -ne $c) { $c = $n; $changed = $true }
+    }
     # Tenant- and estate-specific names (knowledge sites, OneDrive paths, the default environment's display
     # names) are tokens in the committed workspace, never this build's literal values.
     foreach ($kv in @(@('${ESTATE}', $Estate), @('${SP_HOST}', "$SpPrefix.sharepoint.com"), @('${SP_MY_HOST}', "$SpPrefix-my.sharepoint.com"))) {
@@ -563,6 +582,11 @@ function Provision-Agent([object]$A) {
 $roleByEnv = @{ 'Halcourt-Prod' = 'Environment Maker'; 'Claims-Test' = 'Environment Maker'; 'Halcourt (default)' = 'Environment Maker'; 'Maker-Sandbox' = 'System Administrator' }
 $ownerRoleOverride = @{ 'tom.dean|Halcourt-Prod' = 'System Administrator' }   # Sales Nudge: Tom's broad CRM reach
 
+# `pwsh <script> -Agents a,b` passes ONE string "a,b" (only -Command splits it), so split here; and stop on an
+# unknown slug rather than build nothing and still report success.
+$Agents = @($Agents | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$unknown = @($Agents | Where-Object { $_ -notin $manifest.agents.slug })
+if ($unknown) { throw "Unknown agent slug(s): $($unknown -join ', '). Known: $($manifest.agents.slug -join ', ')" }
 $targets = $manifest.agents | Where-Object { -not $Agents -or $Agents -contains $_.slug }
 
 if (-not $SkipPrereqs) {
@@ -577,11 +601,12 @@ if (-not $SkipPrereqs) {
     $u = Invoke-Json GET "https://graph.microsoft.com/v1.0/users/$upn`?`$select=accountEnabled" (Get-AdminToken 'https://graph.microsoft.com/')
     if ($u.accountEnabled) { continue }
     if ($alias -eq 'it.helpdesk') {
+      if ($VerifyOnly) { Write-Host ("{0,-12} -> disabled (would enable: shared mailbox)" -f $alias); continue }
       Invoke-Json PATCH "https://graph.microsoft.com/v1.0/users/$upn" (Get-AdminToken 'https://graph.microsoft.com/') @{
         accountEnabled = $true
         passwordProfile = @{ password = $LabPassword; forceChangePasswordNextSignIn = $false }
       } | Out-Null
-      Write-Host "{0,-12} -> enabled (shared mailbox; Exchange creates it disabled)" -f $alias
+      Write-Host ("{0,-12} -> enabled (shared mailbox; Exchange creates it disabled)" -f $alias)
       Start-Sleep 10   # let the sign-in change reach Dataverse before addUser
     } else {
       Write-Warning "$alias is sign-in disabled - Dataverse cannot add it. Enable it (tom.dean stays enabled by design - Phase 6.5)."

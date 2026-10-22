@@ -23,6 +23,7 @@ every tenant-scoped name it creates carries that id:
 | Display names | Marcus Webb | Marcus Webb (jsmith) | `<name> (<estate>)` |
 | Groups, environments, DLP, sites | `Halcourt-Makers`, `Claims-Test`, `Halcourt-Prod-DLP`, `HR-Benefits` | `Halcourt-Makers-jsmith`, `Claims-Test-jsmith`, `Halcourt-Prod-DLP-jsmith`, `HR-Benefits-jsmith` | `<name>-<estate>` |
 | Agents in the default environment | `Expense Helper`, `Onboarding Guide` | `Expense Helper (jsmith)`, `Onboarding Guide (jsmith)` | `<name> (<estate>)` |
+| …and their schema names | `cr458_ExpenseHelper` | `cr458_ExpenseHelperjsmith` | `<schema><estate>` — a schema name is unique per environment ([issue #33](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/issues/33)) |
 | Azure (Phase 1) | — | azd environment `halcourt-jsmith-lab` | `halcourt-<estate>-lab` |
 
 The id comes from `HALCOURT_ESTATE` or `-Estate <id>`; a script refuses to run with neither.
