@@ -37,7 +37,11 @@ if (-not $Estate) { throw 'Pass -Estate or set HALCOURT_ESTATE.' }
 
 # ---- 0. the lab's app-only identity (made once per tenant; idempotent) -------------------------------
 . (Join-Path $PSScriptRoot '_labapp.ps1')
-Ensure-LabApp
+# Teardown must not create or rotate the shared app, its certificate or its metered billing resource: -Remove
+# only signs in with the app that already exists.
+if ($Remove) {
+  if (-not ((Test-Path $AppConfig) -and (Test-Path $Pfx))) { throw "No lab app certificate here ($AppConfig) - nothing to sign in with for -Remove." }
+} else { Ensure-LabApp }
 
 $cfg      = Get-Content $AppConfig -Raw | ConvertFrom-Json
 $domain   = $cfg.organization                 # the INITIAL *.onmicrosoft.com: SharePoint host, compliance sign-in
@@ -54,6 +58,12 @@ $siteAlias = Get-EstateName 'HR-Benefits' $Estate
 $marker    = "LABELLED-COPY-$Estate"
 $copyName  = '2026-comp-bands-labeled.xlsx'
 
+# Security & Compliance PowerShell, app-only: the az token is refused and -Certificate fails on Linux
+# (NewEXOModule), so mint the token and pass -AccessToken.
+function Connect-Compliance {
+  Import-Module ExchangeOnlineManagement
+  Connect-IPPSSession -AccessToken (Get-AppToken 'https://ps.compliance.protection.outlook.com') -Organization $domain -ShowBanner:$false
+}
 function Graph([string]$Method, [string]$Path, $Body, [string]$ContentType = 'application/json') {
   $h = @{ Authorization = "Bearer $script:graphToken" }
   $uri = if ($Path -like 'https://*') { $Path } else { "https://graph.microsoft.com/v1.0/$Path" }
@@ -67,20 +77,27 @@ function Graph([string]$Method, [string]$Path, $Body, [string]$ContentType = 'ap
 # the label removal retries and a timeout just asks for a re-run. The group HR-Leadership-<estate> goes with
 # 99 -RemovePersonas (every *-<estate> group); the labelled copy goes with the HR-Benefits site.
 if ($Remove) {
-  Import-Module ExchangeOnlineManagement
-  Connect-IPPSSession -AccessToken (Get-AppToken 'https://ps.compliance.protection.outlook.com') -Organization $domain -ShowBanner:$false
-  if (Get-LabelPolicy -Identity $policy -ErrorAction SilentlyContinue) {
-    Remove-LabelPolicy -Identity $policy -Confirm:$false; Write-Host "Label policy $policy removed"
-  } else { Write-Host "Label policy $policy not found" }
-  if (Get-Label -Identity $labelName -ErrorAction SilentlyContinue) {
-    $gone = $false
-    for ($i = 0; $i -lt 10 -and -not $gone; $i++) {
-      try { Remove-Label -Identity $labelName -Confirm:$false -ErrorAction Stop; $gone = $true }
-      catch { Write-Host "   label still published ($($_.Exception.Message.Split([char]10)[0])) - retrying in 60s"; Start-Sleep 60 }
-    }
-    Write-Host $(if ($gone) { "Label $labelName removed" } else { "Label $labelName NOT removed yet - re-run with -Remove later" })
-  } else { Write-Host "Label $labelName not found" }
-  Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+  Connect-Compliance
+  try {
+    $pol = Get-LabelPolicy -Identity $policy -ErrorAction SilentlyContinue
+    if (-not $pol) { Write-Host "Label policy $policy not found" }
+    elseif ("$($pol.Mode)" -eq 'PendingDeletion') { Write-Host "Label policy $policy already being withdrawn" }
+    else { Remove-LabelPolicy -Identity $policy -Confirm:$false; Write-Host "Label policy $policy removed" }
+    if (Get-Label -Identity $labelName -ErrorAction SilentlyContinue) {
+      $gone = $false
+      for ($i = 1; $i -le 10 -and -not $gone; $i++) {
+        try { Remove-Label -Identity $labelName -Confirm:$false -ErrorAction Stop; $gone = $true }
+        catch {
+          $msg = $_.Exception.Message.Split([char]10)[0]
+          # Only "still published / policy pending" is worth waiting out; anything else won't change.
+          if ($msg -notmatch 'publish|polic|pending') { throw }
+          Write-Host "   label still published ($msg)"
+          if ($i -lt 10) { Write-Host '   retrying in 60s'; Start-Sleep 60 }
+        }
+      }
+      Write-Host $(if ($gone) { "Label $labelName removed" } else { "Label $labelName NOT removed yet - re-run with -Remove later" })
+    } else { Write-Host "Label $labelName not found" }
+  } finally { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null }
   return
 }
 
@@ -102,8 +119,7 @@ if (-not $g) {
 } else { Write-Host "   exists ($($g.mail))" }
 
 # ---- 2-3. label and policy (Security & Compliance PowerShell, app-only) ------------------------------------
-Import-Module ExchangeOnlineManagement
-Connect-IPPSSession -AccessToken (Get-AppToken 'https://ps.compliance.protection.outlook.com') -Organization $domain -ShowBanner:$false
+Connect-Compliance
 Write-Host "2. Label $labelName"
 $label = Get-Label -Identity $labelName -ErrorAction SilentlyContinue
 if (-not $label) {

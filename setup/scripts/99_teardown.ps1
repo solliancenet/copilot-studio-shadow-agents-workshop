@@ -48,7 +48,8 @@ function Invoke-Json([string]$m, [string]$u, [string]$tok, $body) {
   try { if ($null -ne $body) { Invoke-RestMethod -Method $m -Uri $u -Headers $h -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 20) } else { Invoke-RestMethod -Method $m -Uri $u -Headers $h } }
   catch { Write-Host "    ! $m $($u.Split('?')[0]) : $($_.Exception.Message.Split([char]10)[0])"; $null }
 }
-$BAP = 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform'
+$BapHost = 'https://api.bap.microsoft.com'
+$BAP = "$BapHost/providers/Microsoft.BusinessAppPlatform"
 function Bap([string]$m, [string]$path, $body, [string]$api = '2021-04-01') { $sep = if ($path.Contains('?')) {'&'} else {'?'}; Invoke-Json $m ("$BAP/$path" + $sep + "api-version=$api") (Get-AdminToken 'https://service.powerapps.com/') $body }
 function Graph([string]$m, [string]$path, $body, [switch]$Eventual) {
   $h = @{ Authorization = "Bearer $(Get-AdminToken 'https://graph.microsoft.com/')"; Accept = 'application/json' }
@@ -87,7 +88,9 @@ if ($defaultEnv) {
         }
         # Invoke-Json reports a failure and returns $null - it never throws - so read the agent back to know.
         Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null
-        if (-not (Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid&`$filter=botid eq $($b.botid)" $tok).value) { $gone = $true; break }
+        # Gone only if the read SUCCEEDS and finds nothing: a failed read (token, throttling) proves nothing.
+        $chk = Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid&`$filter=botid eq $($b.botid)" $tok
+        if ($null -ne $chk -and -not $chk.value) { $gone = $true; break }
       }
       if ($gone) { Write-Host "    deleted" } else { $orphanRisk += "$($b.name) ($($b.botid))" }
     }
@@ -181,44 +184,44 @@ if ($PnpClientId -and $PnpCertPfx -and (Test-Path $PnpCertPfx)) {
 }
 
 # --- 3) the three estate environments (Dataverse/agents/connections go with them) + DLP + billing -------
-Write-Host "Removing environments $($estateEnvNames -join ', ') + DLP..."
-$estateEnvIds = @()
-foreach ($name in $estateEnvNames) {
-  $e = $allEnvs | Where-Object { $_.properties.displayName -eq $name } | Select-Object -First 1
-  if (-not $e) { continue }
-  $estateEnvIds += $e.name
-  Bap DELETE "scopes/admin/environments/$($e.name)" $null | Out-Null
-  Write-Host "  deleting $name"
-}
-# NOTE the '/providers' segment - without it the list call returns nothing, the policy is never found, and
-# the DLP silently survives the teardown. It then outlives the environment it was scoped to, and the next
-# Phase 3 sees the name already in use and leaves Prod with no DLP at all.
-$dlp = Get-EstateName 'Halcourt-Prod-DLP' $Estate
-# The policy API hangs off the bare BAP host, not $BAP's Microsoft.BusinessAppPlatform provider (that address
-# answers 404, and the DLP survived every teardown until 2026-10-22). 02 creates it at the same address.
-$policyApi = 'https://api.bap.microsoft.com/providers/PowerPlatform.Governance/v1/policies'
-$pol = (Invoke-Json GET "$policyApi`?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')).value | Where-Object { $_.displayName -eq $dlp } | Select-Object -First 1
-if ($pol) {
-  Invoke-Json DELETE "$policyApi/$($pol.name)?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/') | Out-Null
-  Write-Host "  deleted DLP $dlp"
-} else {
-  Write-Host "  no DLP named $dlp found"
-}
-# Unlink the estate envs from any billing plan (also happens as the envs finish deleting). Read the linked
-# list from the /environments SUB-RESOURCE: a billing policy's own `environmentIds` property always comes
-# back null, so filtering on it silently unlinked nothing.
+# Order: billing links first - an environment that has finished deleting can't be unlinked, and its link
+# stays on the shared plan (08 -Destroy learned the same). Each step reads back what it changed, because
+# Invoke-Json reports a failure and returns $null rather than throwing.
+$estateEnvs = @($estateEnvNames | ForEach-Object { $n = $_; $allEnvs | Where-Object { $_.properties.displayName -eq $n } | Select-Object -First 1 })
+$estateEnvIds = @($estateEnvs.name)
 if ($estateEnvIds) {
-  $ppApi = 'api-version=2022-03-01-preview'
-  foreach ($bp in @((Invoke-Json GET "https://api.powerplatform.com/licensing/billingPolicies?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')).value)) {
-    # By id: the plan's name (e.g. ppccdevcanada) answers 403 here.
-    $current = @((Invoke-Json GET "https://api.powerplatform.com/licensing/billingPolicies/$($bp.id)/environments?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')).value.environmentId)
-    $linked = @($current | Where-Object { $_ -in $estateEnvIds })
-    if ($linked) {
-      Invoke-Json POST "https://api.powerplatform.com/licensing/billingPolicies/$($bp.id)/environments/remove?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/') @{ environmentIds = $linked } | Out-Null
-      Write-Host "  unlinked $($linked.Count) env(s) from billing plan $($bp.name)"
-    }
+  $ppApi = 'api-version=2022-03-01-preview'; $pp = 'https://api.powerplatform.com/licensing/billingPolicies'
+  foreach ($bp in @((Invoke-Json GET "$pp`?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')).value)) {
+    # By id: the plan's name (e.g. ppccdevcanada) answers 403 here. The /environments sub-resource is the
+    # authoritative list; the policy's own environmentIds is always null.
+    $read = { (Invoke-Json GET "$pp/$($bp.id)/environments?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/')) }
+    $r = & $read
+    if ($null -eq $r) { Write-Warning "could not read billing plan $($bp.name)'s environments - check it for this estate's links"; continue }
+    $linked = @($r.value.environmentId | Where-Object { $_ -in $estateEnvIds })
+    if (-not $linked) { continue }
+    Invoke-Json POST "$pp/$($bp.id)/environments/remove?$ppApi" (Get-AdminToken 'https://api.powerplatform.com/') @{ environmentIds = $linked } | Out-Null
+    $left = @((& $read).value.environmentId | Where-Object { $_ -in $estateEnvIds })
+    if ($left) { Write-Warning "billing plan $($bp.name) still links $($left.Count) of this estate's environment(s): $($left -join ', ')" }
+    else { Write-Host "  unlinked $($linked.Count) env(s) from billing plan $($bp.name)" }
   }
 }
+Write-Host "Removing environments $($estateEnvNames -join ', ') + DLP..."
+foreach ($e in $estateEnvs) {
+  Bap DELETE "scopes/admin/environments/$($e.name)" $null | Out-Null
+  Write-Host "  deleting $($e.properties.displayName)"
+}
+# The policy API hangs off the bare BAP host, not $BAP's Microsoft.BusinessAppPlatform provider: that address
+# answers 404, and the DLP survived every teardown until 2026-10-22, then blocked the next Phase 3 by name.
+$dlp = Get-EstateName 'Halcourt-Prod-DLP' $Estate
+$policyApi = "$BapHost/providers/PowerPlatform.Governance/v1/policies"
+$findDlp = { (Invoke-Json GET "$policyApi`?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/')) }
+$all = & $findDlp
+if ($null -eq $all) { Write-Warning "could not list DLP policies - check for $dlp by hand" }
+elseif ($pol = $all.value | Where-Object { $_.displayName -eq $dlp } | Select-Object -First 1) {
+  Invoke-Json DELETE "$policyApi/$($pol.name)?api-version=2016-11-01" (Get-AdminToken 'https://service.powerapps.com/') | Out-Null
+  if ((& $findDlp).value | Where-Object { $_.displayName -eq $dlp }) { Write-Warning "DLP $dlp still exists after DELETE - remove it in PPAC" }
+  else { Write-Host "  deleted DLP $dlp" }
+} else { Write-Host "  no DLP named $dlp found" }
 
 # --- 4) personas + groups (opt-in) ---------------------------------------------------------------------
 if ($RemovePersonas) {
