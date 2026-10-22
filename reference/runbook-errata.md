@@ -1488,7 +1488,13 @@ for hours (`accessmode` 0), so this table covers the Entra side only.
 access mode (which filters roles such as Environment Maker); a Dataverse that does re-read the licence could
 still break the owner's Phase 6 push. The seat was restored at 11:53Z and the agent re-checked (PASS).
 
+**Then the whole estate (2026-10-22, `fac01`, `10_build_estates.ps1 -ReclaimOnly`).** All eight seats -
+the seven owners and `svc-claims` - taken back at 16:31Z. With Jordan Blake chatting on a lent seat:
+Policy Lookup Bot answered POL-1002 at 16:52Z, and Claims Copilot - which reads Dataverse through
+`svc-claims`'s shared connection (Scenarios C and D) - answered *"The status of claim CLM-9002 is Under
+review ... the assigned adjuster is Priya Nair"* at 17:55Z.
+
 **What it means.** Taking an owner's seat back after the build did not stop the agent, for as long as this
-was watched. Until a build sees Dataverse re-read the licence, ADR-0009 stands. A build needs the owner's seat at least for the step that drives Copilot Studio in a browser
+was watched - nor taking `svc-claims`'s. Until a build sees Dataverse re-read the licence, ADR-0009 stands. A build needs the owner's seat at least for the step that drives Copilot Studio in a browser
 (reading the Teams link); connection consent wasn't tested, and owners whose connections reach SharePoint,
 Outlook or OneDrive likely need a seat for those services anyway.
