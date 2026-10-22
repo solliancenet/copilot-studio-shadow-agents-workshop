@@ -355,8 +355,9 @@ an estate deploys nothing.
    ```
 
    - New sites can take up to 15 minutes each to appear in a fresh tenant.
-   - The read-back must show `Leadership/` readable by `HR-Team-<estate>` and not by
-     `All-Employees-<estate>`.
+   - In the read-back, `Leadership/ unique permissions` must be `True` and list only the site's Owners and
+     Members groups (`HR-Team-<estate>` is a Member) — no `All-Employees-<estate>`. The poisoned file must
+     show `payload text present True`.
    - Times out waiting for a site? A soft-deleted site from an earlier run may hold the URL — purge it with
      `Remove-PnPTenantDeletedSite` ([errata → Phase 4](../reference/runbook-errata.md)).
    - No certificate? Unset the two variables and it signs in with a device code instead.
