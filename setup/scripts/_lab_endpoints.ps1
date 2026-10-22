@@ -21,6 +21,9 @@ function Get-AzdLabValues {
   $v
 }
 
+# Trailing slashes come off the two addresses (callers append /policy, /underwriting). Secrets pass untouched.
+function Format-LabValue([string]$Key, [string]$Value) { if ($Key -like '*_FQDN') { $Value.TrimEnd('/') } else { $Value } }
+
 # Returns @{ Values = @{ <key> = <value> }; Source = '<where from>'; Missing = @(<keys>) }. Only the four keys:
 # the committed workspaces use no other ${VAR} that azd would supply.
 function Get-LabEndpoints {
@@ -34,7 +37,7 @@ function Get-LabEndpoints {
     $src = 'azd env get-values'
   }
   $vals = @{}
-  foreach ($k in $LabEndpointKeys) { if ($raw[$k]) { $vals[$k] = $raw[$k].TrimEnd('/') } }
+  foreach ($k in $LabEndpointKeys) { if ($raw[$k]) { $vals[$k] = Format-LabValue $k $raw[$k] } }
   [pscustomobject]@{ Values = $vals; Source = $src; Missing = @($LabEndpointKeys | Where-Object { -not $vals[$_] }) }
 }
 
@@ -43,7 +46,7 @@ function Save-LabEndpoints {
   $v = Get-AzdLabValues
   $missing = @($LabEndpointKeys | Where-Object { -not $v[$_] })
   if ($missing.Count) { throw "azd env get-values has no $($missing -join ', ') - select the shared deployment's azd env (azd env select <name>) after a clean azd up." }
-  $o = [ordered]@{}; foreach ($k in $LabEndpointKeys) { $o[$k] = $v[$k].TrimEnd('/') }
+  $o = [ordered]@{}; foreach ($k in $LabEndpointKeys) { $o[$k] = Format-LabValue $k $v[$k] }
   $o | ConvertTo-Json | Set-Content $LabEndpointsFile
   Write-Host "Wrote $LabEndpointsFile from azd env '$($v['AZURE_ENV_NAME'])'. Share it with each facilitator out of band; it is gitignored."
 }

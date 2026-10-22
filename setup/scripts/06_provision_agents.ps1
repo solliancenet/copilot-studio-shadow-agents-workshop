@@ -13,7 +13,8 @@ manifest holds owner/environment/connections/audience. Benign agents are authore
 planted agents are captured once with `pac copilot clone` and committed (capture:"clone").
 
 Prerequisites (run first): the shared Phase 1 values (setup/lab-endpoints.local.json, from the deployment's
-owner), 01 (personas+groups), 03/03b (SharePoint+OneDrive grounding), 04 (Dataverse), owner licenses, default-environment Dataverse, and a billing plan on Prod+Claims-Test. See RUNBOOK Phase 6.
+owner), 01 (personas+groups), 03/03b (SharePoint+OneDrive grounding), 04 (Dataverse), owner licenses,
+default-environment Dataverse, and a billing plan on Prod+Claims-Test. See RUNBOOK Phase 6.
 
 Auth: az's admin sign-in for BAP/Graph/Dataverse admin calls; per-owner password sign-in (ROPC + a pac
 auth profile) so each agent is built as its persona. The CA baseline only MFAs admins, so persona

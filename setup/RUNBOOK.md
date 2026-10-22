@@ -32,9 +32,10 @@ tool the scripts need already installed.
 4. Open a terminal: **Terminal → New Terminal**. Run every command in this runbook in that terminal unless
    a step says otherwise, and sign in to `az` and `pac` only from it — a sign-in made outside the container
    isn't seen by the scripts ([ADR-0003](../reference/adr/0003-project-local-sign-in.md)).
-5. **Only the owner of the shared Azure deployment** (Phase 1) needs an Azure role: **Owner** on the lab
-   subscription (or Contributor + User Access Administrator) — the deployment creates role assignments,
-   which Contributor alone can't. Every other facilitator needs no Azure access at all.
+5. Make sure you hold **Contributor** on the lab subscription. Phase 3 may create the shared billing plan
+   and Phase 4c the Graph billing resource, both Azure resources. The **owner of the shared Azure
+   deployment** (Phase 1) needs **Owner** (or Contributor + User Access Administrator): the deployment
+   creates role assignments, which Contributor alone can't.
 
 **The admin portals.** This runbook names each portal in full; "PPAC" is the Power Platform admin center.
 
@@ -241,11 +242,15 @@ changes them, and they take static secrets rather than Entra, so they work from 
 
 **Building an estate:** get `setup/lab-endpoints.local.json` from the deployment's owner and save it at
 that path (gitignored). It holds the four values Phase 6 puts into the agents — `POLICY_API_FQDN`,
-`POLICY_API_KEY`, `UNDERWRITING_MCP_FQDN`, `MCP_BEARER`. Then check it:
+`POLICY_API_KEY`, `UNDERWRITING_MCP_FQDN`, `MCP_BEARER`. Then check it — every line must say `ok`:
 
 ```bash
-pwsh setup/scripts/00b_preflight.ps1   # "Training endpoints" must PASS: 401 without each secret, 200 with it
+F=setup/lab-endpoints.local.json
+bash setup/infra/smoke-test.sh "$(jq -r .POLICY_API_FQDN $F)" "$(jq -r .POLICY_API_KEY $F)" \
+  "$(jq -r .UNDERWRITING_MCP_FQDN $F)" "$(jq -r .MCP_BEARER $F)"
 ```
+
+The preflight (`00b_preflight.ps1`, *Training endpoints*) runs the same check again before a delivery.
 
 Don't run `azd up` for your estate, and don't change the secrets: every estate's agents carry them.
 

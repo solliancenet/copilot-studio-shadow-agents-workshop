@@ -36,8 +36,8 @@ deployment, using the same four values.
 
 ## Consequences
 
-- Saves a deployment's time and Foundry quota per estate. A facilitator building an estate needs no Azure
-  role at all.
+- Saves a deployment's time and Foundry quota per estate. A facilitator building an estate no longer
+  needs Owner on the subscription; Contributor still covers the billing plan and the Graph billing resource.
 - Every estate shares one Policy API key. Scenario E exposes that key to attendees by design and it guards
   only lab data, so sharing it adds no exposure.
 - **Redeploying with new secrets, or tearing down, breaks every estate** until each re-runs Phase 6. Hence
@@ -63,4 +63,4 @@ How it is implemented:
 ## Alternatives considered
 
 - **Keep one deployment per estate** (today). Independent, but every estate pays the time and quota, and
-  each needs an Azure role in the subscription.
+  each facilitator needs Owner on the subscription.
