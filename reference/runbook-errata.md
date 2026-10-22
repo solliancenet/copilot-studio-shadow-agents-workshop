@@ -1470,3 +1470,15 @@ was licensed and enabled in Entra throughout. **Fix.** The script retries `addUs
 (60 s, 25 tries), waits for the systemuser row, and retries the role on 0x80048d35 (30 s, 20 tries). The
 by-hand workaround used that day - creating the systemuser with a Web API POST (`internalemailaddress`,
 `domainname`, `firstname`, `lastname`) - isn't needed.
+05-07 KT04 step 2 can't be shown live until it is; the interaction record (user, agent, resources) is.
+
+### Phase 2 · it.helpdesk lost its licence hours after the build (2026-10-22)
+
+**Symptom.** Opening Policy Lookup Bot as `it.helpdesk.<estate>` in Copilot Studio showed *"Something went
+wrong - We couldn't load Copilot Studio"*, while the agent list loaded. The failing calls returned 403
+`UserHasNoLicense`. **Evidence.** Entra: no licence. Directory audit: *Change user license* by
+`CloudLicensingSystem` at 00:41Z, about 4.5 hours after the build had assigned the E5 seat; no person or kit
+script did it. it.helpdesk is the one persona Exchange creates as a shared mailbox, and no other persona lost
+its seat. **Fix.** Assign the seat again (`assignLicense`, DEVELOPERPACK_V2_E5). Copilot Studio saw it within
+about 15 minutes. Before a delivery or a recording, check that every persona still holds its licence.
+Root cause not confirmed.
