@@ -25,6 +25,7 @@ re-verified as products change.
 | `dataverse-seed.md` | What the Phase 5 Dataverse seed creates, and the over-broad role |
 | `agents-build.md` | What Phase 6 builds: owners and roles, tool mechanisms, connections |
 | `building-many-estates.md` | Building several estates with `10_build_estates.ps1` (Phases 2–6.5) |
+| `attendee-accounts.md` | Phase 8b attendee accounts: roles, MFA, Dataverse access, Teams links, licences |
 | `building-one-agent.md` | Building one agent with `pac`; what to expect from connections |
 | `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
 | `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |
