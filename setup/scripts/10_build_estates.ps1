@@ -107,11 +107,19 @@ function Invoke-Reclaim([string]$Estate) {
     $upn = "$(Get-EstateAlias $a $Estate)@$tenantDomain"
     $body = @{ addLicenses = @(); removeLicenses = @($e5.id) } | ConvertTo-Json -Compress
     $tmp = New-TemporaryFile; Set-Content $tmp $body
-    az rest --method POST --url "https://graph.microsoft.com/v1.0/users/$upn/assignLicense" --body "@$tmp" -o none
-    if ($LASTEXITCODE) { $failed += $a }
+    # Graph throttles licence changes after a busy night (429 DependencyThrottled, 2026-10-23): a removal that
+    # wasn't retried simply didn't happen, and the next estates were skipped for lack of seats. Back off.
+    for ($i = 1; $i -le 6; $i++) {
+      $err = az rest --method POST --url "https://graph.microsoft.com/v1.0/users/$upn/assignLicense" --body "@$tmp" -o none 2>&1
+      if (-not $LASTEXITCODE) { break }
+      if ($i -eq 6) { $failed += $a; Write-Warning "  could not free $upn's seat: $(($err | Out-String).Trim().Split([char]10)[0])"; break }
+      Start-Sleep -Seconds (20 * $i)
+    }
     Remove-Item $tmp
   }
+  # Removals land in Graph a little later than the call returns: wait for them before reporting.
   $still = Get-SeatHolders $Estate
+  for ($i = 0; $i -lt 6 -and $still.Count; $i++) { Start-Sleep 30; $still = Get-SeatHolders $Estate }
   if ($still) { Write-Warning "  $Estate's $($still -join ', ') still hold a seat - re-run with -ReclaimOnly" }
   Write-Host "  reclaimed $($held.Count - $still.Count) of $($held.Count) seat(s) from $Estate's personas; $(Get-FreeSeats) free"
 }
@@ -156,6 +164,8 @@ foreach ($estate in $Estates) {
   elseif ($first -le [array]::IndexOf($names, 'entra')) {
     $need = $LicensedPersonas.Count - (Get-SeatHolders $estate).Count
     $free = Get-FreeSeats
+    # The previous estate's reclaim may still be landing: give the count up to five minutes to catch up.
+    for ($i = 0; $i -lt 10 -and $free -lt $need; $i++) { Start-Sleep 30; $free = Get-FreeSeats }
     if ($free -lt $need) { $why = "needs $need E5 seat(s) for its personas; $free free - reclaim another estate's (-ReclaimOnly) or free seats" }
   } elseif (@('onedrive', 'agents') | Where-Object { $i = [array]::IndexOf($names, $_); $i -ge $first -and $i -le $last }) {
     # Resuming past Phase 2 into a phase that signs in AS the personas (4b: dev.kim's OneDrive; 6: the agents'
