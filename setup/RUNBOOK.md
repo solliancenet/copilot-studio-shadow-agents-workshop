@@ -832,86 +832,71 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All
    ```
 
-### Phase 9 — Teardown / reseed
+### Phase 9 — Teardown
 
-`99_teardown.ps1` removes ONE estate and nothing another estate owns, in dependency order: the shared
-default environment's agents + the auto-approve flow (as their owners) → the SharePoint sites (purged from
-the recycle bin so the URLs are reusable) → the three estate environments (their Dataverse, agents and
-connections go with them) → the DLP policy → billing unlink. It only **unlinks** the estate's environments
-from the shared billing plan; it never deletes the plan or its resource group.
+After the delivery, remove this estate's attendee and facilitator accounts, its slices, its Purview
+objects, then the estate itself. Run the steps in this order: some need things a later step deletes. Each
+removes only this estate; nothing another estate uses is touched. To reseed instead, re-run Phases 2–6.
 
-```bash
-export ENTRAID_APP_ID=<PnP app id>  HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx  HALCOURT_PNP_CERT_PW=<cert-pw>   # for site removal
-pwsh setup/scripts/99_teardown.ps1                                  # estate artifacts; KEEPS personas + shared infra
-pwsh setup/scripts/99_teardown.ps1 -RemovePersonas                  # also the Phase 2 personas + *-<estate> groups
-pwsh setup/scripts/99_teardown.ps1 -RemovePersonas -RemoveShared    # also the shared authors group + PnP app registration
-```
+1. **Take back the attendees' Purview role.** Before step 2, while the accounts still exist: the script
+   matches role-group members by display name. It needs one admin device-code approval.
 
-Environments delete asynchronously (a few minutes). It KEEPS Phase 0 (tenant, CA baseline, security
-defaults) and the shared **default environment** and its Dataverse — that can't be un-provisioned. It
-also keeps the **shared Azure deployment** (Phase 1): it is every estate's, not this one's. To reseed,
-re-run Phases 2–6 with the same `setup/lab-endpoints.local.json`.
+   ```bash
+   pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove
+   ```
 
-**Shared Azure deployment — owner only, after the last estate.** Tearing it down breaks every estate's
-agents, so do it only when no estate still needs it:
+2. **Delete the attendee accounts and their handout.** The script deletes and purges the accounts
+   ([ADR-0026](../reference/adr/0026-attendee-teardown-purges.md)).
 
-```bash
-azd env select <shared env name>   # from the repo root
-azd down --purge --force
-rm setup/lab-endpoints.local.json  # and ask facilitators to delete their copies
-```
+   ```bash
+   pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy
+   rm setup/lab-users-$HALCOURT_ESTATE.local.csv
+   ```
 
-If it has to be rebuilt while estates still use it, use a **new** azd environment name, write the new
-values file (`Save-LabEndpoints -Force`: it refuses to replace different values otherwise), hand it out, and
-have every estate re-run Phase 6: the agents' `${…}` action tokens
-re-inject the new addresses and secrets at provision time.
+3. **Delete the facilitator account.** It also deletes its password file.
 
-**What `99_teardown.ps1` does not remove.** Run these by hand after the delivery:
+   ```bash
+   pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy
+   ```
 
-- [ ] **Per-student slices** (Phase 8c): `pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy`
-      (`-Force` skips the prompt). **Run it before `99_teardown.ps1`**: it finds the billing policy to unlink
-      through the estate's Prod environment, and once Prod is gone it warns and skips the unlink unless you
-      pass `-BillingPolicyId`.
-- [ ] **The attendees' Purview role** (Phase 8b): `pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove`
-      (one admin device-code approval). Run it before `07 -Destroy`, while the lab accounts still exist:
-      07c matches role-group members by display name, so a member left behind would be taken for a rebuilt
-      account of the same name. The role is tenant-wide - it shows every Copilot interaction in the tenant,
-      every estate's - so don't leave it in place between deliveries.
-- [ ] **Shared grants 07 and 04b leave in place** (tenant-wide, shared by every estate - remove only when
-      no estate needs them): Graph Explorer's all-users consent (`$GraphExplorerScopes`) -
-      `az rest --method DELETE --url https://graph.microsoft.com/v1.0/oauth2PermissionGrants/<id>` (find the
-      id with `oauth2PermissionGrants?$filter=clientId eq '<Graph Explorer service principal id>'`); and unified
-      audit ingestion, which is best left on.
-- [ ] **Lab accounts** (Phase 8b): `pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy` (`-Force` skips
-      the prompt), then delete `setup/lab-users-<estate>.local.csv`.
-- [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also
-      deletes `setup/lab-facilitator-<estate>.local.csv`).
-- [ ] **Phase 4c's Purview artifacts**, before `99_teardown.ps1`: `pwsh setup/scripts/03c_provision_purview.ps1
-      -Remove` deletes the label policy `Halcourt-Labels-<estate>`, then the label `Confidential-PII-<estate>`
-      (it retries while the policy is withdrawn; re-run if it times out). The group `HR-Leadership-<estate>`
-      goes with `-RemovePersonas`; the labelled copy goes with the `HR-Benefits-<estate>` site.
-- [ ] **Shared per-tenant, only when the last estate in the tenant goes:** the app registration
-      `halcourt-lab-compliance` (03c, 07 and 07b sign in with it) with its local
-      `setup/lab-compliance-app.local.{json,pfx}`, and the resource group `rg-halcourt-graph-billing` holding
-      its Graph billing resource `halcourt-lab-compliance-billing`. `azd down` does not touch either.
-- [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan and, if
-      the kit created it, its resource group. Deleting either cuts billing for every estate in the region.
-      First check that `/billingPolicies/<id>/environments` lists no live environment, for every plan in
-      the group, then remove the group's `halcourt-shared-billing` lock (`az lock delete --name
-      halcourt-shared-billing -g <group> --subscription <that id>`), then PPAC → Licensing → Billing Plans →
-      delete. A plan the kit created is `Halcourt-PAYG-<region>` in `rg-halcourt-billing`, in the plan's
-      own subscription (its `billingInstrument.subscriptionId`). Once
-      `az resource list -g rg-halcourt-billing --subscription <that id>` is empty:
-      `az group delete -n rg-halcourt-billing --subscription <that id>`. A plan the tenant came with
-      (e.g. `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default
-      environment's plan — leave that group alone, but remove the kit's lock from it (`az lock delete --name
-      halcourt-shared-billing -g <group> --subscription <that id>`). A tenant built before ADR-0014's
-      shared names may also hold `rg-halcourt-billing-<estate>` with a `Halcourt-PAYG-<estate>` plan: retire
-      it the same way.
+4. **Delete the per-student slices.** Before step 6: the script finds the billing plan to unlink through
+   the estate's Prod environment.
 
-`-RemovePersonas` deletes every user whose UPN ends `.<estate>@<domain>` and every group named `*-<estate>`,
-so it also catches the lab accounts, the facilitator and `HR-Leadership-<estate>`. Run the scripts above
-anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
+   ```bash
+   pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy
+   ```
+
+5. **Delete the Purview label and policy.** It removes `Halcourt-Labels-<estate>`, then
+   `Confidential-PII-<estate>`, retrying while the policy is withdrawn; re-run it if it times out.
+
+   ```bash
+   pwsh setup/scripts/03c_provision_purview.ps1 -Remove
+   ```
+
+6. **Tear down the estate.** In dependency order: the default environment's agents and the auto-approve
+   flow (as their owners), the SharePoint sites (purged, so the URLs can be reused), the three estate
+   environments with everything in them, the Prod data policy, and the billing link. It only unlinks the
+   billing plan; it never deletes it. `-RemovePersonas` also deletes the Phase 2 personas and every
+   `*-<estate>` group.
+
+   ```bash
+   export ENTRAID_APP_ID=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
+   export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
+   pwsh setup/scripts/99_teardown.ps1 -RemovePersonas
+   ```
+
+   - Environments delete in the background, over a few minutes.
+   - It keeps Phase 0 (the tenant and the Conditional Access baseline), the default environment, the
+     shared Azure deployment and the other shared pieces.
+
+7. **Delete the estate's local files.**
+
+   ```bash
+   rm -rf setup/ex05-state/$HALCOURT_ESTATE setup/teams-links-$HALCOURT_ESTATE.local.csv
+   ```
+
+Last estate in the tenant? The shared pieces — the Azure deployment, the billing plan, the lab apps and the
+tenant-wide grants — are retired separately: [retiring-shared-resources.md](../reference/retiring-shared-resources.md).
 
 ## File index (this kit)
 
