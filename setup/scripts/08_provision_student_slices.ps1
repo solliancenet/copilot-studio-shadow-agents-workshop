@@ -194,13 +194,15 @@ foreach ($n in 1..$Count) {
   if (-not $SkipSeed) {
     # svc-claims must be IN the environment before Phase 5 can give it the over-broad role - and addUser
     # is ASYNCHRONOUS. Phase 5 reports a missing user record as "needs a license", which is the wrong
-    # diagnosis and leaves the slice without the over-broad role, so wait for the record to appear.
+    # diagnosis and leaves the slice without the over-broad role, so wait for the record to appear. Two
+    # minutes wasn't enough for a slice made right after its environment (Lab-fac03-01, 2026-10-23: the record
+    # appeared before a re-run), so wait up to six.
     $svcUpn = "$(Get-EstateAlias 'svc-claims' $Estate)@$DomainSuffix"
     $svcOid = Add-EnvUser $env.name $svcUpn
     Invoke-DvRetry $url 'WhoAmI' | Out-Null
     if ($svcOid) {
       $seen = $false
-      foreach ($try in 1..12) {
+      foreach ($try in 1..36) {
         $hit = (Invoke-DvRetry $url ("systemusers?`$select=systemuserid&`$filter=" + [uri]::EscapeDataString("azureactivedirectoryobjectid eq $svcOid"))).value
         if ($hit) { $seen = $true; break }
         Start-Sleep -Seconds 10
