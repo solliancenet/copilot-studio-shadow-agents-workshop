@@ -48,9 +48,12 @@ function Invoke-AzRest([string]$Method, [string]$Url, [string]$Resource, $Body, 
   #   0x80048564 "Database is currently unavailable" - relationship creates, before the database is serving
   #   0x80041102 "entity ... was not found in the MetadataCache" - a relationship create seconds after its
   #                                                   table, on a brand-new environment (stu06, 2026-10-22)
+  #   "An undeclared property 'mm_customer' which only has property annotations" - a row's lookup bind
+  #                                                   minutes after the relationship; two rows in, the third
+  #                                                   hit a server that didn't know it yet (stu10, 2026-10-23)
   # (0x80072322 is the ordinary concurrency error and retries just as well.) Back off and retry, so an
   # automated rebuild doesn't need the whole script re-run to inch one step further each time.
-  $transient = '0x80040216|0x80072322|0x80048564|0x80041102|An unexpected error occurred|currently unavailable|Service Unavailable'
+  $transient = '0x80040216|0x80072322|0x80048564|0x80041102|An undeclared property|An unexpected error occurred|currently unavailable|Service Unavailable'
   $attempt = 0; $out = $null; $code = 0; $err = $null
   while ($true) {
     $attempt++
