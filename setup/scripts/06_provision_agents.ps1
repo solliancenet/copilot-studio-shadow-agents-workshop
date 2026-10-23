@@ -114,12 +114,16 @@ function Invoke-Json([string]$Method, [string]$Uri, [string]$Token, $Body) {
         $Token = if ($owner.Kind -eq 'admin') { Get-AdminToken $owner.Resource -Force } else { Get-PersonaToken $owner.Alias $owner.Resource -Force }
         continue
       }
-      # A Dataverse SQL deadlock (500, 0x80044150, "Sql Number: 1205") is the server telling us to try again:
-      # stu11 (2026-10-22) lost its Phase 6 to one on a bot PATCH. Back off and repeat, up to three times.
+      # Transient server answers: throttling (429), gateway/timeout (502/503/504 - stu06 lost Phase 6 to a
+      # 503 ServerTimeout listing connections, 2026-10-23) and a Dataverse SQL deadlock (500, 0x80044150,
+      # "Sql Number: 1205" - stu11, 2026-10-22). Back off (Retry-After when given) and repeat, up to four times.
       $bodyText = "$($_.ErrorDetails.Message)"
-      if ($code -eq 500 -and $bodyText -match 'Sql Number: 1205|0x80044150' -and $try -le 3) {
-        Write-Host "    (SQL deadlock on $Method $($Uri.Split('?')[0]) - retrying in $(5 * $try)s)"
-        Start-Sleep -Seconds (5 * $try); continue
+      $transient = $code -in 429, 502, 503, 504 -or ($code -eq 500 -and $bodyText -match 'Sql Number: 1205|0x80044150')
+      if ($transient -and $try -le 4) {
+        $after = try { [int]"$($_.Exception.Response.Headers.RetryAfter.Delta.TotalSeconds)" } catch { 0 }
+        $wait = [Math]::Max($after, 10 * $try)
+        Write-Host "    ($code from $Method $($Uri.Split('?')[0]) - transient; retrying in ${wait}s)"
+        Start-Sleep -Seconds $wait; continue
       }
       # Name the call, keep the response body (DvAuto matches its codes: "$_" -match '0x80042f09|prvRead...',
       # and Invoke-RestMethod puts them in ErrorDetails, not Exception.Message), and wrap the original exception
