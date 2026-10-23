@@ -716,9 +716,12 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
          4–7 minutes, then **Refresh**; ingestion can take up to an hour to start after Phase 5b.
          *Total Result Count* can read 0 above a list of results; the list is what counts. Without the
          **Users** filter the search shows every estate's chats.
-   - [ ] **DSPM for AI.** In the same portal, **Solutions** → **DSPM for AI** → **Activity explorer**. The
-         rehearsal chat's interaction record (user, agent, resources) must show. The prompt and response
-         text usually doesn't — tell the room it's optional.
+   - [ ] **DSPM for AI.** In the same portal, **Solutions** → **DSPM for AI (classic)** → **Activity
+         explorer** (select **Maybe later** if a *New Unified Data Security Posture Management* window opens).
+         With **User participant** = the student account, the rehearsal chat's **AI Interaction** record
+         (agent, user, time, app) must show. The prompt and response text usually doesn't, and an
+         "Additional permissions required" banner about AI visits is expected — tell the room the text is
+         optional.
    - [ ] **The Claims-Test audit summary.** **Power Platform admin center** → **Manage → Environments** →
          `Claims-Test-<estate>` → **Settings** → **Audit and logs** → **Audit summary view**. It must open
          and list audit records; the student can't open a claim itself, and that's expected.
