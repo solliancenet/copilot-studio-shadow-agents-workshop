@@ -197,6 +197,14 @@ foreach ($estate in $Estates) {
     Write-Host ("           exit {0} in {1} min - {2}" -f $code, $mins, $tail.Substring(0, [Math]::Min(160, $tail.Length)))
     if (-not $code -and $ph.Name -eq 'entra') {
       $held = Get-SeatHolders $estate
+      # Exchange creates it.helpdesk (a shared mailbox) late, so 01 can't license it yet - 01 itself says
+      # "re-run in a minute". Do that once before calling it a failure (stu10, 2026-10-22).
+      if ($held.Count -lt $LicensedPersonas.Count) {
+        Write-Host "           $($LicensedPersonas.Count - $held.Count) persona(s) not licensed yet - re-running Phase 2 in 60s"
+        Start-Sleep 60
+        & pwsh -NoProfile -File (Join-Path $PSScriptRoot $ph.Script) @($ph.Args) *>&1 | Tee-Object -FilePath $log -Append | ForEach-Object { "    $_" } | Out-Host
+        $held = Get-SeatHolders $estate
+      }
       if ($held.Count -lt $LicensedPersonas.Count) {
         "Phase 2 left $($LicensedPersonas.Count - $held.Count) persona(s) without a seat: $(@($LicensedPersonas | Where-Object { $_ -notin $held }) -join ', ') - re-run -From entra in a minute (Exchange creates it.helpdesk late)" | Tee-Object -FilePath $log -Append | Write-Warning
         $code = 1
