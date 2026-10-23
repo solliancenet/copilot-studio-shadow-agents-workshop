@@ -722,9 +722,14 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
          (agent, user, time, app) must show. The prompt and response text usually doesn't, and an
          "Additional permissions required" banner about AI visits is expected — tell the room the text is
          optional.
-   - [ ] **The Claims-Test audit summary.** **Power Platform admin center** → **Manage → Environments** →
-         `Claims-Test-<estate>` → **Settings** → **Audit and logs** → **Audit summary view**. It must open
-         and list audit records; the student can't open a claim itself, and that's expected.
+   - [ ] **The Claims-Test audit summary.** Open `<Claims-Test org URL>/tools/audit/audit_summary.aspx`
+         (the org URL is in the Phase 3 summary, or **Power Platform admin center**,
+         https://admin.powerplatform.microsoft.com → **Manage → Environments** → `Claims-Test-<estate>` →
+         **Environment URL**). It must list audit records — at least Phase 5b's *Audit Change* entries — and
+         the student can't open a claim itself, which is expected. Don't use the admin center's **Settings →
+         Audit and logs → Audit summary view** link: it fails for attendees with *Error loading control*.
+         The page's **Delete Change History** button shows for everyone but is refused: the lab role holds
+         no delete privilege.
 
 4. **Brief yourself on what the room can't do.** Each is expected, not a fault:
 

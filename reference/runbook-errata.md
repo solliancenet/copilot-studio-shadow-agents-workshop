@@ -1519,3 +1519,17 @@ capacity. Linking afterwards (02b) is too late: the capacity check runs at creat
 now creates Prod and Claims-Test on the plan the tenant's estates already use
 (`-BillingPolicyId` to choose), else the kit's or the region's only plan; 08's slices are created on the plan too.
 A tenant with no plan yet has its first estate created unlinked.
+
+### Before delivery · the admin center's Audit summary link fails for attendees (2026-10-23)
+
+**Symptom.** As `student01.jrc`, Power Platform admin center → `Claims-Test-jrc` → **Settings → Audit and
+logs → Audit summary view** opened a blank classic page: *"Error loading control"* →
+*"initialize data failed for control: PowerAdmin.EnvironmentSettings.RedirectionWrapper"*, error code `0x0`.
+**Evidence.** The same account opened `https://orga990d2f4.crm3.dynamics.com/tools/audit/audit_summary.aspx`
+directly and saw the records (Phase 5b's two *Audit Change* entries). The failing piece is the admin center's
+redirect wrapper, not the audit page: the access model (`prvReadRecordAuditHistory`, `prvReadAuditSummary`,
+`prvReadQuery`) was verified through the API on 2026-10-20, and the browser route was never tried.
+**Fix.** 05-07 KT03 and RUNBOOK → Before delivery open `<Claims-Test org URL>/tools/audit/audit_summary.aspx`
+directly. The page's **Delete Change History** button is shown regardless; the student holds only Lab
+Reviewer (read-only) and Bot Viewer in Claims-Test, neither with `prvDeleteAudit` or
+`prvDeleteAuditPartitions`.
