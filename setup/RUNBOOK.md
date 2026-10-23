@@ -65,7 +65,7 @@ real Windows desktop browser for interactive sign-in and MFA? See
 5. Dataverse seed              → Claim + Customer tables, PII rows, the over-broad role
 5b. Auditing                   → Purview Audit + Claims-Test change auditing (05-07); before Exercise 04
 6. Author the agents           → as each owner, from the committed workspaces
-6c. Recheck the Purview label  → re-run 4c until the copy is labelled and the policy has its group
+6c. Recheck the Purview label  → re-run 4c until the copy is labelled
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
 8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
@@ -411,7 +411,7 @@ an estate deploys nothing.
 
 2. **Re-run until the copy is labelled.** It ends with checks; repeat step 1 until they show
    `copy labelled: True` and `original unlabelled: True`. Expect a few re-runs while the
-   new group and label replicate ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
+   label replicates ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
 
 ### Phase 5 — Dataverse seed
 
@@ -503,9 +503,8 @@ an estate deploys nothing.
 ### Phase 6c — Recheck the Purview label
 
 1. **Re-run Phase 4c until it finishes.** Its first run usually stops short: the new label hasn't reached
-   SharePoint, so the copy isn't labelled, and the new group isn't an Exchange recipient yet, so the policy
-   covers Marcus alone. Phases 4b–6.5 give them time. Re-running creates nothing new; it adds the group to the
-   policy and labels the copy once they're ready.
+   SharePoint, so the copy isn't labelled. Phases 4b–6.5 give it time. Re-running creates nothing new; it
+   labels the copy once the label is there.
 
    ```bash
    pwsh setup/scripts/03c_provision_purview.ps1
@@ -513,7 +512,7 @@ an estate deploys nothing.
 
    - No `6. Checks` section in the output means it stopped at step 5: not yet.
    - Done when the `6. Checks` lines show `copy labelled: True`, `original unlabelled: True` and `search sees
-     the marker: True`, and step 3 no longer says the group isn't an Exchange recipient.
+     the marker: True`.
    - Not yet? Run it again later. The label can take hours to reach SharePoint — up to a day
      ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
    - It must pass before the delivery: Task 05-06 retests against the labelled copy.

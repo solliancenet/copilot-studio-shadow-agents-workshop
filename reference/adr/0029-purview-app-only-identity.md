@@ -38,8 +38,13 @@ tell which file answered.
 
 ## Consequences
 
-- Two lags, both handled by re-running: a new group isn't an Exchange recipient for a while, and label
-  assignment returns `labelNotFound` until the label replicates (errata → Phase 4c).
+- Label assignment returns `labelNotFound` until the label replicates — handled by re-running (errata →
+  Phase 4c).
+- **The label policy is published to the group's members, not the group.** A label policy's Exchange
+  location accepts mailboxes only, and a Microsoft 365 group is a `GroupMailbox`. The label's encryption
+  rights name the group itself, and those are what 05-06 relies on; the policy only decides who sees the
+  label in their apps. Adding a member to `HR-Leadership-<estate>` means re-running Phase 4c to publish to
+  them.
 - SharePoint search must index the labelled copy before 05-06 can be retested, so this runs days before a
   delivery.
 - Never delete `rg-halcourt-graph-billing` or the app while any estate is live.
