@@ -762,21 +762,69 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    ```
 
 2. **For each task, demonstrate the control, let the room retest, then put it back** — as soon as the
-   retests are done:
+   retests are done. Sign in as the facilitator account unless a task says otherwise. The click paths come
+   from each task's page; those marked *(not yet walked)* haven't been run as the facilitator.
 
-   | Task | You demonstrate | Back to the estate |
-   |---|---|---|
-   | 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
-   | 05-02 | default environment: a data policy named `Halcourt-Default-DLP-<estate>` that blocks **HTTP** and **custom connectors** (the 05-01 blocks). Nothing else: every licensed user is an Environment Maker there automatically, so swapping the role's members for `Halcourt-Makers-<estate>` restricts nobody - attendees record that as a finding | `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
-   | 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
-   | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
-   | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-   | 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
-   | 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
+   **05-01 — Block HTTP and custom connectors in Prod** (attendees follow KT02, retest in KT03 and KT05)
 
-   - Activate the facilitator's AI Administrator (PIM) only for 05-05, and let it lapse.
-   - The default environment is shared with every estate in the tenant: coordinate with any other
-     facilitator delivering at the same time.
+   1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** →
+      `Halcourt-Prod-DLP-<estate>` → **Edit Policy** *(not yet walked)*.
+   2. Move **HTTP** and **HTTP with Microsoft Entra ID** to **Blocked**; set **custom connectors** to
+      **Blocked**; leave **Dataverse** and **SharePoint** in **Business**. Save.
+   3. **Show the room** the Blocked group, then wait for KT03 (Policy Lookup Bot and Underwriting Assistant)
+      and KT05. Expect the HTTP call and the MCP tool to fail, and maybe agents that won't publish (the
+      page's warning).
+   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp`
+
+   **05-02 — A data policy on the default environment** (KT03; retests in KT06 and KT08)
+
+   1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** → **New
+      policy**, named `Halcourt-Default-DLP-<estate>`, scoped to **Halcourt (default)** only, with **HTTP**,
+      **HTTP with Microsoft Entra ID** and **custom connectors** **Blocked** *(not yet walked)*.
+   2. **Show the room** the policy, and that you can't fence the default environment's makers: every
+      licensed user is an Environment Maker there.
+   3. Wait for KT06 and KT08.
+   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` — it deletes the new policy (the estate id in its
+      name is what allows that).
+
+   **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT05, KT07)
+
+   1. **Scenario B, as Marcus Webb** (`marcus.webb.<estate>`, the agent's owner and the site's member):
+      remove the knowledge source's effective reader's permission on `Leadership/` in
+      `HR-Benefits-<estate>` — the route KT01 step 3 offers *(not yet walked)*. Don't narrow the Knowledge
+      instead: that did not stop the leak within an hour
+      ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)).
+   2. **Scenarios C and D:** the scoped `svc-claims` role and its fixed data subset, by script:
+
+      ```bash
+      pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1
+      ```
+
+   3. **Show the room** the new role in **Claims-Test**'s security roles, and the permission change. Wait for
+      KT03, KT05 and KT07.
+   4. **Put it back:** restore the `Leadership/` permission by hand, then
+      `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles` (the role, Basic User and record owners).
+
+   **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
+   policy locks out the tenant.
+
+   **05-05 — Block Onboarding Guide** (KT06)
+
+   1. Activate the facilitator's **AI Administrator** in PIM.
+   2. **Microsoft 365 admin center** → **Agents** → **Onboarding Guide** → **Block** *(not yet walked)*.
+      Never **Delete**: it can't be undone.
+   3. Wait for KT06 (can Onboarding Guide still send mail?).
+   4. **Put it back:** the same page → **Unblock**, by hand. Let AI Administrator lapse.
+
+   **05-06 — Show the labelled copy** (KT01 step 3; nothing changes)
+
+   1. As Marcus Webb (an HR-leadership member), open `HR-Benefits-<estate>` → **Documents** →
+      `Leadership/`, select each comp file → **Details**.
+   2. **Show the room:** `2026-comp-bands-labeled.xlsx` shows **Sensitivity** `Confidential-PII-<estate>`,
+      `2026-comp-bands.xlsx` none. The library view has no Sensitivity column.
+
+   **05-07 — Nothing to change.** Real-time protection is reasoned through (KT06): the tenant has no Agent
+   365 licence.
 
 3. **At the end, check everything is back.** Every line must say "same as the snapshot":
 
