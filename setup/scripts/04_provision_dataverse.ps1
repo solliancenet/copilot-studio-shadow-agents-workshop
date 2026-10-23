@@ -176,12 +176,19 @@ if (Invoke-Dv GET "EntityDefinitions(LogicalName='${p}_claim')/Attributes(Logica
   Write-Host "    Lookup ${p}_customer exists - skipping."
 } else {
   Write-Host "    Creating lookup ${p}_customer (Customer 1 -> N Claim)"
-  Invoke-Dv POST 'RelationshipDefinitions' @{
-    '@odata.type' = 'Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata'; SchemaName = "${p}_customer_claim"
-    ReferencedEntity = "${p}_customer"; ReferencingEntity = "${p}_claim"
-    Lookup = @{ '@odata.type' = 'Microsoft.Dynamics.CRM.LookupAttributeMetadata'; SchemaName = "${p}_customer"
-                DisplayName = (New-Label 'Customer'); RequiredLevel = $optional }
-  } | Out-Null
+  try {
+    Invoke-Dv POST 'RelationshipDefinitions' @{
+      '@odata.type' = 'Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata'; SchemaName = "${p}_customer_claim"
+      ReferencedEntity = "${p}_customer"; ReferencingEntity = "${p}_claim"
+      Lookup = @{ '@odata.type' = 'Microsoft.Dynamics.CRM.LookupAttributeMetadata'; SchemaName = "${p}_customer"
+                  DisplayName = (New-Label 'Customer'); RequiredLevel = $optional }
+    } | Out-Null
+  } catch {
+    # On a re-run the attribute read above can lag behind a relationship an earlier run made, and the create
+    # then says 0x80044363 "schema name ... is not unique" (stu10, 2026-10-23). It exists: carry on.
+    if ("$_" -notmatch '0x80044363|is not unique') { throw }
+    Write-Host "    Lookup ${p}_customer already exists (metadata read lagged) - skipping."
+  }
 }
 Write-Host 'Publishing customizations...'
 Invoke-Dv POST 'PublishAllXml' @{} | Out-Null
