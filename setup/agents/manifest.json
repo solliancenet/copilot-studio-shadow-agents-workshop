@@ -76,6 +76,33 @@
   ],
   "agents": [
     {
+      "slug": "onboarding-guide",
+      "display": "Onboarding Guide",
+      "workspace": "onboarding-guide",
+      "owner": "tom.dean",
+      "environment": "Halcourt (default)",
+      "connections": [
+        "O365-Outlook-Onboarding"
+      ],
+      "chatAudience": "All-Employees",
+      "planted": true,
+      "capture": "authored",
+      "estateSuffixName": true
+    },
+    {
+      "slug": "sales-nudge",
+      "display": "Sales Nudge",
+      "workspace": "sales-nudge",
+      "owner": "lena.ford",
+      "environment": "Halcourt-Prod",
+      "connections": [
+        "DV-CRM-Shared"
+      ],
+      "chatAudience": "Halcourt-Makers",
+      "planted": true,
+      "capture": "authored"
+    },
+    {
       "slug": "benefits-buddy",
       "display": "Benefits Buddy",
       "workspace": "benefits-buddy",
@@ -146,20 +173,6 @@
       "teamsChannel": true
     },
     {
-      "slug": "onboarding-guide",
-      "display": "Onboarding Guide",
-      "workspace": "onboarding-guide",
-      "owner": "tom.dean",
-      "environment": "Halcourt (default)",
-      "connections": [
-        "O365-Outlook-Onboarding"
-      ],
-      "chatAudience": "All-Employees",
-      "planted": true,
-      "capture": "authored",
-      "estateSuffixName": true
-    },
-    {
       "slug": "team-wiki",
       "display": "Team Wiki",
       "workspace": "team-wiki",
@@ -169,19 +182,6 @@
         "Graph-DevKim"
       ],
       "chatAudience": "Owner",
-      "planted": true,
-      "capture": "authored"
-    },
-    {
-      "slug": "sales-nudge",
-      "display": "Sales Nudge",
-      "workspace": "sales-nudge",
-      "owner": "lena.ford",
-      "environment": "Halcourt-Prod",
-      "connections": [
-        "DV-CRM-Shared"
-      ],
-      "chatAudience": "Halcourt-Makers",
       "planted": true,
       "capture": "authored"
     },

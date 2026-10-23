@@ -269,7 +269,8 @@ $all = Get-Environments
     Environment = $en.properties.displayName
     Type        = $en.properties.environmentSku
     Region      = $en.location
-    Managed     = if ($en.properties.governanceConfiguration.protectionLevel -eq 'Standard') { 'Yes' } else { 'No' }
+    # The list call lags the governance change made above (a first run showed Prod 'No'); ask for this one.
+    Managed     = if ((Invoke-Bap GET "$envApi/$id`?api-version=2021-04-01").properties.governanceConfiguration.protectionLevel -eq 'Standard') { 'Yes' } else { 'No' }
     OrgUrl      = $en.properties.linkedEnvironmentMetadata.instanceUrl
     Id          = $en.name
   }

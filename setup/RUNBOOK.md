@@ -63,7 +63,9 @@ real Windows desktop browser for interactive sign-in and MFA? See
 4b. Maker OneDrive             → provision + seed dev.kim's OneDrive (Meeting Notes grounding)
 4c. Purview                    → Confidential-PII label + labelled comp copy (05-06); DAYS before delivery
 5. Dataverse seed              → Claim + Customer tables, PII rows, the over-broad role
+5b. Auditing                   → Purview Audit + Claims-Test change auditing (05-07); before Exercise 04
 6. Author the agents           → as each owner, from the committed workspaces
+6c. Recheck the Purview label  → re-run 4c until the copy is labelled and the policy has its group
 7. Export the artifact pack    → regenerate ../worksheets/artifact-pack/*.csv
 8. Validate                    → every planted problem reproduces; verdicts hold
 8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
@@ -235,59 +237,33 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
 
 ### Phase 1 — Azure infrastructure (shared)
 
-The agents call two intentionally weak Container Apps — the internal **Policy API** and the
-**Underwriting MCP** server (static-secret auth, over-scoped surface; see `setup/infra/policy-api/` and
-`setup/infra/mcp-underwriting/`). **One deployment serves every estate**
-([ADR-0005](../reference/adr/0005-shared-azure-deployment.md)): the apps hold no estate state, no exercise
-changes them, and they take static secrets rather than Entra, so they work from any estate in any tenant.
+The agents call two deliberately weak apps in Azure — the Policy API and the Underwriting MCP server. One
+deployment serves every estate ([ADR-0005](../reference/adr/0005-shared-azure-deployment.md)), so building
+an estate deploys nothing.
 
-**Building an estate:** get `setup/lab-endpoints.local.json` from the deployment's owner and save it at
-that path (gitignored). It holds the four values Phase 6 puts into the agents — `POLICY_API_FQDN`,
-`POLICY_API_KEY`, `UNDERWRITING_MCP_FQDN`, `MCP_BEARER`. Then check it — every line must say `ok`:
+1. **Get the endpoints file from the deployment's owner.** It holds the two apps' addresses and secrets,
+   which Phase 6 puts into the agents. Save it as `setup/lab-endpoints.local.json` (gitignored — never
+   commit it).
 
-```bash
-F=setup/lab-endpoints.local.json
-bash setup/infra/smoke-test.sh "$(jq -r .POLICY_API_FQDN $F)" "$(jq -r .POLICY_API_KEY $F)" \
-  "$(jq -r .UNDERWRITING_MCP_FQDN $F)" "$(jq -r .MCP_BEARER $F)"
-```
+   - No owner yet, or you are the owner: deploy it once for the lab —
+     [azure-shared-deployment.md](../reference/azure-shared-deployment.md).
 
-The preflight (`00b_preflight.ps1`, *Training endpoints*) runs the same check again before a delivery.
+2. **Check both apps answer.** The smoke test calls each app with and without its secret. Every line must
+   say `ok`:
 
-Don't run `azd up` for your estate, and don't change the secrets: every estate's agents carry them.
+   ```bash
+   F=setup/lab-endpoints.local.json
+   bash setup/infra/smoke-test.sh "$(jq -r .POLICY_API_FQDN $F)" "$(jq -r .POLICY_API_KEY $F)" \
+     "$(jq -r .UNDERWRITING_MCP_FQDN $F)" "$(jq -r .MCP_BEARER $F)"
+   ```
 
-#### Once per lab: the owner deploys it
+   - Don't run `azd up` for your estate, and don't change the secrets: every estate's agents carry them.
 
-One named facilitator owns the deployment. Only the owner redeploys or tears it down, and the secrets stay
-fixed for its life — **a redeploy with new secrets, or a teardown, breaks every estate's agents** until
-each re-runs Phase 6. The deployment also brings the demo web app and Foundry; the agents don't use them.
+### Before Phase 2 — One estate or several?
 
-```bash
-azd auth login --use-device-code  # skip if `azd config get auth.useAzCliAuth` says true — az login covers it
-
-az group list --subscription <lab-subscription-id> --query "[?starts_with(name, 'rg-halcourt')].name" -o tsv   # names already used
-ENV_NAME=halcourt-shared-lab      # a name nobody has used in this subscription
-azd env new "$ENV_NAME" --subscription <lab-subscription-id> --location eastus2   # RG: rg-$ENV_NAME
-azd env set POLICY_API_KEY "lab-$(openssl rand -hex 8)"   # any lab-only string
-azd env set MCP_BEARER   "lab-$(openssl rand -hex 8)"     # any lab-only string
-azd up                            # provisions + builds/pushes all images + deploys
-pwsh -c '. setup/scripts/_lab_endpoints.ps1; Save-LabEndpoints'   # writes setup/lab-endpoints.local.json
-```
-
-- **Hand `setup/lab-endpoints.local.json` to each facilitator out of band** (it holds two lab secrets;
-  never commit it). Phase 6 and the preflight read it, falling back to the selected azd environment — so
-  the owner's own builds work either way.
-- **Use an environment name nobody has used in this subscription.** Reusing a live name redeploys that
-  deployment and replaces its secrets; reusing a *torn-down* name hits the Foundry soft-delete trap. Add a
-  suffix (`-2`, a date) when you rebuild.
-- Pass `--subscription` and `--location` explicitly — azd's global defaults can point outside the lab
-  tenant. `eastus2` is tested; any region with gpt-5-mini (GlobalStandard) quota works.
-- The Policy API key is the one that ends up hard-coded in Policy Lookup Bot (Scenario E). Despite the
-  `_FQDN` names, both addresses are full URLs.
-
-Name derivation and the FQDN shape:
-[ADR-0012](../reference/adr/0012-azd-environment-per-estate.md) and
-[azure-endpoints.md](../reference/azure-endpoints.md). `azd up` failures and Foundry
-soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
+- **One estate:** carry on with Phases 2 to 6.5 below, one at a time.
+- **Several estates** (one per attendee): skip Phases 2 to 6.5. Run them all with one script —
+  [building-many-estates.md](../reference/building-many-estates.md) — then continue at Phase 6c.
 
 ### Phase 2 — Entra identities & personas
 
@@ -328,24 +304,24 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
    - It reuses your `az` sign-in, so there's no code to enter.
    - The summary lists each environment's **Region**. All three must match; note it for step 2.
    - It ends with `Phase 3 complete`.
+   - If the tenant already has a billing plan in the region, Prod and Claims-Test are created on it: a
+     Dev Program tenant's Dataverse capacity holds only two estates otherwise
+     ([errata → Phase 3](../reference/runbook-errata.md)).
    - The platform picks the region ([ADR-0013](../reference/adr/0013-environment-region-assigned.md)). The other
      environments get no DLP and no agent Conditional Access is created — on purpose
      ([ADR-0028](../reference/adr/0028-planted-governance-gaps.md)).
 
 2. **Link Prod and Claims-Test to a pay-as-you-go billing plan.** Without one, agents publish but nobody
-   can chat with them. The script finds the plan in your environments' region with the Copilot Studio
-   meter on, creating one if the region has none, then links both environments and checks the link.
-   Step 1 creates Prod and Claims-Test **on** the plan when the tenant already has one: each Dataverse
-   environment otherwise reserves 1 GB of the tenant's capacity, and a Dev Program tenant's 5 GB holds only
-   two estates ([errata → Phase 3](../reference/runbook-errata.md)).
-   Estates share a plan per region ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)), so the
-   plan and its resource group carry no estate id — one the script creates is `Halcourt-PAYG-<region>` in
-   `rg-halcourt-billing`. Never delete either while any estate uses the region. Safe to re-run.
+   can chat with them. The script finds the shared plan in your environments' region — creating
+   `Halcourt-PAYG-<region>` in `rg-halcourt-billing` if the region has none — then links both environments
+   and checks the link. Every estate in the region shares that plan
+   ([ADR-0014](../reference/adr/0014-shared-billing-plan-per-region.md)). Safe to re-run.
 
    ```bash
    pwsh setup/scripts/02b_provision_billing.ps1
    ```
 
+   - Never delete the plan or `rg-halcourt-billing` while any estate uses the region.
    - Creating a new plan is untested (`[verify]`); reusing one is the normal path.
    - By hand instead: [billing-plan-by-hand.md](../reference/billing-plan-by-hand.md). Trouble with the
      region lock: [errata → Phase 3](../reference/runbook-errata.md).
@@ -387,8 +363,9 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
    ```
 
    - New sites can take up to 15 minutes each to appear in a fresh tenant.
-   - The read-back must show `Leadership/` readable by `HR-Team-<estate>` and not by
-     `All-Employees-<estate>`.
+   - In the read-back, `Leadership/ unique permissions` must be `True` and list only the site's Owners and
+     Members groups (`HR-Team-<estate>` is a Member) — no `All-Employees-<estate>`. The poisoned file must
+     show `payload text present True`.
    - Times out waiting for a site? A soft-deleted site from an earlier run may hold the URL — purge it with
      `Remove-PnPTenantDeletedSite` ([errata → Phase 4](../reference/runbook-errata.md)).
    - No certificate? Unset the two variables and it signs in with a device code instead.
@@ -520,315 +497,185 @@ soft-delete: [errata → Phase 1](../reference/runbook-errata.md).
    pwsh setup/scripts/01_provision_entra.ps1 -MarkDepartedOwner
    ```
 
+   - It ends with `tom.dean.<estate>@… marked departed`. Safe to re-run: it sets the same date again.
    - **Never disable Tom**: both connections go to Error within the hour and Scenario F stops reproducing.
 
-### Building many estates (one per attendee)
+### Phase 6c — Recheck the Purview label
 
-When each attendee gets their own estate (issue #30), build them with `10_build_estates.ps1` instead of
-walking Phases 2–6.5 by hand. It runs each phase's script in order, as above, logs and times each one under
-`setup/build-logs/<estate>/` (gitignored), stops at the first failure, and gives the admin System
-Administrator in the estate's Developer environment (Phase 7's prerequisite, via `dev.kim`, no device code).
-Phases 0 and 1 must be done first.
+1. **Re-run Phase 4c until it finishes.** Its first run usually stops short: the new label hasn't reached
+   SharePoint, so the copy isn't labelled, and the new group isn't an Exchange recipient yet, so the policy
+   covers Marcus alone. Phases 4b–6.5 give them time. Re-running creates nothing new; it adds the group to the
+   policy and labels the copy once they're ready.
 
-```bash
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac01                       # one estate (about 47 min; Phase 6 is most of it)
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac02,fac03 -ReclaimSeats   # several, seats reclaimed after each
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac02 -From agents          # resume at a phase after a failure
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -ReclaimOnly          # only take the persona seats back
-```
+   ```bash
+   pwsh setup/scripts/03c_provision_purview.ps1
+   ```
 
-- **Seats.** A build licenses the estate's eight personas (ADR-0009) and checks they're free first.
-  `-ReclaimSeats` takes them back afterwards so the next estate - and, the day before the delivery, the
-  attendees - can use them. The published agents keep answering without the owners' seats (errata:
-  *An agent owner without a seat*); an owner without a seat can't open Copilot Studio, so re-run Phase 2
-  for that estate before changing its agents.
-- **Phase 4c** usually reports the label not yet in SharePoint: re-run it hours later with
-  `-From purview -To purview`.
-- **Check each estate** before the delivery with the preflight and the Teams chat probe (*Before delivery*),
-  chatting as Jordan Blake on a lent seat if the personas' seats were reclaimed.
+   - No `6. Checks` section in the output means it stopped at step 5: not yet.
+   - Done when the `6. Checks` lines show `copy labelled: True`, `original unlabelled: True` and `search sees
+     the marker: True`, and step 3 no longer says the group isn't an Exchange recipient.
+   - Not yet? Run it again later. The label can take hours to reach SharePoint — up to a day
+     ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
+   - It must pass before the delivery: Task 05-06 retests against the labelled copy.
 
 ### Phase 7 — Export the artifact pack
 
-```powershell
-pwsh setup/scripts/05_export_artifact_pack.ps1 -Canonicalize    # estate from HALCOURT_ESTATE (or -Estate <id>)
-git diff worksheets/artifact-pack
-```
+1. **Give yourself a role in `Maker-Sandbox-<estate>`.** The export reads every environment's agents, and
+   the admin has no Dataverse role in this one: it's a Developer environment, and Dev Kim is its only System
+   Administrator — so the admin can't grant itself one, and Dev has to. These sign `pac` in as Dev, in a
+   profile store of its own so your admin profile is untouched, and give your admin account System
+   Administrator there. Once per estate:
 
-Pulls **this estate** — its environments, its agents and connections in the shared default environment,
-and its accounts (no admins, no sample users) — from the PPAC admin APIs + Microsoft Graph, and writes the
-five estate CSVs, plus `files-export.csv` for 05-06 (the knowledge sites' files and their sensitivity labels).
-That one reads SharePoint with the lab app Phase 4c creates, so run Phase 4c first. `-Canonicalize` maps live names back to the canon's so the export lands on the committed pack
-and `git diff` shows the drift. Without it the script refuses to write into the committed pack; pass
-`-OutDir` for a live-named export.
+   ```bash
+   export XDG_DATA_HOME=/tmp/pac-devkim
+   ~/.dotnet/tools/pac auth create --name devkim --username dev.kim.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' --environment <Maker-Sandbox org URL>
+   ~/.dotnet/tools/pac admin assign-user --environment <Maker-Sandbox environment id> --user <your admin UPN> --role "System Administrator"
+   rm -rf /tmp/pac-devkim; unset XDG_DATA_HOME
+   ```
 
-**One prerequisite: the admin needs a security role in every Dataverse environment**, because the agent
-inventory reads each environment's `bot` table. Environments the admin created in Phase 3 already have it;
-a **Developer** environment does not:
+   - The environment id and org URL are in the Phase 3 summary.
+   - It ends with `Successfully assigned security role 'System Administrator'`.
+   - The estate builder does the same step for you (`10_build_estates.ps1`, phase `devadmin`).
 
-```bash
-pac admin assign-user --environment <environment-id> --user <admin UPN> --role "System Administrator"
-```
+2. **Export the estate over the committed pack.** The script reads this estate's environments, agents,
+   connections and accounts, plus the knowledge sites' files and labels (Phase 4c's app), converts the live
+   names back to the canonical ones, and writes the six CSVs in `worksheets/artifact-pack/`
+   ([ADR-0022](../reference/adr/0022-artifact-export-over-rest.md)). Safe to re-run.
 
-{: .important }
-> **The committed pack is not a pure export, so do not expect an empty `git diff`.** Three columns are
-> hand-written canon that no API returns: agent `description`, the friendly connector names, and the rows
-> for things that aren't Power Platform connections at all. Read the diff as *drift to review*, not as a
-> test that should come out empty —
-> [ADR-0023](../reference/adr/0023-committed-pack-not-pure-export.md).
+   ```bash
+   pwsh setup/scripts/05_export_artifact_pack.ps1 -Canonicalize
+   ```
+
+3. **Review the drift, then keep or discard it.** The diff is what changed between the committed pack and
+   your estate. It is never empty: descriptions, friendly connector names and some rows are hand-written
+   ([ADR-0023](../reference/adr/0023-committed-pack-not-pure-export.md)).
+
+   ```bash
+   git diff worksheets/artifact-pack
+   ```
+
+   - Commit only real changes to the estate. Discard the rest with
+     `git checkout -- worksheets/artifact-pack`.
+   - Exporting somewhere else instead: `-OutDir <folder>`, without `-Canonicalize`, keeps the live names.
 
 ### Phase 8 — Validate
 
-Walk `AGENTS.md` and confirm, in the live tenant:
+Check the estate matches `AGENTS.md`. Most of it is reading what Phases 6.5–7 already reported; the
+scenarios themselves need someone to talk to the agents.
 
-- Every **PLANTED PROBLEM** reproduces (A–F fire; discovery targets are findable).
-- Every **CONTROL EFFICACY** verdict holds; resolve any `[verify]` items and update `AGENTS.md`.
-- A student account (Phase 8b) signs in, sees its slice (Phase 8c), opens each Teams install link, and
-  Claims Copilot returns CLM-9002 to it while the account's own Claims-Test roles grant no claim access —
-  the confused-deputy path, with the attendee as the requester.
-- **Phase 6.5 has run** — Tom has a leave date and is still **enabled**, and both of his connections
-  show `Connected`; otherwise the departed-owner thread reads wrong and `users-export` disagrees with the canon.
-- **The agent registry shows the estate (05-05).** All ten estate agents appear in Microsoft 365 admin
-  center → Agents, and **Block** is available on Onboarding Guide there - as the facilitator account with AI
-  Administrator activated, the way 05-05 is demonstrated. If you try it, Unblock straight away. Whether the
-  tenant's Agent 365 licensing holds for the delivery is an open question:
-  [PLANNING item 8](../PLANNING.md).
-- Re-run Phase 7 and **review** `git diff worksheets/artifact-pack`. It will not be empty; look for
-  *unexpected* drift — an agent missing, an owner that changed, a connection that lost its sharing, an
-  environment that lost its DLP.
+1. **Check the estate's shape against the export.** Phase 7's diff already shows whether every agent is
+   present with the right owner and environment, each has one Entra identity, DLP is on Prod only, and the
+   accounts are as Phase 2 left them. Look for *unexpected* drift — an agent missing, an owner changed, an
+   environment that lost its DLP — not an empty diff.
 
-What the export confirms on its own, without driving an agent: every published agent is present with the
-right owner and environment; each has exactly one Entra identity; DLP is attached to Prod and nowhere
-else; and the accounts are as Phase 2 left them. Reproducing Scenarios A–F still means talking to the
-agents.
+2. **Check Tom is departed but still enabled.** Phase 6.5 must have run, and both of his connections must
+   still work; otherwise the departed-owner scenario reads wrong:
+
+   ```bash
+   az rest --url "https://graph.microsoft.com/v1.0/users/tom.dean.$HALCOURT_ESTATE@<tenant domain>?\$select=accountEnabled,employeeLeaveDateTime"
+   ```
+
+   - It must show `accountEnabled: true` and a leave date.
+   - Onboarding Guide and Sales Nudge must answer in step 3.
+
+3. **Reproduce the planted scenarios.** Walk `AGENTS.md`'s planted problems (Scenarios A–F) and confirm
+   each one fires, and that each discovery target can be found. The Teams chat probe holds a scripted
+   conversation with one agent, as a persona, the way attendees do in Exercise 04:
+
+   ```bash
+   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' \
+     --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
+     --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
+   ```
+
+   - It ends with `RESULT=PASS`, or `RESULT=FAIL <reason>` and screenshots in `--out`.
+   - Sign in as a licensed persona in the agent's chat audience, not an admin.
+
+4. **Check the control verdicts.** Every control-efficacy verdict in `AGENTS.md` must still hold. Resolve
+   any `[verify]` item you can and update `AGENTS.md`.
+
+5. **Check the agent registry (Task 05-05).** As the facilitator, with AI Administrator activated:
+   **Microsoft 365 admin center** → **Agents** must list all ten estate agents, with **Block** available on
+   Onboarding Guide. If you try Block, unblock straight away.
+
+   - Whether the tenant's Agent 365 licensing lasts until the delivery is open:
+     [PLANNING item 8](../PLANNING.md).
+
+The attendee's view — a student account's slice, Teams links and the confused-deputy path — is checked at
+the end of Phase 8c, because it needs Phases 8b and 8c.
 
 ### Phase 8b — Lab (attendee) accounts
 
-Per *delivery*, not per estate: attendees sign in to the lab tenant with a native account you hand out, so
-they review the estate from inside the tenant rather than as guests. Run it shortly before the delivery and
-tear it down after.
+Per delivery, not per estate: attendees sign in with native lab accounts you hand out, so they review the
+estate from inside the tenant. What the accounts get and why: [attendee-accounts.md](../reference/attendee-accounts.md).
 
-First count your free E5 seats (**Microsoft 365 admin center** → **Billing → Licenses**). That number is the most
-attendees you can run: use it for `-Count` and `-Attendees`
-([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)).
+1. **Count your free E5 seats.** That number is the most attendees you can run: Teams, the audit events and
+   the access model all need a licence ([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)). This
+   prints the free count:
 
-```bash
-# N = your free E5 seats (ADR-0004) - 14 here
-pwsh setup/scripts/00b_preflight.ps1 -Attendees 14                           # the day before: seats, service plans, endpoints, the access model
-pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14                      # student01.<estate> .. student14.<estate>
-pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14 -UniquePasswords     # a distinct password each
-pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy                       # delete AND purge, after the delivery
-pwsh setup/scripts/07c_provision_purview_roles.ps1                           # attendees -> DSPM transcript role; one admin device-code approval
-```
+   ```bash
+   az rest --url https://graph.microsoft.com/v1.0/subscribedSkus --query "value[?skuPartNumber=='DEVELOPERPACK_V2_E5'] | [0].[prepaidUnits.enabled, consumedUnits]" -o tsv
+   ```
 
-Accounts are estate-scoped (`student01.<estate>@<domain>`), so two facilitators can run deliveries in one
-tenant. The run prints a handout table and writes `setup/lab-users-<estate>.local.csv` — **plaintext
-passwords, gitignored; delete it afterwards**. Re-running is safe: existing accounts are left alone and their passwords are carried forward from the
-previous handout (the script cannot read one back from Entra).
+   - Free = the first number minus the second. Short? Reclaim seats from built estates
+     ([building-many-estates.md](../reference/building-many-estates.md)).
 
-It also consents **Graph Explorer** tenant-wide for a few read scopes (`User.Read.All`, `AuditLog.Read.All`,
-`Application.Read.All`, `AgentIdentity.Read.All`; the list is `$GraphExplorerScopes` in `_access_model.ps1`).
-01-02, 02-01 and 06-01 send attendees there, and each of those reads is admin-consent-only: without the grant
-the query answers `Authorization_RequestDenied`. The grant is shared by every estate, so `-Destroy` leaves it.
+2. **Create the attendee accounts, the day before the delivery.** The script creates `student01.<estate>`…
+   with their admin roles, Dataverse read access in each estate environment, a seat each where one is free,
+   and membership of `All-Employees-<estate>` (so the Teams links work). It prints a handout and writes it,
+   passwords included, to `setup/lab-users-<estate>.local.csv` (gitignored). Safe to re-run: existing
+   accounts are kept, with their passwords carried forward from the handout.
 
-**Attendees get four Entra directory roles (`$DirectoryRoles` in `_access_model.ps1`), and enrol MFA at
-first sign-in:**
+   ```bash
+   pwsh setup/scripts/07_provision_lab_users.ps1 -Count <N>          # add -UniquePasswords for a distinct password each
+   ```
 
-| Role | Serves |
-|---|---|
-| `Power Platform Administrator` | the `/scopes/admin/` connection reads (Task 01-01) |
-| `AI Reader` | Microsoft 365 admin center → Agents (Agent 365): 01-01 KT01 s3, 02-01 KT01 s1, 04-06 KT01 s1, 05-05 KT01. Without it the Agents page is missing from the nav |
-| `Security Reader` | Entra Conditional Access policies (05-04 KT01) and the Defender portal's Alerts, Incidents and AI agents (05-07) |
-| `Global Reader` | Purview Information Protection and DSPM for AI (05-06, 05-07) |
+   - The day before, not the morning of: Conditional Access and Dataverse's licence state both lag by hours.
+   - The end-of-run table shows who got a seat. An attendee without one takes the artifact-pack route for
+     the Copilot Studio and role-editor steps.
 
-Only Power Platform Administrator can write. Task 01-01 has attendees enumerate an environment's
-connections, and only the tenant-admin endpoints under `/scopes/admin/` can do that. Nothing weaker
-reaches them - verified live 2026-10-13:
+3. **Grant the attendees Purview's transcript role.** Task 05-07 opens a chat's transcript in DSPM for AI,
+   which Global Reader alone can't. It asks for one device-code approval as the admin:
 
-| Weaker option | Result |
-|---|---|
-| `Global Reader` | **404 `CRMRequestFailed`** where a tenant admin gets `200`. The endpoint hides itself from an unauthorized caller rather than returning `403`, so the attendee sees an empty estate, not an error. |
-| A per-environment role | No help. The maker-facing connections API is caller-scoped: a maker owning 1 of an environment's 2 connections sees exactly that one; members owning none see zero. |
+   ```bash
+   pwsh setup/scripts/07c_provision_purview_roles.ps1
+   ```
 
-**Tell attendees to bring an authenticator app.** Holding a tenant admin role means Entra asks each of
-them to register MFA on their first sign-in. That is the point, not a snag: it is what gives them the
-Entra, Microsoft 365 and Exchange admin centers the labs use. It costs about two minutes each, once.
+4. **Tell attendees to bring an authenticator app.** Their accounts hold admin roles, so Entra makes each one
+   register MFA at first sign-in — about two minutes, once. Don't try to avoid it with a Conditional Access
+   exclusion: the admin portals and APIs enforce MFA anyway
+   ([attendee-accounts.md](../reference/attendee-accounts.md)).
 
-> {: .important }
-> **Do not try to avoid this with a Conditional Access exclusion.** An earlier design excluded these
-> accounts from `CA-Require-MFA-Admins` so a handed-out password alone would work. It buys **PPAC and
-> nothing else**: Entra, Microsoft 365 and Exchange admin centers enforce MFA for admin portals through
-> *Microsoft's* policy, which tenant Conditional Access cannot exclude. Verified by signing a lab account
-> into each - all three answer *"Let's keep your account secure"*, with no skip offered. Enrolling is
-> strictly better: every portal comes back, and `CA-Require-MFA-Admins` is left intact.
->
-> `-ExcludeFromAdminMfa` restores the old behaviour for a delivery that genuinely cannot use authenticator
-> apps - and as of 2026-10-17 it buys **the PPAC shell and nothing more**: every data call then fails with
-> *"Sign in required - AADSTS50076: you must use multi-factor authentication"* (the Power Platform API), and
-> Copilot Studio fails the same way. Microsoft requires MFA for the admin APIs as well as the portals, and
-> tenant Conditional Access cannot exclude it. Treat the switch as inoperative; attendees enrol.
-
-> {: .caution }
-> **An attendee account is a tenant-wide Power Platform admin.** It can change or delete any environment in
-> the tenant, including another facilitator's estate. Give a delivery its own tenant where you can, and run
-> `-Destroy` the moment it ends.
-
-**Attendees also get Dataverse access inside each estate environment, defined by an access model.**
-Power Platform Administrator is a **tenant** role and grants nothing inside a Dataverse environment, and
-most of the day's tasks read something that lives there: a security role's scope (03-02, 03-04), an
-agent's Knowledge, Topics, Tools and Connection Settings in Copilot Studio (01-01, 01-02, 02-01..03, all of
-Exercise 04). So the script assigns two roles in each of the estate's three Dataverse environments:
-
-- **`Lab Reviewer (read-only)`**, a custom role it creates and **reconciles on every run to exactly the
-  privileges listed in `setup/scripts/_access_model.ps1`** - every one of them `prvRead*`, every one tied to
-  the exercise step that needs it. Anything on the role that the model does not list is removed (Dataverse's
-  own unremovable baseline is recognised and reported, not treated as drift). `-KeepExtraPrivileges` reports
-  instead of removing.
-- **`Bot Viewer`**, Microsoft's built-in role, assigned alongside. The two are needed together: Copilot
-  Studio needs bot reads at *Global* depth (the agents belong to the personas, not the attendee), which the
-  custom role carries, **and** reads of connection references, AI plugins, workflows and solutions at the
-  depths Copilot Studio expects, which `Bot Viewer` carries. Either alone fails - verified one at a time.
-
-Never System Administrator, which would hand every attendee write access to the estate they are reviewing.
-The reviewer stance - observe the shared estate, change nothing - holds; attendees change only their own
-slice (Phase 8c), where they *are* System Administrator. `-NoDataverseRole` skips all of it.
-
-Extend the model from an exercise's requirement, never from a failing probe. Three exercises in a row (03-02,
-03-04, Exercise 04) had their live path blocked because the role had been sized for 01-02 and grown
-reactively; the preflight now fails before a delivery if an environment's role has drifted from the model.
-
-Two things that bite here, both verified:
-
-- **Create the accounts well before the delivery.** Group membership takes time to reach Conditional
-  Access. An account minutes old can fail its first sign-in with `AADSTS50079` on Dataverse-backed pages,
-  then work fine later.
-- **A re-run carries passwords forward, but cannot invent one.** An account that already exists is left
-  alone and its password is read back from the previous handout. If that file is gone, the row says so -
-  reset the password or destroy and recreate rather than guessing.
-
-
-**Exercise 04 chat needs a seat, and each agent needs its Teams channel added.** Attendees drive Benefits
-Buddy, Claims Copilot and Expense Helper with their own account, and send Policy Lookup Bot one benign
-lookup (04-05 KT02 s2). The agents authenticate with Microsoft,
-so the only channel is **Microsoft 365 and Microsoft Teams** (the *Make agent available in Microsoft 365
-Copilot* option is greyed out on this tenant) - and Teams refuses an unlicensed account outright (*"You
-don't have the required permissions to access this org"*, verified 2026-10-17). Phase 6 adds that channel
-for every agent marked `teamsChannel` in the manifest and reads each agent's **install link** (Channels →
-*Microsoft 365 and Microsoft Teams* → **Availability options** → **Copy link**) into
-`setup/teams-links-<estate>.local.csv`. Those are the links Exercise 04 says the facilitator hands out. They
-work for users the agent is shared with, which 07 arranges by adding attendees to `All-Employees-<estate>`;
-the attendee sees an **Add** dialog, then the chat. A plain chat link (`/l/chat/0/0?users=28:<app id>`) is
-refused: *"You do not have permission to use this app here"* (verified as student03, 2026-10-19).
-
-**Each attendee needs a licence** ([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md); [PLANNING item
-15](../PLANNING.md)): Exercise 04's Teams chat, 05-07's `CopilotInteraction` events and the access model all
-depend on one. Verified 2026-10-17 with three accounts holding the identical access model: the one with an E5
-seat (`accessmode=0`) opened the PPAC role editor and the Copilot Studio agent pages; the two without
-(`accessmode=1`, Administrative) got *"You don't have permission to view these items."* Administrative access
-mode **filters** a custom role's privileges. What survives filtering is System Administrator - so an
-unlicensed attendee can do those steps only in **their own slice** (Phase 8c), never in the shared estate.
-Without seats, the steps that read a role or an agent's configuration in the shared estate fall back to the
-artifact pack: the Copilot Studio parts of 01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2 and
-03-04; Exercise 04's configuration reads (04-01..06) and 04-03 KT02 s2's role editor in Claims-Test; and 05-01
-KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2. The role editor in 03-02 and 03-04 already routes to the slice. Entra
-reads, PPAC lists and the admin APIs work either way.
-
-The script attempts assignment, never fatally, and the end-of-run table reports who got one - so an attendee
-without a seat is a delivery decision you make, not a surprise: they take the artifact-pack route for those
-tasks. **Licence attendees the day before**: Dataverse keeps its own copy of licence state and re-reads it
-hours later, in both directions - an account licensed that morning still reports unlicensed, and one created
-unlicensed reports *licensed* for about an hour, so a rehearsal can pass and the delivery fail. The
-preflight checks `accessmode` per attendee. The build tenant's 25 E5 seats were held by estate personas,
-admins and 14 unused Microsoft sample users; the sample users' seats were released
-(`setup/licence-restore-2026-10-14.local.json` is the undo), so up to 14 attendees can be licensed - size
-the delivery to that.
-`FLOW_FREE` does nothing for Dataverse.
-
-Why this role and not something weaker:
-[ADR-0024](../reference/adr/0024-attendees-are-power-platform-admins.md); licences, teardown and the access model:
-[ADR-0025](../reference/adr/0025-attendee-licences-best-effort.md), [ADR-0026](../reference/adr/0026-attendee-teardown-purges.md),
-[ADR-0027](../reference/adr/0027-attendee-dataverse-access-model.md).
-
-
-**Attendees hold no Exercise 05 write role.** Exercise 05 is demonstrated: you apply each control to the
-shared estate and restore it (below), and attendees retest. An older kit made attendees PIM-eligible for AI
-Administrator and Security Administrator; 07 withdraws both on its next run (`$RetiredEligibleRoles`).
-Why: Security Administrator,
-[errata → Review fixes to this branch](../reference/runbook-errata.md#review-fixes-to-this-branch-2026-10-19);
-AI Administrator,
-[errata → Exercise 05 is demonstrated](../reference/runbook-errata.md#delivery--exercise-05-is-demonstrated-not-done-by-attendees-2026-10-19).
-
-### Exercise 05 demonstrations (during delivery)
-
-Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
-the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
-(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator only
-as PIM-eligible - activate it for the step that needs it (05-05) and let it lapse. (Security Administrator
-was eligible for 05-07's Defender step; that step is reasoned now, so 07b removes it.) Create it once, after the attendee accounts:
-
-```powershell
-pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv
-```
-
-Sign in with it once before the delivery to enrol MFA (it is an admin, so `CA-Require-MFA-Admins` applies). Snapshot everything before the session, restore each control as soon as its retests are
-done, and finish with a diff.
-
-```powershell
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All     # before Exercise 05 starts
-# ... demonstrate, let the room retest ...
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp       # or DefaultMakers / ClaimsRoles
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at the end: all "same as the snapshot"
-```
-
-| Task | You demonstrate | Back to the estate |
-|---|---|---|
-| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
-| 05-02 | default environment: a data policy named `Halcourt-Default-DLP-<estate>` that blocks **HTTP** and **custom connectors** (the 05-01 blocks). Nothing else: every licensed user is an Environment Maker there automatically, so swapping the role's members for `Halcourt-Makers-<estate>` restricts nobody - attendees record that as a finding | `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
-| 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
-| 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
-| 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-| 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
-| 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
-
-The default environment and the tenant's Defender setting are shared with every estate in the tenant:
-coordinate with any other facilitator delivering at the same time.
+An attendee account is a tenant-wide Power Platform admin: delete the accounts right after the delivery
+(Phase 9).
 
 ### Phase 8c — Per-student slices (needed from Exercise 03)
 
-Slices exist so attendees can open the `svc-claims` role as **System Administrator** in 03-02 and 03-04:
-the PPAC role editor opens for a System Administrator whatever their licence, and for a reviewer holding
-the custom role only if they have a seat (see Phase 8b). Exercise 05 is demonstrated on the shared estate
-(above), so attendees apply no control in their slice.
+Each attendee gets a small environment of their own, where they are System Administrator, to open the
+`svc-claims` role in Tasks 03-02 and 03-04. Why, and what a slice holds:
+[student-slices.md](../reference/student-slices.md).
 
-**Build the slices before the delivery starts** — Exercise 03 is the first to need them. Exercise 00
-introduces the slice by name (`Lab-<estate>-NN`), so the number on each attendee's handout must match the
-slice built for them: `studentNN` gets `Lab-<estate>-NN`.
+1. **Build a slice for each attendee account, before the delivery.** The script creates `Lab-<estate>-NN`
+   for `studentNN` — a Sandbox environment with Dataverse, on the estate's billing plan, seeded like
+   Claims-Test (the claims data and the over-broad `svc-claims` role) — and makes `studentNN` its System
+   Administrator. Use the same number as Phase 8b: the handout's `studentNN` must match its slice. Safe to
+   re-run.
 
-```bash
-pwsh setup/scripts/07_provision_lab_users.ps1 -Count 14        # accounts first - one per licensable seat
-pwsh setup/scripts/08_provision_student_slices.ps1 -Count 14   # then a slice each - the same N
-pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy    # after the delivery
-```
+   ```bash
+   pwsh setup/scripts/08_provision_student_slices.ps1 -Count <N>
+   ```
 
-**Why this is affordable.** Dataverse security roles and record-level access are **per environment**, so the
-one shared `svc-claims` can hold the over-broad role in one attendee's environment and a scoped role in
-another's at the same time. The slices need **no new licences** — which matters, because a sandbox tenant has 25 E5 seats and the
-estate itself holds eight, and that is what rules out giving each attendee a whole estate.
+   - A new slice's Dataverse is usually ready in about 30 seconds. An early *"Interactive authentication is
+     needed"* clears on its own; the script retries.
 
-Each slice is one Sandbox environment with Dataverse, linked to the estate's PAYG billing policy, holding
-the Phase 5 seed (Claim and Customer with PII rows, and the over-broad `svc-claims Dataverse Full Access`
-role). The attendee is **System Administrator of their own slice only**. Verified 2026-10-13: an attendee
-creating a scoped role gets `204` in their slice and `403` in the shared estate.
+2. **Check the attendee's view.** This is Phase 8's last check; it needs 8b and 8c. In a browser, sign in as
+   one student account (password in `setup/lab-users-<estate>.local.csv`). The first sign-in makes you
+   register MFA — have an authenticator app ready. Then confirm:
 
-> {: .important }
-> **Not needed while Exercise 05 is demonstrated.** A slice holds no SharePoint grounding site and no
-> agents, including the orphaned-connection agent owned by the departed `tom.dean`. That only matters if
-> attendees ever apply Exercise 05's controls themselves, in their own slice; it would then need a
-> per-environment override in `03_provision_sharepoint.ps1` and `06_provision_agents.ps1`.
-
-Two things learned building it, both verified: a new environment's Dataverse was **Ready in about 30
-seconds**, far faster than Phase 3's wait suggests; and the first calls against a brand-new org can fail
-with *"Interactive authentication is needed"* while `az` settles a token for the new resource — it clears
-on its own, so the script retries rather than failing the slice.
+   - [ ] the Power Platform admin center lists their slice, `Lab-<estate>-NN`;
+   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent;
+   - [ ] Claims Copilot gives them claim CLM-9002, although their own Claims-Test roles grant no claim
+         access — the confused-deputy path, with the attendee as the requester.
 
 ### Before delivery — preflight, audit and Exercise 04 notes
 
@@ -903,6 +750,41 @@ and nothing recorded before auditing was on can be found afterwards ([PLANNING i
 **04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
 instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the
 room the write half of Scenario D is reasoned, not exercised.
+
+### During delivery — Exercise 05 demonstrations
+
+Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
+the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
+(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator only
+as PIM-eligible - activate it for the step that needs it (05-05) and let it lapse. (Security Administrator
+was eligible for 05-07's Defender step; that step is reasoned now, so 07b removes it.) Create it once, after the attendee accounts:
+
+```powershell
+pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv
+```
+
+Sign in with it once before the delivery to enrol MFA (it is an admin, so `CA-Require-MFA-Admins` applies). Snapshot everything before the session, restore each control as soon as its retests are
+done, and finish with a diff.
+
+```powershell
+pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All     # before Exercise 05 starts
+# ... demonstrate, let the room retest ...
+pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp       # or DefaultMakers / ClaimsRoles
+pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at the end: all "same as the snapshot"
+```
+
+| Task | You demonstrate | Back to the estate |
+|---|---|---|
+| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
+| 05-02 | default environment: a data policy named `Halcourt-Default-DLP-<estate>` that blocks **HTTP** and **custom connectors** (the 05-01 blocks). Nothing else: every licensed user is an Environment Maker there automatically, so swapping the role's members for `Halcourt-Makers-<estate>` restricts nobody - attendees record that as a finding | `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
+| 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
+| 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
+| 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
+| 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
+| 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
+
+The default environment and the tenant's Defender setting are shared with every estate in the tenant:
+coordinate with any other facilitator delivering at the same time.
 
 ### Phase 9 — Teardown / reseed
 

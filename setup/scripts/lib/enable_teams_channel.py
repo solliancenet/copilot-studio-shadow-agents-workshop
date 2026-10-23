@@ -68,7 +68,17 @@ def main():
                 print("ERROR=sign-in did not complete"); return 1
             step = "open the agent"
             page.goto(f"{CS}/environments/{a.env}/bots/{a.bot}/overview", wait_until="domcontentloaded")
-            page.wait_for_timeout(15000)
+            # Wait for the agent header to draw: its overflow (+N) or Channels itself. Back off 15 s, 30 s, 45 s
+            # (90 s in all) and move on as soon as it shows. A fixed 15 s wait lost the race on a slow day and
+            # the loose Channels match below then clicked Overview's text instead (2026-10-22).
+            step = "wait for the agent page"
+            header = page.locator("text=/^\\+\\d+$/ >> visible=true").or_(page.locator("text=/^Channels$/ >> visible=true"))
+            for wait_s in (15, 30, 45):
+                try:
+                    header.first.wait_for(state="visible", timeout=wait_s * 1000); break
+                except Exception:
+                    if wait_s == 45: raise
+            page.wait_for_timeout(2000)
             # Channels sits in the agent header's overflow (+N) unless the window is wide enough to show it.
             step = "open the header overflow"
             # The overflow's entries are in the DOM even while it is closed, so open it whenever it shows, then
@@ -77,7 +87,8 @@ def main():
             if more.count():
                 more.first.click(); page.wait_for_timeout(2500)
             step = "open Channels"
-            page.locator("text=Channels >> visible=true").last.click(); page.wait_for_timeout(12000)
+            # Exactly "Channels": a substring match also hits Overview's "...Teams and Microsoft 365 channels" text.
+            page.locator("text=/^Channels$/ >> visible=true").first.click(); page.wait_for_timeout(12000)
             step = "open the Teams channel"
             page.locator("text=Microsoft Teams >> visible=true").first.click()
             page.wait_for_timeout(8000)

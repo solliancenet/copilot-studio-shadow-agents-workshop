@@ -17,12 +17,16 @@ re-verified as products change.
 |---|---|
 | `copilot-studio-billing.md` | Copilot Studio billing/licensing models, trial limits, workshop implications |
 | `adr/` | Architecture decision records — why the kit is built the way it is |
+| `azure-shared-deployment.md` | Deploying the shared Policy API and MCP apps (owner, once per lab) |
 | `azure-endpoints.md` | The Phase 1 Container App addresses |
 | `billing-plan-by-hand.md` | Creating or linking a billing plan without the script |
 | `pnp-app-setup.md` | Registering the shared `Halcourt PnP` app (once per tenant) |
 | `sharepoint-seed.md` | What the Phase 4 SharePoint seed creates, and the planted access |
 | `dataverse-seed.md` | What the Phase 5 Dataverse seed creates, and the over-broad role |
 | `agents-build.md` | What Phase 6 builds: owners and roles, tool mechanisms, connections |
+| `building-many-estates.md` | Building several estates with `10_build_estates.ps1` (Phases 2–6.5) |
+| `attendee-accounts.md` | Phase 8b attendee accounts: roles, MFA, Dataverse access, Teams links, licences |
+| `student-slices.md` | Phase 8c per-student slices: why they exist, what they hold, what they don't |
 | `building-one-agent.md` | Building one agent with `pac`; what to expect from connections |
 | `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
 | `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |
