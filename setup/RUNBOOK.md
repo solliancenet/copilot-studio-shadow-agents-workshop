@@ -259,6 +259,12 @@ an estate deploys nothing.
 
    - Don't run `azd up` for your estate, and don't change the secrets: every estate's agents carry them.
 
+### Before Phase 2 — One estate or several?
+
+- **One estate:** carry on with Phases 2 to 6.5 below, one at a time.
+- **Several estates** (one per attendee): skip Phases 2 to 6.5. Run them all with one script —
+  [building-many-estates.md](../reference/building-many-estates.md) — then continue at Phase 6c.
+
 ### Phase 2 — Entra identities & personas
 
 1. **Create and license the estate's people and groups.** The script creates nine accounts (eight
@@ -491,32 +497,8 @@ an estate deploys nothing.
    pwsh setup/scripts/01_provision_entra.ps1 -MarkDepartedOwner
    ```
 
+   - It ends with `tom.dean.<estate>@… marked departed`. Safe to re-run: it sets the same date again.
    - **Never disable Tom**: both connections go to Error within the hour and Scenario F stops reproducing.
-
-### Building many estates (one per attendee)
-
-When each attendee gets their own estate (issue #30), build them with `10_build_estates.ps1` instead of
-walking Phases 2–6.5 by hand. It runs each phase's script in order, as above, logs and times each one under
-`setup/build-logs/<estate>/` (gitignored), stops at the first failure, and gives the admin System
-Administrator in the estate's Developer environment (Phase 7's prerequisite, via `dev.kim`, no device code).
-Phases 0 and 1 must be done first.
-
-```bash
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac01                       # one estate (about 47 min; Phase 6 is most of it)
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac02,fac03 -ReclaimSeats   # several, seats reclaimed after each
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac02 -From agents          # resume at a phase after a failure
-pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -ReclaimOnly          # only take the persona seats back
-```
-
-- **Seats.** A build licenses the estate's eight personas (ADR-0009) and checks they're free first.
-  `-ReclaimSeats` takes them back afterwards so the next estate - and, the day before the delivery, the
-  attendees - can use them. The published agents keep answering without the owners' seats (errata:
-  *An agent owner without a seat*); an owner without a seat can't open Copilot Studio, so re-run Phase 2
-  for that estate before changing its agents.
-- **Phase 4c** usually reports the label not yet in SharePoint: re-run it hours later with
-  `-From purview -To purview`.
-- **Check each estate** before the delivery with the preflight and the Teams chat probe (*Before delivery*),
-  chatting as Jordan Blake on a lent seat if the personas' seats were reclaimed.
 
 ### Phase 6c — Recheck the Purview label
 
