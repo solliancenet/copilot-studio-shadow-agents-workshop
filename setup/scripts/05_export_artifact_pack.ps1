@@ -238,9 +238,22 @@ $connections = foreach ($env in $environments) {
     }
   }
 }
+# A connection used only by knowledge (SharePoint/OneDrive grounding reads as the user) is bound to no
+# reference, so the tenant can't say which agent it serves: SP-HR-Benefits, SP-HR-FAQ, SP-Onboarding and
+# OneDrive-DevKim. There used_by_agent is an analyst's call (ADR-0023): keep the committed value, as for
+# descriptions, so regenerating the pack doesn't blank it. A binding the tenant does show always wins.
+$connCsv = Join-Path $OutDir 'connections-export.csv'
+if (Test-Path $connCsv) {
+  $priorUse = @{}
+  foreach ($row in (Import-Csv $connCsv)) { if ($row.used_by_agent) { $priorUse[$row.connection_name] = $row.used_by_agent } }
+  foreach ($c in $connections) {
+    $canonName = if ($Canonicalize) { $c.connection_name -replace "-$estateRx\b", '' } else { $c.connection_name }
+    if (-not $c.used_by_agent -and $priorUse.ContainsKey($canonName)) { $c.used_by_agent = $priorUse[$canonName] }
+  }
+}
 ConvertTo-Canon $connections |
   Select-Object connection_name,connector,environment,connection_owner_upn,shared_with,used_by_agent,auth_type |
-  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'connections-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded $connCsv
 
 # --------------------------------------------------------------------------------------------------
 # 3) agent-identities-export.csv
