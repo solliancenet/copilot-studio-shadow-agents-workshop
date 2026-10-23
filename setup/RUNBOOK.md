@@ -772,8 +772,10 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    2. Move **HTTP** and **HTTP with Microsoft Entra ID** to **Blocked**; set **custom connectors** to
       **Blocked**; leave **Dataverse** and **SharePoint** in **Business**. Save.
    3. **Show the room** the Blocked group, then wait for KT03 (Policy Lookup Bot and Underwriting Assistant)
-      and KT05. Expect the HTTP call and the MCP tool to fail, and maybe agents that won't publish (the
-      page's warning).
+      and KT05. Expect Policy Lookup Bot's HTTP call to fail (`DataLossPreventionViolation`), and maybe
+      agents that won't publish (the page's warning). Don't predict the MCP half: in the reference build,
+      blocking custom connectors did **not** stop Underwriting Assistant's MCP tool. Record what the
+      retest shows — either result is a finding, not a broken demonstration.
    4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp`
 
    **05-02 — A data policy on the default environment** (KT03; retests in KT06 and KT08)
@@ -789,9 +791,10 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
 
    **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT05, KT07)
 
-   1. **Scenario B, as Marcus Webb** (`marcus.webb.<estate>`, the agent's owner and the site's member):
-      remove the knowledge source's effective reader's permission on `Leadership/` in
-      `HR-Benefits-<estate>` — the route KT01 step 3 offers *(not yet walked)*. Don't narrow the Knowledge
+   1. **Scenario B, as the site owner** — the account Phase 4 made owner of `HR-Benefits-<estate>`
+      (`-SiteOwner`; by default the admin who ran it). Members, Marcus included, have Edit, which can't
+      change permissions. Remove the knowledge source's effective reader's permission on `Leadership/` —
+      the route KT01 step 3 offers *(not yet walked)*. Don't narrow the Knowledge
       instead: that did not stop the leak within an hour
       ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)).
    2. **Scenarios C and D:** the scoped `svc-claims` role and its fixed data subset, by script:
@@ -802,7 +805,7 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
 
    3. **Show the room** the new role in **Claims-Test**'s security roles, and the permission change. Wait for
       KT03, KT05 and KT07.
-   4. **Put it back:** restore the `Leadership/` permission by hand, then
+   4. **Put it back:** restore the `Leadership/` permission by hand, as the site owner, then
       `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles` (the role, Basic User and record owners).
 
    **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
