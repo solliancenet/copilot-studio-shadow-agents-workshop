@@ -6,7 +6,8 @@ Creates what 05-06 inspects and retests, and seeds it early enough for SharePoin
   2. Sensitivity label Confidential-PII-<estate>: ENCRYPTING, VIEW + EXTRACT for HR-Leadership-<estate> only.
      Copilot Studio can't ground on a file under an encrypting label, even for users who can open it -
      the behaviour 05-06 relies on.
-  3. Label policy Halcourt-Labels-<estate>, publishing it to HR-Leadership-<estate>.
+  3. Label policy Halcourt-Labels-<estate>, publishing it to HR-Leadership-<estate>'s members (a label
+     policy takes mailboxes only, not a Microsoft 365 group).
   4. SharePoint's sensitivity-label integration (EnableAIPIntegration), so SharePoint applies and honours it.
   5. Leadership/2026-comp-bands-labeled.xlsx in HR-Benefits-<estate>: the comp bands plus a marker row
      (LABELLED-COPY-<estate>) so a retest can tell which copy answered, labelled Confidential-PII-<estate>.
@@ -130,18 +131,20 @@ if (-not $label) {
   Write-Host "   created ($($label.ImmutableId))"
 } else { Write-Host "   exists ($($label.ImmutableId))" }
 Write-Host "3. Label policy $policy"
+# A label policy's Exchange location takes mailboxes only: the group (a Microsoft 365 group, Exchange type
+# GroupMailbox) is refused - "Only mailboxes are supported" - however long it has existed. So the policy is
+# published to the group's MEMBERS; the label's encryption rights name the group itself (step 2), and those
+# are what 05-06 depends on. (An earlier version blamed the refusal on replication lag and never succeeded.)
+$members = @(az rest --method get --url "https://graph.microsoft.com/v1.0/groups/$($g.id)/members/microsoft.graph.user?`$select=userPrincipalName" --query 'value[].userPrincipalName' -o tsv | Where-Object { $_ })
+if (-not $members) { $members = @($marcusUpn) }
 if (-not (Get-LabelPolicy -Identity $policy -ErrorAction SilentlyContinue)) {
-  # A brand-new Microsoft 365 group isn't an Exchange recipient for a while ("couldn't be found"), so fall
-  # back to its one member; a later run adds the group. Encryption rights already name the group either way.
-  try   { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation $g.mail -ErrorAction Stop | Out-Null; Write-Host '   created (group)' }
-  catch { New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation $marcusUpn | Out-Null
-          Write-Host '   created (Marcus only - group not yet an Exchange recipient; rerun to add it)' }
+  New-LabelPolicy -Name $policy -Labels $labelName -ExchangeLocation $members | Out-Null
+  Write-Host "   created (published to $($members -join ', '))"
 } else {
-  $pol = Get-LabelPolicy -Identity $policy
-  if (@($pol.ExchangeLocation.Name) -notcontains $g.mail) {
-    try { Set-LabelPolicy -Identity $policy -AddExchangeLocation $g.mail -ErrorAction Stop | Out-Null; Write-Host '   exists; group added' }
-    catch { Write-Host '   exists (group still not an Exchange recipient)' }
-  } else { Write-Host '   exists' }
+  $have = @((Get-LabelPolicy -Identity $policy).ExchangeLocation.Name)
+  $add = @($members | Where-Object { $_ -notin $have })
+  if ($add) { Set-LabelPolicy -Identity $policy -AddExchangeLocation $add | Out-Null; Write-Host "   exists; added $($add -join ', ')" }
+  else { Write-Host "   exists (published to $($members -join ', '))" }
 }
 $ssn = Get-DlpSensitiveInformationType | Where-Object Name -match '^U\.S\. Social Security Number' | Select-Object -First 1
 Write-Host "   SSN sensitive information type: $(if ($ssn) { $ssn.Name } else { 'MISSING' })"

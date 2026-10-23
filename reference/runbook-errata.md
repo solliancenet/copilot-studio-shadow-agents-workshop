@@ -1173,8 +1173,12 @@ Building issue #12 (`03c_provision_purview.ps1`) hit four things worth knowing b
    (`Connect-LabExchange`). App-only works - but `Connect-IPPSSession -Certificate` /
    `-CertificateFilePath` dies inside the module on Linux (`NewEXOModule`: object reference not set). The
    script signs its own client assertion and passes `-AccessToken`.
-2. **A new Microsoft 365 group isn't an Exchange recipient for a while**: `New-LabelPolicy -ExchangeLocation
-   <group mail>` says it "couldn't be found". The policy publishes to Marcus first; a rerun adds the group.
+2. **A label policy can't be published to the Microsoft 365 group.** `New-LabelPolicy -ExchangeLocation
+   <group mail>` first says it "couldn't be found" (the group isn't an Exchange recipient for a few minutes);
+   after that it answers *"Only mailboxes are supported. The recipient ... is of the type GroupMailbox"* -
+   forever. The script used to report every refusal as "not yet an Exchange recipient" and ask for a rerun,
+   which never helped (found 2026-10-23, estate `jrc`, 17 hours on). It now publishes the policy to the
+   group's members; the label's encryption rights still name the group.
 3. **`assignSensitivityLabel` says `labelNotFound`** for a label created minutes earlier - SharePoint hasn't
    received it. Typically about an hour, documented up to 24. It is also **metered**: the app needs a
    `Microsoft.GraphServices/accounts` billing link, and only `privileged`/app-only assignment is allowed.
