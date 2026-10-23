@@ -42,7 +42,7 @@ plainly whether a control **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
 
 ## Who this is for
 
-Platform owners, CoE leads, Power Platform admins, and security teams who need to understand what their
+Platform owners, Center of Excellence (CoE) leads, Power Platform admins, and security teams who need to understand what their
 agents can actually access — and whether the controls around them are enough. No red-team background is
 assumed; comfort with the Microsoft 365 / Power Platform admin surfaces helps.
 

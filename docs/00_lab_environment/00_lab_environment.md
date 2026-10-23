@@ -37,7 +37,7 @@ You work in two places, and the difference matters all day:
   carries a copy of the Claims Dataverse set-up: the `Claim` and `Customer` tables with their seeded rows,
   and the same role on the same service account. You are its **administrator**. Exercise 03 sends you there
   to open that security role and read its scope, which works whether or not your lab account has a
-  licence.
+  license.
 
 The rule that follows: **observe the shared estate; make changes only in your own environment.** Over the day you will build a running **Estate Binder** that answers all three
 questions and says whether each of Microsoft's controls **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
