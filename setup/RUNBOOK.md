@@ -705,16 +705,23 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
    - It ends with `RESULT=PASS`; screenshots land in `--out`.
    - Personas' seats reclaimed after the build? Lend Jordan Blake a seat and chat as Jordan.
 
-3. **Check, as an attendee, that the Exercise 04 chats reach the audit log.** Signed in as a student
-   account, after a rehearsal chat:
+3. **Check, as an attendee, that the Exercise 04 chats reach the audit log.** In a private browser window,
+   signed in as a student account, after a rehearsal chat. These are the routes Task 05-07 sends attendees
+   down:
 
-   - [ ] **Purview portal** → **Audit**: no "start recording" banner, and a search filtered to record type
-         `CopilotInteraction` finds the chat (jobs take 4–7 minutes; ingestion can take up to an hour to
-         start after Phase 5b).
-   - [ ] **DSPM for AI** → **Activity explorer**: the chat's interaction record (user, agent, resources)
-         shows. The prompt and response text usually doesn't — tell the room it's optional.
-   - [ ] `Claims-Test-<estate>`'s **Audit summary view** opens, by 05-07 KT03's route, and the claim itself
-         does not — the attendee reads audit records, not claims.
+   - [ ] **Purview Audit.** Open the **Microsoft Purview portal**, https://purview.microsoft.com →
+         **Solutions** → **Audit**. There must be no "start recording" banner. Search with **Record Types**
+         = `CopilotInteraction` and **Users** = the student account, over today (the date picker stops at
+         today: set the end time late; times are UTC). The rehearsal chat must be listed — a search takes
+         4–7 minutes, then **Refresh**; ingestion can take up to an hour to start after Phase 5b.
+         *Total Result Count* can read 0 above a list of results; the list is what counts. Without the
+         **Users** filter the search shows every estate's chats.
+   - [ ] **DSPM for AI.** In the same portal, **Solutions** → **DSPM for AI** → **Activity explorer**. The
+         rehearsal chat's interaction record (user, agent, resources) must show. The prompt and response
+         text usually doesn't — tell the room it's optional.
+   - [ ] **The Claims-Test audit summary.** **Power Platform admin center** → **Manage → Environments** →
+         `Claims-Test-<estate>` → **Settings** → **Audit and logs** → **Audit summary view**. It must open
+         and list audit records; the student can't open a claim itself, and that's expected.
 
 4. **Brief yourself on what the room can't do.** Each is expected, not a fault:
 
