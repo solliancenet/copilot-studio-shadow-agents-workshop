@@ -27,6 +27,7 @@ re-verified as products change.
 | `building-many-estates.md` | Building several estates with `10_build_estates.ps1` (Phases 2–6.5) |
 | `attendee-accounts.md` | Phase 8b attendee accounts: roles, MFA, Dataverse access, Teams links, licences |
 | `student-slices.md` | Phase 8c per-student slices: why they exist, what they hold, what they don't |
+| `before-delivery-checks.md` | The audit and Purview checks before a delivery, and what each protects |
 | `building-one-agent.md` | Building one agent with `pac`; what to expect from connections |
 | `toolchain.md` | The provisioning tools, what each phase uses them for, installing them outside the dev container |
 | `tenant-capabilities.md` | What the tenant must already have, what breaks without it, the fallback |

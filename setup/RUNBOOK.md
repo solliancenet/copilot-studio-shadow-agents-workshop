@@ -678,77 +678,50 @@ Each attendee gets a small environment of their own, where they are System Admin
 
 ### Before delivery — preflight, audit and Exercise 04 notes
 
-**The day before the delivery, run the preflight.** It checks the tenant capabilities in
-[tenant capabilities](../reference/tenant-capabilities.md), the estate and the attendee access model, and
-names the exercise steps each failed check would break.
+Run these the day before. They check what the build phases set up, as the attendees will see it. What each
+check protects: [before-delivery-checks.md](../reference/before-delivery-checks.md).
 
-1. In the dev container terminal, sign in as the tenant's global admin and set your estate id, as in
-   [Phase 0b](#phase-0b--choose-your-estate-id) steps 2 and 4.
-2. Run it with the attendee count — no more attendees than you have Microsoft 365 seats to give them
-   (count your free E5 seats; [ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)):
+1. **Run the preflight.** It checks the tenant capabilities
+   ([tenant-capabilities.md](../reference/tenant-capabilities.md)), the estate and the attendee access
+   model, and names the exercise step each failed check would break. In the dev container terminal, signed
+   in and with your estate id set (Phase 0b steps 2 and 4), with the number of attendees you'll run:
 
    ```bash
-   pwsh setup/scripts/00b_preflight.ps1 -Attendees 14     # one per seat available: up to 14 in the build tenant
+   pwsh setup/scripts/00b_preflight.ps1 -Attendees <N>
    ```
 
-3. Fix every FAIL before the delivery. A WARN names the fallback attendees will use.
+   - Fix every FAIL. A WARN names the fallback attendees will use.
 
-4. **Chat with each Teams agent once**, as a licensed persona outside the admin roles, the way attendees
-   will. The preflight proves the agents exist; this proves they answer. Run the probe once per row of
-   `setup/teams-links-<estate>.local.csv`, with a question that agent answers. Use Jordan Blake if the
-   personas' seats were reclaimed after the build (lend Jordan a seat for the check). For Policy Lookup Bot:
+2. **Chat with each Teams agent once**, as a licensed persona with no admin role, the way attendees will.
+   The preflight proves the agents exist; this proves they answer. Run the probe once per row of
+   `setup/teams-links-<estate>.local.csv`, with a question that agent answers. For Policy Lookup Bot:
 
    ```bash
-   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<domain> --password '<lab password>' \
+   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' \
      --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
      --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
    ```
 
-   `RESULT=PASS` means the agent answered; screenshots of each step land in `--out`.
+   - It ends with `RESULT=PASS`; screenshots land in `--out`.
+   - Personas' seats reclaimed after the build? Lend Jordan Blake a seat and chat as Jordan.
 
-Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
-and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
+3. **Check, as an attendee, that the Exercise 04 chats reach the audit log.** Signed in as a student
+   account, after a rehearsal chat:
 
-- [ ] **Dataverse auditing in `Claims-Test-<estate>`** - Phase 5b's `04b_provision_audit.ps1` turns it on
-      for the environment and the `Claim` table - **not** `Customer`, whose changes would carry SSN and date
-      of birth into records attendees can read (by hand: PPAC → the environment → **Settings** → **Audit and
-      logs** → **Audit settings**, then the table's properties). This records **changes** (create, update,
-      delete, sharing), which is what the 05-03 demonstration makes.
-- [ ] **Attendees can search Purview Audit** (05-07 KT01, KT02, KT05). Global Reader is enough once
-      ingestion is on: as an attendee, run a search covering the Exercise 04 rehearsal, filtered to record
-      type `CopilotInteraction`. Verified 2026-10-21 as student03 (jobs finish in 4-7 minutes).
-- [ ] **No setting makes Claims Copilot's reads visible in `Claims-Test`.** Dataverse auditing never logs a
-      read, so the Audit summary view shows none. Reads are logged only by activity logging (the **Read
-      logs** setting plus the table's single- and multiple-record settings), and those events reach Purview
-      only for production environments. `Claims-Test` is a sandbox. Don't try to work around it: 05-07 KT03
-      now teaches that gap instead of relying on a read event.
-- [ ] **Purview Audit is on** - also Phase 5b. It is **not** always on by default: on this developer tenant
-      unified audit ingestion was off (2026-10-20), and only activity after it is switched on (allow up to an
-      hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
-- [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
-      2026 it needs a Microsoft Agent 365 licence. Purchase services offered no self-service trial on the
-      build tenant (an admin-led trial needs Microsoft or the account team).
-- [ ] **The DSPM transcript role** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b). 05-07 KT04
-      reads the chat's **interaction record** in **DSPM for AI → Activity explorer** (user, agent, time,
-      resources); the prompt and response text is optional. Global Reader shows the record; the text needs
-      Purview's **Data Security AI Content Viewers**, which 07c gives each lab account (`student<NN>.<estate>`).
-      Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks for
-      **one device-code approval** from a Global Administrator. `-Remove` after the delivery.
-      **Check it as an attendee:** after the Exercise 04 rehearsal chat, open the interaction in Activity
-      explorer. The record (user, agent, resources) must show; that is what KT04 needs. Note whether
-      **Interaction details** shows text or *"We couldn't retrieve this prompt and response"* - in the build
-      tenant it never showed text, even with the role in place for hours ([errata → Phase 8b](../reference/runbook-errata.md)),
-      so tell the room the transcript is optional and expect it to be unavailable.
-      Microsoft retires *DSPM for AI (classic)* on 30 November 2026; check the step's wording against the
-      portal before a later delivery.
-- [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
-      summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
-      `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
-      so the attendee can't open the claim itself - Scenario D depends on that.
+   - [ ] **Purview portal** → **Audit**: no "start recording" banner, and a search filtered to record type
+         `CopilotInteraction` finds the chat (jobs take 4–7 minutes; ingestion can take up to an hour to
+         start after Phase 5b).
+   - [ ] **DSPM for AI** → **Activity explorer**: the chat's interaction record (user, agent, resources)
+         shows. The prompt and response text usually doesn't — tell the room it's optional.
+   - [ ] `Claims-Test-<estate>`'s **Audit summary view** opens, by 05-07 KT03's route, and the claim itself
+         does not — the attendee reads audit records, not claims.
 
-**04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
-instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the
-room the write half of Scenario D is reasoned, not exercised.
+4. **Brief yourself on what the room can't do.** Each is expected, not a fault:
+
+   - 04-04's write half is reasoned, not run: Claims Copilot has no update tool, so there's no test claim.
+   - Claims Copilot's reads appear in no log: Dataverse never audits reads, and `Claims-Test` is a sandbox.
+     05-07 KT03 teaches that gap.
+   - Defender real-time protection isn't set up (no Agent 365 licence); 05-07 KT06 reasons it through.
 
 ### During delivery — Exercise 05 demonstrations
 
