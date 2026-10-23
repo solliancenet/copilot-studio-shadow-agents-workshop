@@ -114,6 +114,13 @@ function Invoke-Json([string]$Method, [string]$Uri, [string]$Token, $Body) {
         $Token = if ($owner.Kind -eq 'admin') { Get-AdminToken $owner.Resource -Force } else { Get-PersonaToken $owner.Alias $owner.Resource -Force }
         continue
       }
+      # A Dataverse SQL deadlock (500, 0x80044150, "Sql Number: 1205") is the server telling us to try again:
+      # stu11 (2026-10-22) lost its Phase 6 to one on a bot PATCH. Back off and repeat, up to three times.
+      $bodyText = "$($_.ErrorDetails.Message)"
+      if ($code -eq 500 -and $bodyText -match 'Sql Number: 1205|0x80044150' -and $try -le 3) {
+        Write-Host "    (SQL deadlock on $Method $($Uri.Split('?')[0]) - retrying in $(5 * $try)s)"
+        Start-Sleep -Seconds (5 * $try); continue
+      }
       # Name the call, keep the response body (DvAuto matches its codes: "$_" -match '0x80042f09|prvRead...',
       # and Invoke-RestMethod puts them in ErrorDetails, not Exception.Message), and wrap the original exception
       # so its Response is still reachable.
