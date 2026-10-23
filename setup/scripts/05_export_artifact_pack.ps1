@@ -159,13 +159,13 @@ $agents = foreach ($env in $environments) {
       'OData-Version'      = '4.0'
       Prefer               = 'odata.include-annotations="*"'
     }
+    # Which connection each agent's connection references are bound to (06 binds them), for connections-export.
+    $script:connRefs[$env.EnvironmentName] = @((Invoke-RestMethod -Method Get -Headers @{ Authorization = "Bearer $token"; Accept = 'application/json' } `
+      -Uri "$orgUrl/api/data/v9.2/connectionreferences?`$select=connectionreferencelogicalname,connectionid&`$filter=connectionid ne null").value)
   } catch {
     # 403 "has not been assigned any roles": the admin needs a security role in every Dataverse environment.
     throw "Reading agents in '$($env.DisplayName)' failed: $($_.ErrorDetails.Message) - if the admin has no role there: pac admin assign-user --environment $($env.EnvironmentName) --user <admin UPN> --role 'System Administrator'"
   }
-  # Which connection each agent's connection references are bound to (06 binds them), for connections-export.
-  $script:connRefs[$env.EnvironmentName] = @((Invoke-RestMethod -Method Get -Headers @{ Authorization = "Bearer $token"; Accept = 'application/json' } `
-    -Uri "$orgUrl/api/data/v9.2/connectionreferences?`$select=connectionreferencelogicalname,connectionid&`$filter=connectionid ne null").value)
   foreach ($bot in $resp.value) {
     # The default environment is shared: keep only agents owned by this estate's accounts.
     if ($env.EnvironmentType -eq 'Default' -and -not (Test-EstatePrincipal $bot.owninguser.domainname)) { continue }
@@ -320,10 +320,12 @@ try {
   $mailboxTypeByUpn = @{}
   Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize Unlimited -ErrorAction Stop |
     ForEach-Object { $mailboxTypeByUpn[$_.UserPrincipalName] = $true }
-  Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
 } catch {
   $mailboxTypeByUpn = $null
   Write-Warning "Could not read shared mailboxes from Exchange ($($_.Exception.Message.Split([Environment]::NewLine)[0])) - is_shared_mailbox is left blank."
+} finally {
+  # Absent when the module didn't load - a finally that throws would end the export.
+  if (Get-Command Disconnect-ExchangeOnline -ErrorAction SilentlyContinue) { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null }
 }
 $users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled,employeeLeaveDateTime,signInActivity' |
   Where-Object { Test-EstatePrincipal $_.UserPrincipalName } |   # this estate's accounts only
