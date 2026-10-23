@@ -15,7 +15,8 @@ script, exactly as the RUNBOOK gives it, and its output goes to setup/build-logs
 The first failing phase stops that estate; -ContinueOnError moves on to the next estate instead. Every
 phase script is safe to re-run, so -From <phase> resumes where a failure stopped.
 
--ReclaimSeats takes the E5 seat back from the estate's eight personas once its build passes, so the next
+-ReclaimSeats takes the E5 seat back from the estate's eight personas once its build passes (with
+-ContinueOnError, after a failure too: resume that estate with -From entra), so the next
 estate - and, the day before the delivery, the attendees - can use it. Its published agents kept answering
 with the owner's seat removed (errata: Phase 2 - An agent owner without a seat); run the Teams chat probe
 before a delivery to confirm. An owner without a seat can't open Copilot Studio or rebuild in a browser:
@@ -205,6 +206,13 @@ foreach ($estate in $Estates) {
   }
   $timings | Format-Table -AutoSize | Out-String | Tee-Object -FilePath (Join-Path $logDir 'timings.txt') | Write-Host
   if (-not $failed -and $ReclaimSeats) { Invoke-Reclaim $estate }
+  # A failed estate holds its eight seats, and the next estate then can't start: one stalled OneDrive skipped
+  # fourteen estates on 2026-10-22. With -ContinueOnError, give them back; resume the failed estate with
+  # -From entra (Phase 2 re-licenses its personas).
+  elseif ($failed -and $ReclaimSeats -and $ContinueOnError) {
+    Write-Host "  $estate failed at $failed - reclaiming its seats so the remaining estates can build; resume it with -From entra"
+    Invoke-Reclaim $estate
+  }
   $retried = @($timings | Where-Object { $_.Tries -gt 1 } | ForEach-Object { $_.Name })
   $summary += [pscustomobject]@{ Estate = $estate; Result = $(if ($failed) { "FAILED at $failed (log: setup/build-logs/$estate/)" } elseif ($retried) { "built (retried after 401: $($retried -join ', '))" } else { 'built' })
                                  Minutes = [math]::Round(($timings | Measure-Object Minutes -Sum).Sum, 1) }
