@@ -1164,6 +1164,28 @@ removed afterwards. Its only remaining role is `svc-claims Dataverse Full Access
 
 Until this, Scenarios C and D - and Claims Copilot's half of B - could not fire for anyone.
 
+### Phase 4b · A OneDrive that never appears: licence, then browser (2026-10-23)
+
+**Symptom.** stu05 failed `03b` in the 23-estate batch: Dev Kim's OneDrive didn't come online within 45 minutes.
+The batch went on (`-ContinueOnError`) and reclaimed stu05's seats.
+
+**What didn't work.**
+1. `Request-PnPPersonalSite`, as a long-standing Global Admin signed in by device code: *Attempted to perform
+   an unauthorized operation*. The cause looked like the licence: Dev Kim had none, because the seats had been
+   reclaimed. SharePoint never creates a OneDrive for an unlicensed user, and nothing says so.
+2. Resumed `-From entra` (which licenses the personas again). 03b's Graph touch then waited 45 minutes again,
+   with nothing.
+3. The device-code request again, with Dev licensed: still *unauthorized*. No deleted personal site at that
+   URL was in the way (`GetDeletedSitePropertiesByUrl`: none).
+
+**What worked.** Signing in as Dev Kim in a headless browser and opening `https://<tenant>-my.sharepoint.com`.
+OneDrive's first-run page (`MyBraryFirstRun.aspx`) said *Your OneDrive is ready* within about a minute, and
+Graph's `/users/<dev>/drive` turned from `ResourceNotFound` to `accessDenied` for the admin, so the site existed.
+
+**Fix.** `03b` now runs `lib/onedrive_first_run.py` as the maker when the Graph touch hasn't produced the site
+after `-GraphTouchMinutes` (5). RUNBOOK Phase 4b step 2 now checks the licence first and puts the admin
+request last.
+
 ### Phase 4c · Purview: the label arrives late, and the token is app-only (2026-10-18)
 
 Building issue #12 (`03c_provision_purview.ps1`) hit four things worth knowing before the next build:

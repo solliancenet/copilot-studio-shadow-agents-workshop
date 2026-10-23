@@ -386,10 +386,18 @@ an estate deploys nothing.
    - It ends by printing Dev's OneDrive address
      (`https://<tenant>-my.sharepoint.com/personal/dev_kim_<estate>_…/Documents`).
    - Creating the OneDrive is best effort
-     ([ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md)). If it fails, go to step 2.
+     ([ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md)). If Dev's first touch hasn't produced
+     it after 5 minutes, Dev opens OneDrive in a headless browser (`lib/onedrive_first_run.py`), which is
+     usually enough. If it still fails, go to step 2.
 
-2. **Only if step 1 failed: create the OneDrive by hand, then re-run step 1.** This asks SharePoint for it
-   as the admin; it prints a code to enter, like the other sign-ins:
+2. **Only if step 1 failed: create the OneDrive by hand, then re-run step 1.**
+   - First check Dev is **licensed**. SharePoint never creates a OneDrive for an unlicensed user, and says
+     so nowhere. `10_build_estates.ps1` reclaims a failed estate's seats, so resume it with `-From entra`.
+   - Then sign in as Dev in a private browser window at `https://<tenant>-my.sharepoint.com` (lab password)
+     and wait for *Your OneDrive is ready*.
+   - Last resort, as the admin. It prints a code to enter, like the other sign-ins, but it was refused twice
+     on 2026-10-23
+     ([errata → Phase 4b](../reference/runbook-errata.md#phase-4b--a-onedrive-that-never-appears-licence-then-browser-2026-10-23)):
 
    ```bash
    pwsh -NoProfile -Command "Connect-PnPOnline -Url https://<tenant>-admin.sharepoint.com -DeviceLogin -ClientId $ENTRAID_APP_ID; Request-PnPPersonalSite -UserEmails dev.kim.<estate>@<tenant domain>"

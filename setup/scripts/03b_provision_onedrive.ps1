@@ -15,9 +15,17 @@ no administrator, no service account, no Conditional Access exception.
                     had been deleted AND purged first, so nothing was inherited)
   lena.ford 19:38 -> nothing 47 minutes later, identical licensing (4 SharePoint plans, all Enabled)
 Two clean successes against one unexplained failure. First-access provisioning is asynchronous with no
-published SLA, so the script tries it, waits, and if the site never appears it FAILS with instructions to
-provision that one maker by hand and re-run - which then just seeds. Costing nothing and usually working, it
-beats a mandatory manual step.
+published SLA, so the script tries it and waits.
+
+If the site isn't up after -GraphTouchMinutes (5 min), the maker opens OneDrive in a headless browser
+(lib/onedrive_first_run.py), the way a person does the first time. On 2026-10-23 that provisioned stu05's
+site in about a minute, after the Graph touch had left it missing for 45 minutes twice. If the site still never
+appears, the script FAILS with instructions to provision that one maker by hand and re-run - which then just
+seeds.
+
+SharePoint won't create a OneDrive for an UNLICENSED user, and no route above reports that: they just never
+produce a site. 10_build_estates reclaims a failed estate's seats, so resume such an estate from Phase 2
+(-From entra), which licenses its personas again.
 
 The admin-side enqueue (CreatePersonalSiteEnqueueBulk / Request-PnPPersonalSite) is not an alternative here -
 it cannot be done headlessly at all. Every route was tried and failed:
@@ -28,6 +36,8 @@ it cannot be done headlessly at all. Every route was tried and failed:
     SharePoint does not accept that app. (It is fine for Graph and Exchange.)
   - A freshly created SharePoint Administrator: the password grant succeeds, but SharePoint does not honour a
     new role assignment for another 15-60 min, so the enqueue is still refused.
+  - Even interactively, it isn't dependable: on 2026-10-23 a long-standing Global Admin, signed in by device
+    code, was refused ("unauthorized operation") twice, for a licensed maker.
 
 Prerequisite: the Phase 4 PnP app + certificate (RUNBOOK Phase 4) - used app-only to SEED the notes once the
 site is up, and to test whether it is up. Note Graph's /users/<upn>/drive is NOT a reliable readiness check:
@@ -44,7 +54,8 @@ param(
   [string]$CertPassword = $env:HALCOURT_PNP_CERT_PW,
   [string]$MakerAlias   = 'dev.kim',                       # the OneDrive owner (Meeting Notes owner)
   [string]$LabPassword  = 'Lab-Only-Passw0rd!',            # the maker's password - they provision their own OneDrive
-  [int]$ProvisionTimeoutMinutes = 45                       # generous: first-access provisioning has no published SLA
+  [int]$ProvisionTimeoutMinutes = 45,                      # generous: first-access provisioning has no published SLA
+  [int]$GraphTouchMinutes = 5                              # then the maker opens OneDrive in a browser
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
@@ -99,11 +110,22 @@ if (Test-OneDriveOnline) {
 } else {
   Write-Host "Asking $maker to open their own OneDrive (this enqueues it; no admin needed)..."
   Request-OneDriveAsMaker
-  # 2) Wait until the personal site answers.
-  $deadline = (Get-Date).AddMinutes($ProvisionTimeoutMinutes)
-  $ready = $false
+  # 2) Wait until the personal site answers. If the Graph touch hasn't produced it, the maker opens OneDrive in
+  #    a browser once (see header); then keep waiting.
+  $start = Get-Date
+  $deadline = $start.AddMinutes($ProvisionTimeoutMinutes)
+  $ready = $false; $browsed = $false
   while ((Get-Date) -lt $deadline) {
     if (Test-OneDriveOnline) { $ready = $true; break }
+    if (-not $browsed -and (Get-Date) -gt $start.AddMinutes($GraphTouchMinutes)) {
+      $browsed = $true
+      Write-Host "Not up after $GraphTouchMinutes min - $maker opens OneDrive in a browser..."
+      $probe = Join-Path $PSScriptRoot 'lib/onedrive_first_run.py'
+      $shots = Join-Path ([System.IO.Path]::GetTempPath()) "onedrive-first-run-$Estate"
+      $res = python3 $probe --upn $maker --password $LabPassword --host $myHost --out $shots 2>&1
+      Write-Host "  $(($res | Select-String '^(FINAL_URL|RESULT)=') -join '  ')"
+      continue
+    }
     Start-Sleep -Seconds 30
   }
   if (-not $ready) {
