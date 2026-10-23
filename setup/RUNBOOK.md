@@ -738,40 +738,51 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
      05-07 KT03 teaches that gap.
    - Defender real-time protection isn't set up (no Agent 365 licence); 05-07 KT06 reasons it through.
 
+5. **Create the facilitator account and sign in with it once.** You demonstrate Exercise 05 as this account
+   (`facilitator.<estate>`, "Lab Facilitator (<estate>)"), not your own tenant admin: it holds Power
+   Platform Administrator, and AI Administrator only as PIM-eligible. The script writes its password to
+   `setup/lab-facilitator-<estate>.local.csv` (gitignored). Safe to re-run.
+
+   ```bash
+   pwsh setup/scripts/07b_provision_facilitator.ps1
+   ```
+
+   - Sign in with it once in a browser to enrol MFA: it is an admin, so `CA-Require-MFA-Admins` applies.
+
 ### During delivery — Exercise 05 demonstrations
 
 Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
-the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
-(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator only
-as PIM-eligible - activate it for the step that needs it (05-05) and let it lapse. (Security Administrator
-was eligible for 05-07's Defender step; that step is reasoned now, so 07b removes it.) Create it once, after the attendee accounts:
+the estate back. Do it as the facilitator account (Before delivery, step 5), not your own tenant admin.
 
-```powershell
-pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv
-```
+1. **Before Exercise 05 starts, snapshot the estate.** The script records the data policies, the default
+   environment's makers and `svc-claims`'s roles, so each demonstration can be undone exactly:
 
-Sign in with it once before the delivery to enrol MFA (it is an admin, so `CA-Require-MFA-Admins` applies). Snapshot everything before the session, restore each control as soon as its retests are
-done, and finish with a diff.
+   ```bash
+   pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All
+   ```
 
-```powershell
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All     # before Exercise 05 starts
-# ... demonstrate, let the room retest ...
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp       # or DefaultMakers / ClaimsRoles
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at the end: all "same as the snapshot"
-```
+2. **For each task, demonstrate the control, let the room retest, then put it back** — as soon as the
+   retests are done:
 
-| Task | You demonstrate | Back to the estate |
-|---|---|---|
-| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
-| 05-02 | default environment: a data policy named `Halcourt-Default-DLP-<estate>` that blocks **HTTP** and **custom connectors** (the 05-01 blocks). Nothing else: every licensed user is an Environment Maker there automatically, so swapping the role's members for `Halcourt-Makers-<estate>` restricts nobody - attendees record that as a finding | `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
-| 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
-| 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
-| 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-| 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
-| 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
+   | Task | You demonstrate | Back to the estate |
+   |---|---|---|
+   | 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
+   | 05-02 | default environment: a data policy named `Halcourt-Default-DLP-<estate>` that blocks **HTTP** and **custom connectors** (the 05-01 blocks). Nothing else: every licensed user is an Environment Maker there automatically, so swapping the role's members for `Halcourt-Makers-<estate>` restricts nobody - attendees record that as a finding | `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
+   | 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
+   | 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
+   | 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
+   | 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
+   | 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
 
-The default environment and the tenant's Defender setting are shared with every estate in the tenant:
-coordinate with any other facilitator delivering at the same time.
+   - Activate the facilitator's AI Administrator (PIM) only for 05-05, and let it lapse.
+   - The default environment is shared with every estate in the tenant: coordinate with any other
+     facilitator delivering at the same time.
+
+3. **At the end, check everything is back.** Every line must say "same as the snapshot":
+
+   ```bash
+   pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All
+   ```
 
 ### Phase 9 — Teardown / reseed
 
