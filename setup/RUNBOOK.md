@@ -560,28 +560,49 @@ an estate deploys nothing.
 
 ### Phase 8 — Validate
 
-Walk `AGENTS.md` and confirm, in the live tenant:
+Check the estate matches `AGENTS.md`. Most of it is reading what Phases 6.5–7 already reported; the
+scenarios themselves need someone to talk to the agents.
 
-- Every **PLANTED PROBLEM** reproduces (A–F fire; discovery targets are findable).
-- Every **CONTROL EFFICACY** verdict holds; resolve any `[verify]` items and update `AGENTS.md`.
-- A student account (Phase 8b) signs in, sees its slice (Phase 8c), opens each Teams install link, and
-  Claims Copilot returns CLM-9002 to it while the account's own Claims-Test roles grant no claim access —
-  the confused-deputy path, with the attendee as the requester.
-- **Phase 6.5 has run** — Tom has a leave date and is still **enabled**, and both of his connections
-  show `Connected`; otherwise the departed-owner thread reads wrong and `users-export` disagrees with the canon.
-- **The agent registry shows the estate (05-05).** All ten estate agents appear in Microsoft 365 admin
-  center → Agents, and **Block** is available on Onboarding Guide there - as the facilitator account with AI
-  Administrator activated, the way 05-05 is demonstrated. If you try it, Unblock straight away. Whether the
-  tenant's Agent 365 licensing holds for the delivery is an open question:
-  [PLANNING item 8](../PLANNING.md).
-- Re-run Phase 7 and **review** `git diff worksheets/artifact-pack`. It will not be empty; look for
-  *unexpected* drift — an agent missing, an owner that changed, a connection that lost its sharing, an
-  environment that lost its DLP.
+1. **Check the estate's shape against the export.** Phase 7's diff already shows whether every agent is
+   present with the right owner and environment, each has one Entra identity, DLP is on Prod only, and the
+   accounts are as Phase 2 left them. Look for *unexpected* drift — an agent missing, an owner changed, an
+   environment that lost its DLP — not an empty diff.
 
-What the export confirms on its own, without driving an agent: every published agent is present with the
-right owner and environment; each has exactly one Entra identity; DLP is attached to Prod and nowhere
-else; and the accounts are as Phase 2 left them. Reproducing Scenarios A–F still means talking to the
-agents.
+2. **Check Tom is departed but still enabled.** Phase 6.5 must have run, and both of his connections must
+   still work; otherwise the departed-owner scenario reads wrong:
+
+   ```bash
+   az rest --url "https://graph.microsoft.com/v1.0/users/tom.dean.$HALCOURT_ESTATE@<tenant domain>?\$select=accountEnabled,employeeLeaveDateTime"
+   ```
+
+   - It must show `accountEnabled: true` and a leave date.
+   - Onboarding Guide and Sales Nudge must answer in step 3.
+
+3. **Reproduce the planted scenarios.** Walk `AGENTS.md`'s planted problems (Scenarios A–F) and confirm
+   each one fires, and that each discovery target can be found. The Teams chat probe holds a scripted
+   conversation with one agent, as a persona, the way attendees do in Exercise 04:
+
+   ```bash
+   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' \
+     --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
+     --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
+   ```
+
+   - It ends with `RESULT=PASS`, or `RESULT=FAIL <reason>` and screenshots in `--out`.
+   - Sign in as a licensed persona in the agent's chat audience, not an admin.
+
+4. **Check the control verdicts.** Every control-efficacy verdict in `AGENTS.md` must still hold. Resolve
+   any `[verify]` item you can and update `AGENTS.md`.
+
+5. **Check the agent registry (Task 05-05).** As the facilitator, with AI Administrator activated:
+   **Microsoft 365 admin center** → **Agents** must list all ten estate agents, with **Block** available on
+   Onboarding Guide. If you try Block, unblock straight away.
+
+   - Whether the tenant's Agent 365 licensing lasts until the delivery is open:
+     [PLANNING item 8](../PLANNING.md).
+
+The attendee's view — a student account's slice, Teams links and the confused-deputy path — is checked at
+the end of Phase 8c, because it needs Phases 8b and 8c.
 
 ### Phase 8b — Lab (attendee) accounts
 
@@ -811,6 +832,11 @@ Two things learned building it, both verified: a new environment's Dataverse was
 seconds**, far faster than Phase 3's wait suggests; and the first calls against a brand-new org can fail
 with *"Interactive authentication is needed"* while `az` settles a token for the new resource — it clears
 on its own, so the script retries rather than failing the slice.
+
+**Then check the attendee's view** (Phase 8's last check, which needs 8b and 8c): sign in as one student
+account and confirm it sees its slice, opens each Teams install link, and gets CLM-9002 from Claims Copilot
+while its own Claims-Test roles grant no claim access — the confused-deputy path, with the attendee as the
+requester.
 
 ### Before delivery — preflight, audit and Exercise 04 notes
 
