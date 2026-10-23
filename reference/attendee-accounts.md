@@ -134,7 +134,7 @@ Why this role and not something weaker:
 
 
 **Attendees hold no Exercise 05 write role.** Exercise 05 is demonstrated: you apply each control to the
-shared estate and restore it (below), and attendees retest. An older kit made attendees PIM-eligible for AI
+shared estate and restore it (RUNBOOK → During delivery), and attendees retest. An older kit made attendees PIM-eligible for AI
 Administrator and Security Administrator; 07 withdraws both on its next run (`$RetiredEligibleRoles`).
 Why: Security Administrator,
 [errata → Review fixes to this branch](runbook-errata.md#review-fixes-to-this-branch-2026-10-19);
