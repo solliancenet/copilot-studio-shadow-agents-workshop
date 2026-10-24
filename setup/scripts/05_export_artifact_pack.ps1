@@ -242,12 +242,17 @@ $connections = foreach ($env in $environments) {
 # reference, so the tenant can't say which agent it serves: SP-HR-Benefits, SP-HR-FAQ, SP-Onboarding and
 # OneDrive-DevKim. There used_by_agent is an analyst's call (ADR-0023): keep the committed value, as for
 # descriptions, so regenerating the pack doesn't blank it. A binding the tenant does show always wins.
+# ONLY those: any other connection with no binding exports blank, so a binding Phase 6 never made - or one
+# lost since - shows up in `git diff` instead of being papered over with the canon's value.
+$knowledgeOnly = @('SP-HR-Benefits') + @((Get-Content (Join-Path (Split-Path -Parent $PSScriptRoot) 'agents/manifest.json') -Raw |
+  ConvertFrom-Json).connections.PSObject.Properties | Where-Object { $_.Value.forAgent } | ForEach-Object Name)
 $connCsv = Join-Path $OutDir 'connections-export.csv'
 if (Test-Path $connCsv) {
   $priorUse = @{}
   foreach ($row in (Import-Csv $connCsv)) { if ($row.used_by_agent) { $priorUse[$row.connection_name] = $row.used_by_agent } }
   foreach ($c in $connections) {
     $canonName = if ($Canonicalize) { $c.connection_name -replace "-$estateRx\b", '' } else { $c.connection_name }
+    if ($canonName -notin $knowledgeOnly) { continue }
     if (-not $c.used_by_agent -and $priorUse.ContainsKey($canonName)) { $c.used_by_agent = $priorUse[$canonName] }
   }
 }
