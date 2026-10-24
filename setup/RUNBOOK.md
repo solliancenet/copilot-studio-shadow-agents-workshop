@@ -386,10 +386,18 @@ an estate deploys nothing.
    - It ends by printing Dev's OneDrive address
      (`https://<tenant>-my.sharepoint.com/personal/dev_kim_<estate>_…/Documents`).
    - Creating the OneDrive is best effort
-     ([ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md)). If it fails, go to step 2.
+     ([ADR-0017](../reference/adr/0017-maker-provisions-own-onedrive.md)). If Dev's first touch hasn't produced
+     it after 5 minutes, Dev opens OneDrive in a headless browser (`lib/onedrive_first_run.py`), which is
+     usually enough. If it still fails, go to step 2.
 
-2. **Only if step 1 failed: create the OneDrive by hand, then re-run step 1.** This asks SharePoint for it
-   as the admin; it prints a code to enter, like the other sign-ins:
+2. **Only if step 1 failed: create the OneDrive by hand, then re-run step 1.**
+   - First check Dev is **licensed**. SharePoint never creates a OneDrive for an unlicensed user, and says
+     so nowhere. `10_build_estates.ps1` reclaims a failed estate's seats, so resume it with `-From entra`.
+   - Then sign in as Dev in a private browser window at `https://<tenant>-my.sharepoint.com` (lab password)
+     and wait for *Your OneDrive is ready*.
+   - Last resort, as the admin. It prints a code to enter, like the other sign-ins, but it was refused twice
+     on 2026-10-23
+     ([errata → Phase 4b](../reference/runbook-errata.md#phase-4b--a-onedrive-that-never-appears-licence-then-browser-2026-10-23)):
 
    ```bash
    pwsh -NoProfile -Command "Connect-PnPOnline -Url https://<tenant>-admin.sharepoint.com -DeviceLogin -ClientId $ENTRAID_APP_ID; Request-PnPPersonalSite -UserEmails dev.kim.<estate>@<tenant domain>"
@@ -678,193 +686,228 @@ Each attendee gets a small environment of their own, where they are System Admin
 
 ### Before delivery — preflight, audit and Exercise 04 notes
 
-**The day before the delivery, run the preflight.** It checks the tenant capabilities in
-[tenant capabilities](../reference/tenant-capabilities.md), the estate and the attendee access model, and
-names the exercise steps each failed check would break.
+Run these the day before. They check what the build phases set up, as the attendees will see it. What each
+check protects: [before-delivery-checks.md](../reference/before-delivery-checks.md).
 
-1. In the dev container terminal, sign in as the tenant's global admin and set your estate id, as in
-   [Phase 0b](#phase-0b--choose-your-estate-id) steps 2 and 4.
-2. Run it with the attendee count — no more attendees than you have Microsoft 365 seats to give them
-   (count your free E5 seats; [ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)):
+1. **Run the preflight.** It checks the tenant capabilities
+   ([tenant-capabilities.md](../reference/tenant-capabilities.md)), the estate and the attendee access
+   model, and names the exercise step each failed check would break. In the dev container terminal, signed
+   in and with your estate id set (Phase 0b steps 2 and 4), with the number of attendees you'll run:
 
    ```bash
-   pwsh setup/scripts/00b_preflight.ps1 -Attendees 14     # one per seat available: up to 14 in the build tenant
+   pwsh setup/scripts/00b_preflight.ps1 -Attendees <N>
    ```
 
-3. Fix every FAIL before the delivery. A WARN names the fallback attendees will use.
+   - Fix every FAIL. A WARN names the fallback attendees will use.
 
-4. **Chat with each Teams agent once**, as a licensed persona outside the admin roles, the way attendees
-   will. The preflight proves the agents exist; this proves they answer. Run the probe once per row of
-   `setup/teams-links-<estate>.local.csv`, with a question that agent answers. Use Jordan Blake if the
-   personas' seats were reclaimed after the build (lend Jordan a seat for the check). For Policy Lookup Bot:
+2. **Chat with each Teams agent once**, as a licensed persona with no admin role, the way attendees will.
+   The preflight proves the agents exist; this proves they answer. Run the probe once per row of
+   `setup/teams-links-<estate>.local.csv`, with a question that agent answers. For Policy Lookup Bot:
 
    ```bash
-   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<domain> --password '<lab password>' \
+   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' \
      --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
      --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
    ```
 
-   `RESULT=PASS` means the agent answered; screenshots of each step land in `--out`.
+   - It ends with `RESULT=PASS`; screenshots land in `--out`.
+   - Personas' seats reclaimed after the build? Lend Jordan Blake a seat and chat as Jordan.
 
-Manual, not scripted. **Do these before Exercise 04 runs**: 05-07 reconstructs Exercise 04 from the logs,
-and nothing recorded before auditing was on can be found afterwards ([PLANNING item 16](../PLANNING.md)).
+3. **Check, as an attendee, that the Exercise 04 chats reach the audit log.** In a private browser window,
+   signed in as a student account, after a rehearsal chat. These are the routes Task 05-07 sends attendees
+   down:
 
-- [ ] **Dataverse auditing in `Claims-Test-<estate>`** - Phase 5b's `04b_provision_audit.ps1` turns it on
-      for the environment and the `Claim` table - **not** `Customer`, whose changes would carry SSN and date
-      of birth into records attendees can read (by hand: PPAC → the environment → **Settings** → **Audit and
-      logs** → **Audit settings**, then the table's properties). This records **changes** (create, update,
-      delete, sharing), which is what the 05-03 demonstration makes.
-- [ ] **Attendees can search Purview Audit** (05-07 KT01, KT02, KT05). Global Reader is enough once
-      ingestion is on: as an attendee, run a search covering the Exercise 04 rehearsal, filtered to record
-      type `CopilotInteraction`. Verified 2026-10-21 as student03 (jobs finish in 4-7 minutes).
-- [ ] **No setting makes Claims Copilot's reads visible in `Claims-Test`.** Dataverse auditing never logs a
-      read, so the Audit summary view shows none. Reads are logged only by activity logging (the **Read
-      logs** setting plus the table's single- and multiple-record settings), and those events reach Purview
-      only for production environments. `Claims-Test` is a sandbox. Don't try to work around it: 05-07 KT03
-      now teaches that gap instead of relying on a read event.
-- [ ] **Purview Audit is on** - also Phase 5b. It is **not** always on by default: on this developer tenant
-      unified audit ingestion was off (2026-10-20), and only activity after it is switched on (allow up to an
-      hour) is ever searchable. Check: Purview portal → **Audit** shows no "start recording" banner.
-- [ ] **Defender real-time protection for agents** is not used: 05-07 KT06 reasons it through. Since July
-      2026 it needs a Microsoft Agent 365 licence. Purchase services offered no self-service trial on the
-      build tenant (an admin-led trial needs Microsoft or the account team).
-- [ ] **The DSPM transcript role** - `pwsh setup/scripts/07c_provision_purview_roles.ps1` (Phase 8b). 05-07 KT04
-      reads the chat's **interaction record** in **DSPM for AI → Activity explorer** (user, agent, time,
-      resources); the prompt and response text is optional. Global Reader shows the record; the text needs
-      Purview's **Data Security AI Content Viewers**, which 07c gives each lab account (`student<NN>.<estate>`).
-      Role-group membership needs Organization Management, which the lab app can't hold, so 07c asks for
-      **one device-code approval** from a Global Administrator. `-Remove` after the delivery.
-      **Check it as an attendee:** after the Exercise 04 rehearsal chat, open the interaction in Activity
-      explorer. The record (user, agent, resources) must show; that is what KT04 needs. Note whether
-      **Interaction details** shows text or *"We couldn't retrieve this prompt and response"* - in the build
-      tenant it never showed text, even with the role in place for hours ([errata → Phase 8b](../reference/runbook-errata.md)),
-      so tell the room the transcript is optional and expect it to be unavailable.
-      Microsoft retires *DSPM for AI (classic)* on 30 November 2026; check the step's wording against the
-      portal before a later delivery.
-- [ ] **Attendees read audit records, not claims.** 05-07 KT03 sends each attendee to `Claims-Test`'s **Audit
-      summary view** to see that it shows no read. Phase 8b's lab role carries `prvReadRecordAuditHistory`,
-      `prvReadAuditSummary` and `prvReadQuery` for that (`_access_model.ps1`); it still has no read on claims,
-      so the attendee can't open the claim itself - Scenario D depends on that.
+   - [ ] **Purview Audit.** Open the **Microsoft Purview portal**, https://purview.microsoft.com →
+         **Solutions** → **Audit**. There must be no "start recording" banner. Search with **Record Types**
+         = `CopilotInteraction` and **Users** = the student account, over today (the date picker stops at
+         today: set the end time late; times are UTC). The rehearsal chat must be listed — a search takes
+         4–7 minutes, then **Refresh**; ingestion can take up to an hour to start after Phase 5b.
+         *Total Result Count* can read 0 above a list of results; the list is what counts. Without the
+         **Users** filter the search shows every estate's chats.
+   - [ ] **DSPM for AI.** In the same portal, **Solutions** → **DSPM for AI (classic)** → **Activity
+         explorer** (select **Maybe later** if a *New Unified Data Security Posture Management* window opens).
+         With **User participant** = the student account, the rehearsal chat's **AI Interaction** record
+         (agent, user, time, app) must show. The prompt and response text usually doesn't, and an
+         "Additional permissions required" banner about AI visits is expected — tell the room the text is
+         optional.
+   - [ ] **The Claims-Test audit summary.** Open `<Claims-Test org URL>/tools/audit/audit_summary.aspx`
+         (the org URL is in the Phase 3 summary, or **Power Platform admin center**,
+         https://admin.powerplatform.microsoft.com → **Manage → Environments** → `Claims-Test-<estate>` →
+         **Environment URL**). It must list audit records — at least Phase 5b's *Audit Change* entries — and
+         the student can't open a claim itself, which is expected. Don't use the admin center's **Settings →
+         Audit and logs → Audit summary view** link: it fails for attendees with *Error loading control*.
+         The page's **Delete Change History** button shows for everyone but is refused: the lab role holds
+         no delete privilege.
 
-**04-04 has no test claim.** Claims Copilot's only tools are *List claims* and *List customers* - its
-instructions mention status updates, but it has no update tool - so no test claim is designated. Tell the
-room the write half of Scenario D is reasoned, not exercised.
+4. **Brief yourself on what the room can't do.** Each is expected, not a fault:
+
+   - 04-04's write half is reasoned, not run: Claims Copilot has no update tool, so there's no test claim.
+   - Claims Copilot's reads appear in no log: Dataverse never audits reads, and `Claims-Test` is a sandbox.
+     05-07 KT03 teaches that gap.
+   - Defender real-time protection isn't set up (no Agent 365 licence); 05-07 KT06 reasons it through.
+
+5. **Create the facilitator account and sign in with it once.** You demonstrate Exercise 05 as this account
+   (`facilitator.<estate>`, "Lab Facilitator (<estate>)"), not your own tenant admin: it holds Power
+   Platform Administrator, and AI Administrator only as PIM-eligible. The script writes its password to
+   `setup/lab-facilitator-<estate>.local.csv` (gitignored). Safe to re-run.
+
+   ```bash
+   pwsh setup/scripts/07b_provision_facilitator.ps1
+   ```
+
+   - Sign in with it once in a browser to enrol MFA: it is an admin, so `CA-Require-MFA-Admins` applies.
 
 ### During delivery — Exercise 05 demonstrations
 
 Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
-the estate back. Demonstrate as the **facilitator account** (`facilitator.<estate>`, "Lab Facilitator
-(<estate>)"), not your own tenant admin: it holds Power Platform Administrator, and AI Administrator only
-as PIM-eligible - activate it for the step that needs it (05-05) and let it lapse. (Security Administrator
-was eligible for 05-07's Defender step; that step is reasoned now, so 07b removes it.) Create it once, after the attendee accounts:
+the estate back. Do it as the facilitator account (Before delivery, step 5), not your own tenant admin.
 
-```powershell
-pwsh setup/scripts/07b_provision_facilitator.ps1     # password -> setup/lab-facilitator-<estate>.local.csv
-```
+1. **Before Exercise 05 starts, snapshot the estate.** The script records the data policies, the default
+   environment's makers and `svc-claims`'s roles, so each demonstration can be undone exactly:
 
-Sign in with it once before the delivery to enrol MFA (it is an admin, so `CA-Require-MFA-Admins` applies). Snapshot everything before the session, restore each control as soon as its retests are
-done, and finish with a diff.
+   ```bash
+   pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All
+   ```
 
-```powershell
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All     # before Exercise 05 starts
-# ... demonstrate, let the room retest ...
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp       # or DefaultMakers / ClaimsRoles
-pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All         # at the end: all "same as the snapshot"
-```
+2. **For each task, demonstrate the control, let the room retest, then put it back** — as soon as the
+   retests are done. Sign in as the facilitator account unless a task says otherwise. The click paths come
+   from each task's page; those marked *(not yet walked)* haven't been run as the facilitator.
 
-| Task | You demonstrate | Back to the estate |
-|---|---|---|
-| 05-01 | Halcourt-Prod's data policy: HTTP and custom connectors to **Blocked** | `-Action Restore -Control Dlp` |
-| 05-02 | default environment: a data policy named `Halcourt-Default-DLP-<estate>` that blocks **HTTP** and **custom connectors** (the 05-01 blocks). Nothing else: every licensed user is an Environment Maker there automatically, so swapping the role's members for `Halcourt-Makers-<estate>` restricts nobody - attendees record that as a finding | `-Action Restore -Control Dlp` (deletes the new policy - the estate id in its name is what allows that) |
-| 05-03 | **Scenario B, the SharePoint-permission route (preferred):** remove the knowledge source's effective reader's permission on `Leadership/` - the route 05-03 KT01 s3 offers. Narrowing Benefits Buddy's Knowledge to the open-enrollment FAQ (as its owner, Marcus, then publish) did **not** stop the leak within an hour ([errata, 2026-10-20](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)); if you demonstrate that route anyway, warn the room to expect DENTS IT. **Scenarios C/D:** a scoped role and fixed subset for svc-claims: `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1` | permission: restore it by hand; knowledge (if narrowed): `06 -Agents benefits-buddy` (the committed workspace is the whole site); the role, Basic User and record owners: `-Action Restore -Control ClaimsRoles` |
-| 05-04 | nothing - the CA policy is specified, never created (one wrong policy locks out the tenant) | - |
-| 05-05 | Agent 365 registry: **Block** Onboarding Guide (never Delete) | **by hand**: Unblock |
-| 05-06 | nothing changes - **show** `HR-Benefits` → `Leadership/` as Marcus (HR leadership): select each comp file → **Details** - the labelled copy shows **Sensitivity** `Confidential-PII-<estate>`, the original none (the library view has no Sensitivity column); attendees can't open the folder | - |
-| 05-07 | nothing - real-time protection is **reasoned** (KT06): it needs a Microsoft Agent 365 licence, which the lab tenant lacks | - |
+   **05-01 — Block HTTP and custom connectors in Prod** (attendees follow KT02, retest in KT03 and KT05)
 
-The default environment and the tenant's Defender setting are shared with every estate in the tenant:
-coordinate with any other facilitator delivering at the same time.
+   1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** →
+      `Halcourt-Prod-DLP-<estate>` → **Edit Policy** *(not yet walked)*.
+   2. Move **HTTP** and **HTTP with Microsoft Entra ID** to **Blocked**; set **custom connectors** to
+      **Blocked**; leave **Dataverse** and **SharePoint** in **Business**. Save.
+   3. **Show the room** the Blocked group, then wait for KT03 (Policy Lookup Bot and Underwriting Assistant)
+      and KT05. Expect Policy Lookup Bot's HTTP call to fail (`DataLossPreventionViolation`), and maybe
+      agents that won't publish (the page's warning). Don't predict the MCP half: in the reference build,
+      blocking custom connectors did **not** stop Underwriting Assistant's MCP tool. Record what the
+      retest shows — either result is a finding, not a broken demonstration.
+   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp`
 
-### Phase 9 — Teardown / reseed
+   **05-02 — A data policy on the default environment** (KT03; retests in KT06 and KT08)
 
-`99_teardown.ps1` removes ONE estate and nothing another estate owns, in dependency order: the shared
-default environment's agents + the auto-approve flow (as their owners) → the SharePoint sites (purged from
-the recycle bin so the URLs are reusable) → the three estate environments (their Dataverse, agents and
-connections go with them) → the DLP policy → billing unlink. It only **unlinks** the estate's environments
-from the shared billing plan; it never deletes the plan or its resource group.
+   1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** → **New
+      policy**, named `Halcourt-Default-DLP-<estate>`, scoped to **Halcourt (default)** only, with **HTTP**,
+      **HTTP with Microsoft Entra ID** and **custom connectors** **Blocked** *(not yet walked)*.
+   2. **Show the room** the policy, and that you can't fence the default environment's makers: every
+      licensed user is an Environment Maker there.
+   3. Wait for KT06 and KT08.
+   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` — it deletes the new policy (the estate id in its
+      name is what allows that).
 
-```bash
-export ENTRAID_APP_ID=<PnP app id>  HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx  HALCOURT_PNP_CERT_PW=<cert-pw>   # for site removal
-pwsh setup/scripts/99_teardown.ps1                                  # estate artifacts; KEEPS personas + shared infra
-pwsh setup/scripts/99_teardown.ps1 -RemovePersonas                  # also the Phase 2 personas + *-<estate> groups
-pwsh setup/scripts/99_teardown.ps1 -RemovePersonas -RemoveShared    # also the shared authors group + PnP app registration
-```
+   **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT05, KT07)
 
-Environments delete asynchronously (a few minutes). It KEEPS Phase 0 (tenant, CA baseline, security
-defaults) and the shared **default environment** and its Dataverse — that can't be un-provisioned. It
-also keeps the **shared Azure deployment** (Phase 1): it is every estate's, not this one's. To reseed,
-re-run Phases 2–6 with the same `setup/lab-endpoints.local.json`.
+   1. **Scenario B, as the site owner** — the account Phase 4 made owner of `HR-Benefits-<estate>`
+      (`-SiteOwner`; by default the admin who ran it). Members, Marcus included, have Edit, which can't
+      change permissions. Remove the knowledge source's effective reader's permission on `Leadership/` —
+      the route KT01 step 3 offers *(not yet walked)*. Don't narrow the Knowledge
+      instead: that did not stop the leak within an hour
+      ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)).
+   2. **Scenarios C and D:** the scoped `svc-claims` role and its fixed data subset, by script:
 
-**Shared Azure deployment — owner only, after the last estate.** Tearing it down breaks every estate's
-agents, so do it only when no estate still needs it:
+      ```bash
+      pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1
+      ```
 
-```bash
-azd env select <shared env name>   # from the repo root
-azd down --purge --force
-rm setup/lab-endpoints.local.json  # and ask facilitators to delete their copies
-```
+   3. **Show the room** the new role in **Claims-Test**'s security roles, and the permission change. Wait for
+      KT03, KT05 and KT07.
+   4. **Put it back:** restore the `Leadership/` permission by hand, as the site owner, then
+      `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles` (the role, Basic User and record owners).
 
-If it has to be rebuilt while estates still use it, use a **new** azd environment name, write the new
-values file (`Save-LabEndpoints -Force`: it refuses to replace different values otherwise), hand it out, and
-have every estate re-run Phase 6: the agents' `${…}` action tokens
-re-inject the new addresses and secrets at provision time.
+   **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
+   policy locks out the tenant.
 
-**What `99_teardown.ps1` does not remove.** Run these by hand after the delivery:
+   **05-05 — Block Onboarding Guide** (KT06)
 
-- [ ] **Per-student slices** (Phase 8c): `pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy`
-      (`-Force` skips the prompt). **Run it before `99_teardown.ps1`**: it finds the billing policy to unlink
-      through the estate's Prod environment, and once Prod is gone it warns and skips the unlink unless you
-      pass `-BillingPolicyId`.
-- [ ] **The attendees' Purview role** (Phase 8b): `pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove`
-      (one admin device-code approval). Run it before `07 -Destroy`, while the lab accounts still exist:
-      07c matches role-group members by display name, so a member left behind would be taken for a rebuilt
-      account of the same name. The role is tenant-wide - it shows every Copilot interaction in the tenant,
-      every estate's - so don't leave it in place between deliveries.
-- [ ] **Shared grants 07 and 04b leave in place** (tenant-wide, shared by every estate - remove only when
-      no estate needs them): Graph Explorer's all-users consent (`$GraphExplorerScopes`) -
-      `az rest --method DELETE --url https://graph.microsoft.com/v1.0/oauth2PermissionGrants/<id>` (find the
-      id with `oauth2PermissionGrants?$filter=clientId eq '<Graph Explorer service principal id>'`); and unified
-      audit ingestion, which is best left on.
-- [ ] **Lab accounts** (Phase 8b): `pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy` (`-Force` skips
-      the prompt), then delete `setup/lab-users-<estate>.local.csv`.
-- [ ] **The facilitator account**: `pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy` (it also
-      deletes `setup/lab-facilitator-<estate>.local.csv`).
-- [ ] **Phase 4c's Purview artifacts**, before `99_teardown.ps1`: `pwsh setup/scripts/03c_provision_purview.ps1
-      -Remove` deletes the label policy `Halcourt-Labels-<estate>`, then the label `Confidential-PII-<estate>`
-      (it retries while the policy is withdrawn; re-run if it times out). The group `HR-Leadership-<estate>`
-      goes with `-RemovePersonas`; the labelled copy goes with the `HR-Benefits-<estate>` site.
-- [ ] **Shared per-tenant, only when the last estate in the tenant goes:** the app registration
-      `halcourt-lab-compliance` (03c, 07 and 07b sign in with it) with its local
-      `setup/lab-compliance-app.local.{json,pfx}`, and the resource group `rg-halcourt-graph-billing` holding
-      its Graph billing resource `halcourt-lab-compliance-billing`. `azd down` does not touch either.
-- [ ] **Shared per-region, only when the tenant is retired:** the Copilot Studio billing plan and, if
-      the kit created it, its resource group. Deleting either cuts billing for every estate in the region.
-      First check that `/billingPolicies/<id>/environments` lists no live environment, for every plan in
-      the group, then remove the group's `halcourt-shared-billing` lock (`az lock delete --name
-      halcourt-shared-billing -g <group> --subscription <that id>`), then PPAC → Licensing → Billing Plans →
-      delete. A plan the kit created is `Halcourt-PAYG-<region>` in `rg-halcourt-billing`, in the plan's
-      own subscription (its `billingInstrument.subscriptionId`). Once
-      `az resource list -g rg-halcourt-billing --subscription <that id>` is empty:
-      `az group delete -n rg-halcourt-billing --subscription <that id>`. A plan the tenant came with
-      (e.g. `ppccdevcanada`) lives in the Dev Program's own resource group, which also holds the default
-      environment's plan — leave that group alone, but remove the kit's lock from it (`az lock delete --name
-      halcourt-shared-billing -g <group> --subscription <that id>`). A tenant built before ADR-0014's
-      shared names may also hold `rg-halcourt-billing-<estate>` with a `Halcourt-PAYG-<estate>` plan: retire
-      it the same way.
+   1. Activate the facilitator's **AI Administrator** in PIM.
+   2. **Microsoft 365 admin center** → **Agents** → **Onboarding Guide** → **Block** *(not yet walked)*.
+      Never **Delete**: it can't be undone.
+   3. Wait for KT06 (can Onboarding Guide still send mail?).
+   4. **Put it back:** the same page → **Unblock**, by hand. Let AI Administrator lapse.
 
-`-RemovePersonas` deletes every user whose UPN ends `.<estate>@<domain>` and every group named `*-<estate>`,
-so it also catches the lab accounts, the facilitator and `HR-Leadership-<estate>`. Run the scripts above
-anyway: they are the intended path, and 07 `-Destroy` purges what it deletes.
+   **05-06 — Show the labelled copy** (KT01 step 3; nothing changes)
+
+   1. As Marcus Webb (an HR-leadership member), open `HR-Benefits-<estate>` → **Documents** →
+      `Leadership/`, select each comp file → **Details**.
+   2. **Show the room:** `2026-comp-bands-labeled.xlsx` shows **Sensitivity** `Confidential-PII-<estate>`,
+      `2026-comp-bands.xlsx` none. The library view has no Sensitivity column.
+
+   **05-07 — Nothing to change.** Real-time protection is reasoned through (KT06): the tenant has no Agent
+   365 licence.
+
+3. **At the end, check everything is back.** Every line must say "same as the snapshot":
+
+   ```bash
+   pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Diff -Control All
+   ```
+
+### Phase 9 — Teardown
+
+After the delivery, remove this estate's attendee and facilitator accounts, its slices, its Purview
+objects, then the estate itself. Run the steps in this order: some need things a later step deletes. Each
+removes only this estate; nothing another estate uses is touched. To reseed instead, re-run Phases 2–6.
+
+1. **Take back the attendees' Purview role.** Before step 2, while the accounts still exist: the script
+   matches role-group members by display name. It needs one admin device-code approval.
+
+   ```bash
+   pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove
+   ```
+
+2. **Delete the attendee accounts and their handout.** The script deletes and purges the accounts
+   ([ADR-0026](../reference/adr/0026-attendee-teardown-purges.md)).
+
+   ```bash
+   pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy
+   rm setup/lab-users-$HALCOURT_ESTATE.local.csv
+   ```
+
+3. **Delete the facilitator account.** It also deletes its password file.
+
+   ```bash
+   pwsh setup/scripts/07b_provision_facilitator.ps1 -Destroy
+   ```
+
+4. **Delete the per-student slices.** Before step 6: the script finds the billing plan to unlink through
+   the estate's Prod environment.
+
+   ```bash
+   pwsh setup/scripts/08_provision_student_slices.ps1 -Destroy
+   ```
+
+5. **Delete the Purview label and policy.** It removes `Halcourt-Labels-<estate>`, then
+   `Confidential-PII-<estate>`, retrying while the policy is withdrawn; re-run it if it times out.
+
+   ```bash
+   pwsh setup/scripts/03c_provision_purview.ps1 -Remove
+   ```
+
+6. **Tear down the estate.** In dependency order: the default environment's agents and the auto-approve
+   flow (as their owners), the SharePoint sites (purged, so the URLs can be reused), the three estate
+   environments with everything in them, the Prod data policy, and the billing link. It only unlinks the
+   billing plan; it never deletes it. `-RemovePersonas` also deletes the Phase 2 personas and every
+   `*-<estate>` group.
+
+   ```bash
+   export ENTRAID_APP_ID=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
+   export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
+   pwsh setup/scripts/99_teardown.ps1 -RemovePersonas
+   ```
+
+   - Environments delete in the background, over a few minutes.
+   - It keeps Phase 0 (the tenant and the Conditional Access baseline), the default environment, the
+     shared Azure deployment and the other shared pieces.
+
+7. **Delete the estate's local files.**
+
+   ```bash
+   rm -rf setup/ex05-state/$HALCOURT_ESTATE setup/teams-links-$HALCOURT_ESTATE.local.csv
+   ```
+
+Last estate in the tenant? The shared pieces — the Azure deployment, the billing plan, the lab apps and the
+tenant-wide grants — are retired separately: [retiring-shared-resources.md](../reference/retiring-shared-resources.md).
 
 ## File index (this kit)
 

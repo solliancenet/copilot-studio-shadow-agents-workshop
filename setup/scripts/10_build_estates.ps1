@@ -1,8 +1,12 @@
 <#
-FACILITATOR-ONLY. Build one or more estates end to end - RUNBOOK Phases 2 to 6.5 per estate, in order -
+FACILITATOR-ONLY. Build one or more estates end to end - RUNBOOK Phases 2 to 8c per estate, in order -
 for a delivery that gives every attendee their own estate (issue #30). Phase 0 (once per tenant) and
-Phase 1 (one shared Azure deployment, ADR-0005) must already be done; Phases 7, 8 and the attendee
-accounts are separate.
+Phase 1 (one shared Azure deployment, ADR-0005) must already be done.
+
+The last two phases are the estate's attendees: 8b creates -Attendees accounts (student01.<estate>...)
+WITHOUT a seat, and 8c their slices (Lab-<estate>-NN), which the attendee needs from Exercise 03. Seats are
+the day before the delivery (RUNBOOK Phase 8b: re-run 07 without -NoLicense, once persona seats are
+reclaimed).
 
   pwsh setup/scripts/10_build_estates.ps1 -Estates fac01                       # one estate
   pwsh setup/scripts/10_build_estates.ps1 -Estates fac02,fac03 -ReclaimSeats         # comma-separated, no spaces
@@ -33,6 +37,7 @@ param(
   [switch]$ReclaimSeats,                # after a build passes, take the eight persona seats back
   [switch]$ReclaimOnly,                 # build nothing; only take the seats back
   [switch]$ContinueOnError,             # a failing estate doesn't stop the others
+  [ValidateRange(1,99)][int]$Attendees = 1,   # Phase 8b accounts and 8c slices per estate (one estate per attendee: 1)
   [string]$LabPassword = 'Lab-Only-Passw0rd!'   # the personas' password, as passed to 01 -InitialPassword
 )
 $ErrorActionPreference = 'Stop'
@@ -74,6 +79,8 @@ $phases = @(
   [pscustomobject]@{ Name = 'agents';       Phase = '6';   Script = '06_provision_agents.ps1';           Args = @() }
   [pscustomobject]@{ Name = 'departed';     Phase = '6.5'; Script = '01_provision_entra.ps1';            Args = @('-MarkDepartedOwner') }
   [pscustomobject]@{ Name = 'devadmin';     Phase = '7';   Script = $null;                               Args = @() }
+  [pscustomobject]@{ Name = 'users';        Phase = '8b';  Script = '07_provision_lab_users.ps1';        Args = @('-Count', "$Attendees", '-NoLicense') }
+  [pscustomobject]@{ Name = 'slices';       Phase = '8c';  Script = '08_provision_student_slices.ps1';   Args = @('-Count', "$Attendees") }
 )
 $names = $phases.Name
 foreach ($n in @($From, $To) | Where-Object { $_ }) { if ($n -notin $names) { throw "Unknown phase '$n'. Phases: $($names -join ', ')" } }

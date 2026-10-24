@@ -586,7 +586,7 @@ function Get-EstateDataverseEnvironments {
             -Uri 'https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2021-04-01').value
   $names = 'Halcourt-Prod', 'Claims-Test', 'Maker-Sandbox' | ForEach-Object { Get-EstateName $_ $Estate }
   # Plus the tenant's default environment, which every estate shares: Expense Helper and Onboarding Guide
-  # live there, and Lab 04-04 KT02 s5 / 04-06 KT02 open them in Copilot Studio. Without the role an
+  # live there, and Lab 04-04 KT02 s6 / 04-06 KT02 open them in Copilot Studio. Without the role an
   # attendee's agent list there is simply empty (verified 2026-10-17).
   @($envs | Where-Object { $_.properties.displayName -in $names -or $_.properties.isDefault } | ForEach-Object {
       [pscustomobject]@{ Name = $_.properties.displayName; Id = $_.name
