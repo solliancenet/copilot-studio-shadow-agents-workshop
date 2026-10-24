@@ -45,6 +45,9 @@ $ErrorActionPreference = 'Stop'
 $Estates = @($Estates | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)        # the repo root
 . (Join-Path $PSScriptRoot '_estate.ps1')
+# The phase scripts are separate processes and find the password themselves (Get-LabPassword); one passed
+# here reaches them through the environment.
+if ($LabPassword) { $env:HALCOURT_LAB_PASSWORD = $LabPassword }
 . (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
 
 $tenantDomain = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv

@@ -47,7 +47,8 @@ function Get-LabPassword([string]$Given) {
   if ($Given) { return $Given }
   if ($env:HALCOURT_LAB_PASSWORD) { return $env:HALCOURT_LAB_PASSWORD }
   if (Test-Path $script:LabSecretsFile) {
-    $p = (Get-Content $script:LabSecretsFile -Raw | ConvertFrom-Json).labPassword
+    try { $p = (Get-Content $script:LabSecretsFile -Raw | ConvertFrom-Json).labPassword }
+    catch { throw "$($script:LabSecretsFile) isn't valid JSON - it should be {""labPassword"": ""...""}." }
     if ($p) { return $p }
   }
   throw "No lab password. Put it in setup/lab-secrets.local.json as {""labPassword"": ""...""} (gitignored), or set HALCOURT_LAB_PASSWORD. Never commit it."

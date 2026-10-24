@@ -21,7 +21,7 @@ services:
     environment:
       VERSION: "${WINVM_VERSION:-11e}"          # Windows 11 Enterprise evaluation — no key needed for a lab build
       USERNAME: "${WINVM_USERNAME:-halcourt}"
-      PASSWORD: "${WINVM_PASSWORD:?set WINVM_PASSWORD - the VM user's password (the repo is public, so no default)}"
+      PASSWORD: "${WINVM_PASSWORD:?set WINVM_PASSWORD in setup/windows-vm/.env - the VM user's password (no default - the repo is public)}"
       RAM_SIZE: "${WINVM_RAM_SIZE:-8G}"
       CPU_CORES: "${WINVM_CPU_CORES:-4}"
       DISK_SIZE: "${WINVM_DISK_SIZE:-64G}"

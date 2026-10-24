@@ -238,7 +238,8 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
    the password never goes in a file the repo tracks. Save it in `setup/lab-secrets.local.json` (gitignored):
 
    ```bash
-   printf '{"labPassword": "%s"}\n' '<a strong password>' > setup/lab-secrets.local.json
+   read -rsp 'Lab password: ' LABPW; echo                  # typed, not echoed or kept in shell history
+   (umask 077; jq -n --arg p "$LABPW" '{labPassword: $p}' > setup/lab-secrets.local.json); unset LABPW
    ```
 
    - Resuming or tearing down an estate someone already built? Use the password it was built with: the
