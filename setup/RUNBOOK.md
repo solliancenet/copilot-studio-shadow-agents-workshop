@@ -523,6 +523,11 @@ an estate deploys nothing.
      the marker: True`.
    - Not yet? Run it again later. The label can take hours to reach SharePoint — up to a day
      ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
+   - Still `copy labelled: False` with no `labelNotFound`, a day on? Some sites never apply a label. Label it
+     through another estate's site whose copy *is* labelled:
+     `pwsh setup/scripts/03c_provision_purview.ps1 -LabelVia <that estate>`. If that site doesn't apply it
+     either, the script stops without changing the copy; try a different estate
+     ([errata → Phase 4c, some sites never apply it](../reference/runbook-errata.md#phase-4c--some-hr-benefits-sites-never-apply-the-label-2026-10-23)).
    - It must pass before the delivery: Task 05-06 retests against the labelled copy.
 
 ### Phase 7 — Export the artifact pack
