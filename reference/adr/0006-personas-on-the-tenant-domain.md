@@ -8,7 +8,7 @@ that finds an account
 
 `AGENTS.md`, the artifact pack and the lab pages write every UPN as
 `<alias>@halcourtmutual.onmicrosoft.com`. A lab tenant keeps whatever domain Microsoft assigned it — a Dev
-Program sandbox gets something like `0zwdt94t.onmicrosoft.com` — and an `*.onmicrosoft.com` domain can't be
+Program sandbox gets something like `a1b2c3d4.onmicrosoft.com` — and an `*.onmicrosoft.com` domain can't be
 added to another tenant, so the canonical domain is unavailable.
 
 ## Decision

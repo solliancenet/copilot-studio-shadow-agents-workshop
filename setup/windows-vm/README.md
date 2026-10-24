@@ -14,13 +14,15 @@ Not supported: Windows 10 hosts and macOS. Budget 8 GB RAM, 4 cores, 64 GB disk.
 
 ```bash
 docker run --rm --device /dev/kvm alpine ls -l /dev/kvm       # check KVM first; prints a /dev/kvm line
+export WINVM_PASSWORD='<a password>'                          # the VM user's; required, no default
 docker compose -f setup/windows-vm/compose.yaml up -d         # start, from the repo root
 docker compose -f setup/windows-vm/compose.yaml stop          # shut down, keep the disk
 docker compose -f setup/windows-vm/compose.yaml down -v       # delete the VM and its disk
 ```
 
-Watch the install at http://localhost:8006 or RDP to `localhost:3389` (user `halcourt`, password
-`Lab-Only-Passw0rd!`) — both bound to localhost only. The first start downloads Windows 11 Enterprise
+Watch the install at http://localhost:8006 or RDP to `localhost:3389` (user `halcourt`, password: the
+`WINVM_PASSWORD` you exported before `up`; there is no default, since the repo is public) — both bound to
+localhost only. The first start downloads Windows 11 Enterprise
 evaluation (~7 GB, 90 days) and installs it unattended: allow 20–40 minutes, then
 `setup/windows-vm/oem/bootstrap.ps1` installs the toolchain and logs to `C:\OEM\bootstrap.log`. Re-run it
 from an elevated prompt if it failed (usually network).

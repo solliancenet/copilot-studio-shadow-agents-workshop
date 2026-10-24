@@ -92,7 +92,7 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - Join with a **personal or lab email**, never your corporate account.
    - Choose **Instant sandbox (Add-on purchases enabled)** — a 90-day renewable E5 sandbox.
    - Pick the **data-center region**. You can't change it later.
-   - Accept whatever **domain** signup assigns (e.g. `0zwdt94t.onmicrosoft.com`). The scripts use it as is.
+   - Accept whatever **domain** signup assigns (e.g. `a1b2c3d4.onmicrosoft.com`). The scripts use it as is.
    - **Install the content pack** if signup offers it. Its ~16 sample users take E5 seats — you free them
      in step 3.
    - Trouble with the variant, a billing account that doesn't show up, or no Developer Program:
@@ -233,7 +233,19 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
    export HALCOURT_ESTATE=jsmith         # your id
    ```
 
-5. Give attendees the estate id along with the tenant domain.
+5. **Set the lab accounts' password.** Phase 2 creates your personas with it, later phases sign in as them,
+   and Phase 8b gives it to the attendee accounts unless you pass `-UniquePasswords`. The repo is public, so
+   the password never goes in a file the repo tracks. Save it in `setup/lab-secrets.local.json` (gitignored):
+
+   ```bash
+   printf '{"labPassword": "%s"}\n' '<a strong password>' > setup/lab-secrets.local.json
+   ```
+
+   - Resuming or tearing down an estate someone already built? Use the password it was built with: the
+     scripts sign in as its personas.
+   - Or set `HALCOURT_LAB_PASSWORD` in the terminal instead. A script with neither stops and says so.
+
+6. Give attendees the estate id along with the tenant domain.
 
 ### Phase 1 — Azure infrastructure (shared)
 

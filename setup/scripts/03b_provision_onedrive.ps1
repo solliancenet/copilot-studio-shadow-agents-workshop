@@ -53,12 +53,13 @@ param(
   [string]$CertPath     = $env:HALCOURT_PNP_CERT_PFX,      # .pfx with the app's private key
   [string]$CertPassword = $env:HALCOURT_PNP_CERT_PW,
   [string]$MakerAlias   = 'dev.kim',                       # the OneDrive owner (Meeting Notes owner)
-  [string]$LabPassword  = 'Lab-Only-Passw0rd!',            # the maker's password - they provision their own OneDrive
+  [string]$LabPassword,                                    # the maker's; default: Get-LabPassword (_estate.ps1)
   [int]$ProvisionTimeoutMinutes = 45,                      # generous: first-access provisioning has no published SLA
   [int]$GraphTouchMinutes = 5                              # then the maker opens OneDrive in a browser
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
+$LabPassword = Get-LabPassword $LabPassword
 $Estate = Resolve-Estate $Estate
 if (-not $ClientId)  { throw 'No PnP app id. Set ENTRAID_APP_ID (see RUNBOOK Phase 4).' }
 if (-not $CertPath)  { throw 'No certificate. Set HALCOURT_PNP_CERT_PFX to the app-only .pfx (see header).' }
@@ -68,7 +69,7 @@ if (-not $TenantDomain) {
   $TenantDomain = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
     --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv
 }
-$tenantName = $TenantDomain.Split('.')[0]                  # 0zwdt94t.onmicrosoft.com -> 0zwdt94t
+$tenantName = $TenantDomain.Split('.')[0]                  # a1b2c3d4.onmicrosoft.com -> a1b2c3d4
 $adminUrl   = "https://$tenantName-admin.sharepoint.com"
 $myHost     = "https://$tenantName-my.sharepoint.com"
 $maker      = "$(Get-EstateAlias $MakerAlias $Estate)@$TenantDomain"

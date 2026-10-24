@@ -21,7 +21,7 @@ in one tenant without adopting each other's accounts - marcus.webb.<estate>@<dom
 (<estate>)", Halcourt-Makers-<estate>. Pass -Estate or set HALCOURT_ESTATE.
 
 Domain: the canon writes every UPN as <alias>@halcourtmutual.onmicrosoft.com, but a lab tenant gets
-whatever domain Microsoft assigns (a Dev Program sandbox: something like 0zwdt94t.onmicrosoft.com), and
+whatever domain Microsoft assigns (a Dev Program sandbox: something like a1b2c3d4.onmicrosoft.com), and
 an *.onmicrosoft.com domain can't be added to another tenant. So the personas use the TENANT's default
 verified domain; -DomainSuffix overrides it and must be a verified domain of the tenant.
 
@@ -35,7 +35,7 @@ param(
   [string]$Estate = $env:HALCOURT_ESTATE,            # this build's estate id, e.g. jsmith (see _estate.ps1)
   [string]$TenantId,                                 # optional; target lab tenant (id or *.onmicrosoft.com)
   [string]$DomainSuffix,                             # default: the tenant's default verified domain
-  [string]$InitialPassword = 'Lab-Only-Passw0rd!',   # rotate per delivery; lab-only
+  [string]$InitialPassword,                          # default: Get-LabPassword (_estate.ps1) - never in the repo
   [string]$LicenceSku,                               # default: the tenant's E5 (DEVELOPERPACK_V2_E5, SPE_E5 or ENTERPRISEPREMIUM)
   [switch]$SkipLicences,
   [switch]$MarkDepartedOwner,
@@ -44,6 +44,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
+$InitialPassword = Get-LabPassword $InitialPassword
 $Estate = Resolve-Estate $Estate
 
 . (Join-Path $PSScriptRoot '_auth.ps1')
