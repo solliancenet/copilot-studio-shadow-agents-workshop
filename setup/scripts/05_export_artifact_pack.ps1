@@ -319,14 +319,23 @@ try {
     foreach ($e in $p.environments) { $dlpByEnv[$e.name] = $p.displayName }
   }
 } catch { }  # [verify] Get-DlpPolicy shape / cmdlet name across module versions
+# maker_access: who can build there, as Task 00-02 has attendees read it from each environment's role Members.
+# 06 gives every agent owner Environment Maker in their agent's environment (System Administrator in the
+# Developer one), person by person - there is no makers group. So: the manifest's owners per environment, by
+# display name, in the admin center's order. The default environment lets every licensed user build.
+$manifest = Get-Content (Join-Path (Split-Path -Parent $PSScriptRoot) 'agents/manifest.json') -Raw | ConvertFrom-Json
+$nameByAlias = @{}
+foreach ($u in $users) { $nameByAlias[($u.upn.Split('@')[0] -replace "\.$estateRx$", '')] = $u.display_name }
+$canonEnvByType = @{ Production = 'Halcourt-Prod'; Sandbox = 'Claims-Test'; Developer = 'Maker-Sandbox' }
+function Get-MakerAccess([string]$Type) {
+  if ($Type -eq 'Default') { return 'All users' }
+  $names = @($manifest.agents | Where-Object environment -eq $canonEnvByType[$Type] | Select-Object -ExpandProperty owner -Unique |
+             ForEach-Object { $nameByAlias[$_] } | Where-Object { $_ } | Sort-Object)
+  if ($Type -eq 'Developer') { $names = @($names | ForEach-Object { "$_ (owner)" }) }
+  $names -join '; '
+}
 $envRows = foreach ($env in $environments) {
-  $maker = switch ($env.EnvironmentType) {
-    'Default'    { 'All users' }
-    'Production' { 'Makers group' }
-    'Sandbox'   { 'Claims team' }
-    'Developer' { 'Individual maker' }
-    default     { '' }
-  }  # [verify] maker_access is a security-group assignment, not a native env property — mapped by env role
+  $maker = Get-MakerAccess ([string]$env.EnvironmentType)
   [pscustomobject]@{
     environment = $env.DisplayName
     type        = $env.EnvironmentType
