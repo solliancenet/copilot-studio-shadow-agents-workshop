@@ -6,7 +6,7 @@
     "Maker-Sandbox": "estate-suffixed",
     "Halcourt (default)": "shared"
   },
-  "_connections_comment": "OAuth connections the engine creates and authenticates per owner (headless consent). connector = the shared_* connector id; params = extra connectionParameters (e.g. the Graph HTTP connector needs its resource URIs); shareWith = a group to share it with (note: OAuth connections often refuse sharing - ConnectionSharingNotAllowed - the engine warns and continues). connector = \"custom\" with customConnector {workspace, name} is a CUSTOM connector the engine creates from the workspace's apiDefinition/apiProperties (the Underwriting MCP server, as a real Copilot Studio MCP tool); apiKeyFrom names the azd value its connection's API key is built from - no consent. HTTP actions and Power Automate flows are NOT here: they are configured inside the agent workspace/flow, not as consented connections.",
+  "_connections_comment": "OAuth connections the engine creates and authenticates per owner (headless consent). connector = the shared_* connector id; params = extra connectionParameters (e.g. the Graph HTTP connector needs its resource URIs); shareWith = a group to share it with (note: OAuth connections often refuse sharing - ConnectionSharingNotAllowed - the engine warns and continues). connector = \"custom\" with customConnector {workspace, name} is a CUSTOM connector the engine creates from the workspace's apiDefinition/apiProperties (the Underwriting MCP server, as a real Copilot Studio MCP tool); apiKeyFrom names the azd value its connection's API key is built from - no consent. HTTP actions and Power Automate flows are NOT here: they are configured inside the agent workspace/flow, not as consented connections. forAgent = the agent slug the connection is made for WITHOUT being bound: that agent grounds on SharePoint/OneDrive knowledge, which reads as the user and has no connection reference, but its maker made the connection in the portal anyway (the canon lists it, #44). It is created whenever that agent is built; an agent's own connections list stays the ones to bind.",
   "connections": {
     "SP-HR-Benefits": {
       "connector": "shared_sharepointonline",
@@ -16,7 +16,8 @@
     "SP-HR-FAQ": {
       "connector": "shared_sharepointonline",
       "environment": "Halcourt-Prod",
-      "owner": "marcus.webb"
+      "owner": "marcus.webb",
+      "forAgent": "hr-faq-v2"
     },
     "DV-Claims-Shared": {
       "connector": "shared_commondataserviceforapps",
@@ -27,7 +28,8 @@
     "SP-Onboarding": {
       "connector": "shared_sharepointonline",
       "environment": "Halcourt (default)",
-      "owner": "tom.dean"
+      "owner": "tom.dean",
+      "forAgent": "onboarding-guide"
     },
     "O365-Outlook-Onboarding": {
       "connector": "shared_office365",
@@ -52,7 +54,8 @@
     "OneDrive-DevKim": {
       "connector": "shared_onedriveforbusiness",
       "environment": "Maker-Sandbox",
-      "owner": "dev.kim"
+      "owner": "dev.kim",
+      "forAgent": "meeting-notes"
     },
     "MCP-Underwriting": {
       "connector": "custom",

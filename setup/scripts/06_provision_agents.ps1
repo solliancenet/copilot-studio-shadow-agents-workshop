@@ -721,7 +721,9 @@ if (-not $SkipPrereqs) {
 
 if (-not $SkipConnections) {
   Write-Host "`n== Connections =="
-  $need = $targets.connections | Where-Object { $manifest.connections.$_ } | Select-Object -Unique
+  # An agent's own connections (to bind), plus those made for it but left unbound (forAgent - see the manifest).
+  $forAgent = @($manifest.connections.PSObject.Properties | Where-Object { $_.Value.forAgent -and $_.Value.forAgent -in $targets.slug } | ForEach-Object Name)
+  $need = @($targets.connections) + $forAgent | Where-Object { $manifest.connections.$_ } | Select-Object -Unique
   foreach ($n in $need) {
     "{0,-26} -> {1}" -f $n, (Ensure-Connection $n $manifest.connections.$n) | Write-Host
     $def = $manifest.connections.$n

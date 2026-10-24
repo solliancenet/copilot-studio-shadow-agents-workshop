@@ -1,5 +1,5 @@
 environment,type,dlp_policy,managed,maker_access
 Halcourt (default),Default,,No,All users
-Halcourt-Prod,Production,Halcourt-Prod-DLP,Yes,Makers group
-Claims-Test,Sandbox,,No,Claims team
-Maker-Sandbox,Developer,,No,Individual maker
+Halcourt-Prod,Production,Halcourt-Prod-DLP,Yes,IT Helpdesk; Lena Ford; Marcus Webb; Priya Nair
+Claims-Test,Sandbox,,No,Priya Nair
+Maker-Sandbox,Developer,,No,Dev Kim (owner)

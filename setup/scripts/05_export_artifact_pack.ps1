@@ -139,6 +139,7 @@ function Get-DataverseToken {
 #    Every Copilot Studio agent across ALL environments (incl. personal/sandbox).
 # --------------------------------------------------------------------------------------------------
 Write-Host 'Exporting agents -> agents-export.csv'
+$script:connRefs = @{}
 $agents = foreach ($env in $environments) {
   $orgUrl = $env.Internal.properties.linkedEnvironmentMetadata.instanceApiUrl
   if (-not $orgUrl) { continue }  # environment has no Dataverse (bots require Dataverse)
@@ -147,7 +148,7 @@ $agents = foreach ($env in $environments) {
   # NO 'description': the bot entity has no such column (selecting it fails with 0x80060888, "Could not
   # find a property named 'description'"). The pack's description text is CANON, written by hand - see the
   # preserve step after this loop, which keeps it rather than blanking it.
-  $select = 'name,statecode,createdon,modifiedon,publishedon,_ownerid_value'
+  $select = 'name,schemaname,statecode,createdon,modifiedon,publishedon,_ownerid_value'
   # owninguser, not ownerid: ownerid is the polymorphic `principal` type, which has no domainname (400).
   $uri = "$orgUrl/api/data/v9.2/bots?`$select=$select&`$expand=owninguser(`$select=domainname)"
   try {
@@ -158,6 +159,9 @@ $agents = foreach ($env in $environments) {
       'OData-Version'      = '4.0'
       Prefer               = 'odata.include-annotations="*"'
     }
+    # Which connection each agent's connection references are bound to (06 binds them), for connections-export.
+    $script:connRefs[$env.EnvironmentName] = @((Invoke-RestMethod -Method Get -Headers @{ Authorization = "Bearer $token"; Accept = 'application/json' } `
+      -Uri "$orgUrl/api/data/v9.2/connectionreferences?`$select=connectionreferencelogicalname,connectionid&`$filter=connectionid ne null").value)
   } catch {
     # 403 "has not been assigned any roles": the admin needs a security role in every Dataverse environment.
     throw "Reading agents in '$($env.DisplayName)' failed: $($_.ErrorDetails.Message) - if the admin has no role there: pac admin assign-user --environment $($env.EnvironmentName) --user <admin UPN> --role 'System Administrator'"
@@ -166,6 +170,7 @@ $agents = foreach ($env in $environments) {
     # The default environment is shared: keep only agents owned by this estate's accounts.
     if ($env.EnvironmentType -eq 'Default' -and -not (Test-EstatePrincipal $bot.owninguser.domainname)) { continue }
     [pscustomobject]@{
+      schema            = $bot.schemaname          # joins connection references below; not exported
       display_name      = $bot.name
       environment       = $env.DisplayName
       owner_upn         = $bot.owninguser.domainname
@@ -198,8 +203,16 @@ ConvertTo-Canon $agents |
 #    Connections across environments joined to connector + owner + sharing + consuming agent.
 # --------------------------------------------------------------------------------------------------
 Write-Host 'Exporting connections -> connections-export.csv'
-# Build agent -> environment lookup so we can attribute a connection to the agent that uses it.
-$agentByEnv = $agents | Group-Object environment -AsHashTable -AsString
+# Attribute a connection to the agents that actually use it: an agent's connection references are named
+# <bot schema>.<connector>.<name>, and each carries the id of the connection it is bound to (06 binds them).
+# This used to take the first agent in the connection's environment, so the answer followed manifest order.
+function Get-ConnectionUsers([string]$EnvName, [string]$EnvDisplay, [string]$ConnId) {
+  $envAgents = @($agents | Where-Object { $_.environment -eq $EnvDisplay -and $_.schema })
+  @($script:connRefs[$EnvName] | Where-Object { $_.connectionid -eq $ConnId } | ForEach-Object {
+    $ln = $_.connectionreferencelogicalname
+    $envAgents | Where-Object { $ln.StartsWith("$($_.schema).", [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object display_name
+  }) | Sort-Object -Unique
+}
 
 $connections = foreach ($env in $environments) {
   foreach ($conn in (Get-AdminPowerAppConnection -EnvironmentName $env.EnvironmentName)) {
@@ -220,14 +233,32 @@ $connections = foreach ($env in $environments) {
       environment          = $env.DisplayName
       connection_owner_upn = $conn.CreatedBy.userPrincipalName
       shared_with          = ($shares -join ';')
-      used_by_agent        = ($agentByEnv[$env.DisplayName] | Select-Object -First 1).display_name  # [verify] precise conn->agent binding
+      used_by_agent        = (Get-ConnectionUsers $env.EnvironmentName $env.DisplayName $conn.ConnectionName) -join ';'  # '' = bound to no agent
       auth_type            = $conn.ConnectionParametersType  # [verify] auth-type surfacing varies by connector
     }
   }
 }
+# A connection used only by knowledge (SharePoint/OneDrive grounding reads as the user) is bound to no
+# reference, so the tenant can't say which agent it serves: SP-HR-Benefits, SP-HR-FAQ, SP-Onboarding and
+# OneDrive-DevKim. There used_by_agent is an analyst's call (ADR-0023): keep the committed value, as for
+# descriptions, so regenerating the pack doesn't blank it. A binding the tenant does show always wins.
+# ONLY those: any other connection with no binding exports blank, so a binding Phase 6 never made - or one
+# lost since - shows up in `git diff` instead of being papered over with the canon's value.
+$knowledgeOnly = @('SP-HR-Benefits') + @((Get-Content (Join-Path (Split-Path -Parent $PSScriptRoot) 'agents/manifest.json') -Raw |
+  ConvertFrom-Json).connections.PSObject.Properties | Where-Object { $_.Value.forAgent } | ForEach-Object Name)
+$connCsv = Join-Path $OutDir 'connections-export.csv'
+if (Test-Path $connCsv) {
+  $priorUse = @{}
+  foreach ($row in (Import-Csv $connCsv)) { if ($row.used_by_agent) { $priorUse[$row.connection_name] = $row.used_by_agent } }
+  foreach ($c in $connections) {
+    $canonName = if ($Canonicalize) { $c.connection_name -replace "-$estateRx\b", '' } else { $c.connection_name }
+    if ($canonName -notin $knowledgeOnly) { continue }
+    if (-not $c.used_by_agent -and $priorUse.ContainsKey($canonName)) { $c.used_by_agent = $priorUse[$canonName] }
+  }
+}
 ConvertTo-Canon $connections |
   Select-Object connection_name,connector,environment,connection_owner_upn,shared_with,used_by_agent,auth_type |
-  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded (Join-Path $OutDir 'connections-export.csv')
+  Export-Csv -NoTypeInformation -Encoding UTF8 -UseQuotes AsNeeded $connCsv
 
 # --------------------------------------------------------------------------------------------------
 # 3) agent-identities-export.csv
@@ -282,12 +313,25 @@ ConvertTo-Canon $identities |
 # 4) users-export.csv  (reveals the departed-but-enabled owner + service/shared accounts)
 # --------------------------------------------------------------------------------------------------
 Write-Host 'Exporting users -> users-export.csv'
-$mailboxTypeByUpn = @{}
-# [verify] shared-mailbox flag is an Exchange attribute, not a Graph user property; join if EXO is available.
+# Shared mailbox is Exchange's RecipientTypeDetails, not a Graph user property. This used to call Get-Mailbox
+# with no Exchange session and swallow the error, so it.helpdesk came out FALSE on every export. Connect the
+# way Phase 2 does (Connect-LabExchange reuses the az sign-in); if Exchange can't be read, leave the column
+# blank - unknown - rather than write a confident FALSE.
+$mailboxTypeByUpn = $null
 try {
+  $exoOrg = ((Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains').value[0].verifiedDomains |
+             Where-Object { $_.isInitial } | Select-Object -First 1).name
+  Connect-LabExchange -Organization $exoOrg
+  $mailboxTypeByUpn = @{}
   Get-Mailbox -RecipientTypeDetails SharedMailbox -ResultSize Unlimited -ErrorAction Stop |
     ForEach-Object { $mailboxTypeByUpn[$_.UserPrincipalName] = $true }
-} catch { }
+} catch {
+  $mailboxTypeByUpn = $null
+  Write-Warning "Could not read shared mailboxes from Exchange ($($_.Exception.Message.Split([Environment]::NewLine)[0])) - is_shared_mailbox is left blank."
+} finally {
+  # Absent when the module didn't load - a finally that throws would end the export.
+  if (Get-Command Disconnect-ExchangeOnline -ErrorAction SilentlyContinue) { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null }
+}
 $users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled,employeeLeaveDateTime,signInActivity' |
   Where-Object { Test-EstatePrincipal $_.UserPrincipalName } |   # this estate's accounts only
   ForEach-Object {
@@ -301,7 +345,7 @@ $users = Get-MgUser -All -Property 'userPrincipalName,displayName,accountEnabled
       last_sign_in_utc  = if ($last) { ([datetime]$last).ToString('yyyy-MM-dd') } else { '' }
       # Heuristic classification — the estate uses svc-* / *service* for service accounts.
       is_service_account = (($_.UserPrincipalName -like 'svc-*') -or ($_.DisplayName -match 'Service Account')).ToString().ToUpper()
-      is_shared_mailbox  = ([bool]$mailboxTypeByUpn[$_.UserPrincipalName]).ToString().ToUpper()
+      is_shared_mailbox  = if ($null -eq $mailboxTypeByUpn) { '' } else { ([bool]$mailboxTypeByUpn[$_.UserPrincipalName]).ToString().ToUpper() }
     }
   }
 ConvertTo-Canon $users |
@@ -319,14 +363,35 @@ try {
     foreach ($e in $p.environments) { $dlpByEnv[$e.name] = $p.displayName }
   }
 } catch { }  # [verify] Get-DlpPolicy shape / cmdlet name across module versions
+# maker_access: who can build there, read from the tenant the way Task 00-02 has attendees read it - each
+# environment's Environment Maker members (System Administrator in the Developer one, whose owner builds as
+# admin). 06 grants those roles person by person; there is no makers group. Only the estate's personas count
+# (the users export above): Microsoft's service accounts and the admin who built the lab are left out. By
+# display name, alphabetically. The default environment lets every licensed user build. Read, not derived
+# from the manifest, so a missed or extra role assignment shows up in `git diff`.
+$nameByAlias = @{}
+foreach ($u in $users) { $nameByAlias[($u.upn.Split('@')[0] -replace "\.$estateRx$", '')] = $u.display_name }
+function Get-MakerAccess([object]$Env) {
+  if ($Env.EnvironmentType -eq 'Default') { return 'All users' }
+  $orgUrl = $Env.Internal.properties.linkedEnvironmentMetadata.instanceApiUrl
+  if (-not $orgUrl) { return '' }
+  $role = if ($Env.EnvironmentType -eq 'Developer') { 'System Administrator' } else { 'Environment Maker' }
+  try {
+    $h = @{ Authorization = "Bearer $(Get-DataverseToken -ResourceUrl $orgUrl)"; Accept = 'application/json' }
+    $filter = [uri]::EscapeDataString("name eq '$role' and _parentroleid_value eq null")
+    $members = @((Invoke-RestMethod -Headers $h -Uri "$orgUrl/api/data/v9.2/roles?`$select=roleid&`$filter=$filter&`$expand=systemuserroles_association(`$select=domainname)").value |
+                 ForEach-Object { $_.systemuserroles_association } | ForEach-Object domainname)
+  } catch {
+    Write-Warning "Could not read $role members in '$($Env.DisplayName)' ($($_.Exception.Message.Split([Environment]::NewLine)[0])) - maker_access left blank."
+    return ''
+  }
+  $names = @($members | Where-Object { $_ -and (Test-EstatePrincipal $_) } |
+             ForEach-Object { $nameByAlias[($_.Split('@')[0] -replace "\.$estateRx$", '')] } | Where-Object { $_ } | Sort-Object -Unique)
+  if ($Env.EnvironmentType -eq 'Developer') { $names = @($names | ForEach-Object { "$_ (owner)" }) }
+  $names -join '; '
+}
 $envRows = foreach ($env in $environments) {
-  $maker = switch ($env.EnvironmentType) {
-    'Default'    { 'All users' }
-    'Production' { 'Makers group' }
-    'Sandbox'   { 'Claims team' }
-    'Developer' { 'Individual maker' }
-    default     { '' }
-  }  # [verify] maker_access is a security-group assignment, not a native env property — mapped by env role
+  $maker = Get-MakerAccess $env
   [pscustomobject]@{
     environment = $env.DisplayName
     type        = $env.EnvironmentType

@@ -523,6 +523,11 @@ an estate deploys nothing.
      the marker: True`.
    - Not yet? Run it again later. The label can take hours to reach SharePoint — up to a day
      ([errata → Phase 4c](../reference/runbook-errata.md#phase-4c--purview-the-label-arrives-late-and-the-token-is-app-only-2026-10-18)).
+   - Still `copy labelled: False` with no `labelNotFound`, a day on? Some sites never apply a label. Label it
+     through another estate's site whose copy *is* labelled:
+     `pwsh setup/scripts/03c_provision_purview.ps1 -LabelVia <that estate>`. If that site doesn't apply it
+     either, the script stops without changing the copy; try a different estate
+     ([errata → Phase 4c, some sites never apply it](../reference/runbook-errata.md#phase-4c--some-hr-benefits-sites-never-apply-the-label-2026-10-23)).
    - It must pass before the delivery: Task 05-06 retests against the labelled copy.
 
 ### Phase 7 — Export the artifact pack
@@ -647,6 +652,9 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
    ```bash
    pwsh setup/scripts/07c_provision_purview_roles.ps1
    ```
+
+   - An estate per attendee? Pass them all, so one approval covers them:
+     `07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02`.
 
 4. **Tell attendees to bring an authenticator app.** Their accounts hold admin roles, so Entra makes each one
    register MFA at first sign-in — about two minutes, once. Don't try to avoid it with a Conditional Access
@@ -855,6 +863,9 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    ```bash
    pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove
    ```
+
+   - Tearing down several estates? One approval covers them all:
+     `07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02 -Remove`.
 
 2. **Delete the attendee accounts and their handout.** The script deletes and purges the accounts
    ([ADR-0026](../reference/adr/0026-attendee-teardown-purges.md)).
