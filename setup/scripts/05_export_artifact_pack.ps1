@@ -322,7 +322,7 @@ try {
 # maker_access: who can build there, as Task 00-02 has attendees read it from each environment's role Members.
 # 06 gives every agent owner Environment Maker in their agent's environment (System Administrator in the
 # Developer one), person by person - there is no makers group. So: the manifest's owners per environment, by
-# display name, in the admin center's order. The default environment lets every licensed user build.
+# display name, alphabetically. The default environment lets every licensed user build.
 $manifest = Get-Content (Join-Path (Split-Path -Parent $PSScriptRoot) 'agents/manifest.json') -Raw | ConvertFrom-Json
 $nameByAlias = @{}
 foreach ($u in $users) { $nameByAlias[($u.upn.Split('@')[0] -replace "\.$estateRx$", '')] = $u.display_name }
