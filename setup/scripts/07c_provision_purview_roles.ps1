@@ -31,7 +31,8 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')          # also the tenant guard
 # `pwsh -File ... -Estates a,b` arrives as one string 'a,b'; split it (as 10_build_estates does).
-$Estates = @($Estates | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$Estates = @($Estates | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
+if ($Estates -and $PSBoundParameters.ContainsKey('Estate')) { throw 'Pass -Estate or -Estates, not both.' }
 $Estates = if ($Estates) { @($Estates | ForEach-Object { Resolve-Estate $_ }) } else { @(Resolve-Estate $Estate) }
 . (Join-Path $PSScriptRoot '_auth.ps1')
 

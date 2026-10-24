@@ -859,6 +859,9 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove
    ```
 
+   - Tearing down several estates? One approval covers them all:
+     `07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02 -Remove`.
+
 2. **Delete the attendee accounts and their handout.** The script deletes and purges the accounts
    ([ADR-0026](../reference/adr/0026-attendee-teardown-purges.md)).
 
