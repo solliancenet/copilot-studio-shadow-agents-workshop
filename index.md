@@ -13,32 +13,50 @@ behind its connections. This workshop teaches you to find out what your agents c
 do — and whether the controls around them are enough.
 {: .fs-6 .fw-300 }
 
-[Get started]({% link docs/00_lab_environment/00_lab_environment.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View the estate model]({% link docs/01_the_agent_estate/01_the_agent_estate.md %}){: .btn .fs-5 .mb-4 .mb-md-0 }
+[Get started]({% link docs/00_lab_environment/00_lab_environment.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 }
 
 ---
 
-## Three questions
+## The problem
 
-Ask most organizations three simple questions and nobody has the answers:
+Makers build Copilot Studio agents in minutes, in any environment, and publish them to Teams. Nobody is
+counting. Each agent acts with *someone's* authority — the maker's sign-in, a shared service account, an
+API key pasted into a tool — and reaches whatever that credential can reach: HR folders the person asking
+can't open, every customer record in a table, mail sent in the name of someone who left months ago.
+When the maker moves on, the agent and its connections keep running. Ask three simple questions and most
+organizations can't answer them:
 
 1. **How many agents do you have?**
 2. **Who owns them?**
 3. **What can they access?**
 
-Every new Copilot Studio agent now gets its own Entra Agent ID, and Microsoft Agent 365 (generally
-available since May 1, 2026) gives admins a registry of their agents: owners and, where available,
-knowledge sources and tools. That list is where a review starts. By the end of the day you will be able to
-determine whose credentials each tool runs on, what access those credentials allow, and which controls
-reduce the risk.
+## What good looks like
 
-## The through-line
+You can answer all three questions, for every agent, from what the tenant actually shows. For each agent
+you know whose authority it exercises, what that authority can reach, and which controls actually limit
+it — tested, not assumed. Every agent has an accountable owner, and you repeat the review as the estate
+changes.
+
+## How you get there
+
+Microsoft now gives you a starting point: every new Copilot Studio agent gets its own Entra Agent ID, and
+Microsoft Agent 365 (generally available since May 1, 2026) lists your agents with their owners and, where
+available, their knowledge sources and tools. That list is where a review starts, not where it ends. Today
+you take one estate from that list to an answer:
 
 > **DISCOVER → MAP → BREAK → CONTROL → RETEST → OPERATIONALIZE**
 
-You will work an intentionally imperfect agent estate for a fictional insurer, **Halcourt Mutual**,
-building a running **Estate Binder** of deliverables as you go. For every failure you find, you will say
-plainly whether a control **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
+You work an intentionally imperfect agent estate for a fictional insurer, **Halcourt Mutual**: find every
+agent, map whose credentials each tool runs on and what they reach, break the agents in controlled
+scenarios, then test Microsoft's controls against each failure. For every failure you say plainly what a
+control did:
+
+- **CLOSES IT** — after the control is on, the attack no longer works.
+- **DENTS IT** — the attack is harder or does less damage, but a real gap remains.
+- **MISSES IT** — the control doesn't address this failure at all.
+
+You build a running **Estate Binder** of deliverables as you go, and leave with a checklist to run the same
+review on your own estate.
 
 ## Who this is for
 
