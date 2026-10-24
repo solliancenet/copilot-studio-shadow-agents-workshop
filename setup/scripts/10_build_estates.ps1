@@ -38,13 +38,16 @@ param(
   [switch]$ReclaimOnly,                 # build nothing; only take the seats back
   [switch]$ContinueOnError,             # a failing estate doesn't stop the others
   [ValidateRange(1,99)][int]$Attendees = 1,   # Phase 8b accounts and 8c slices per estate (one estate per attendee: 1)
-  [string]$LabPassword = 'Lab-Only-Passw0rd!'   # the personas' password, as passed to 01 -InitialPassword
+  [string]$LabPassword                          # the personas' password; default: Get-LabPassword (_estate.ps1)
 )
 $ErrorActionPreference = 'Stop'
 # `pwsh -File ... -Estates a,b` arrives as one string 'a,b'; split it (as 06's -Agents does).
 $Estates = @($Estates | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)        # the repo root
 . (Join-Path $PSScriptRoot '_estate.ps1')
+# The phase scripts are separate processes and find the password themselves (Get-LabPassword); one passed
+# here reaches them through the environment.
+if ($LabPassword) { $env:HALCOURT_LAB_PASSWORD = $LabPassword }
 . (Join-Path $PSScriptRoot '_lab_endpoints.ps1')
 
 $tenantDomain = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv
@@ -144,7 +147,7 @@ function Grant-DevEnvAdmin([string]$Estate) {
   $org = $e.properties.linkedEnvironmentMetadata.instanceApiUrl.TrimEnd('/')
   $tok = (Invoke-RestMethod -Method POST "https://login.microsoftonline.com/$tenant/oauth2/v2.0/token" -Body @{
     client_id = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'; grant_type = 'password'; scope = "$org/.default"
-    username = "$(Get-EstateAlias 'dev.kim' $Estate)@$tenantDomain"; password = $LabPassword }).access_token
+    username = "$(Get-EstateAlias 'dev.kim' $Estate)@$tenantDomain"; password = (Get-LabPassword $LabPassword) }).access_token
   $h = @{ Authorization = "Bearer $tok"; Accept = 'application/json' }
   $su = (Invoke-RestMethod -Headers $h "$org/api/data/v9.2/systemusers?`$select=systemuserid&`$filter=azureactivedirectoryobjectid eq $admin").value | Select-Object -First 1
   if (-not $su) { throw "the signed-in admin has no user record in $($e.properties.displayName)" }

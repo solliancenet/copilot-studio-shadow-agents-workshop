@@ -62,7 +62,7 @@ param(
   [string]$Prefix            = 'student',              # student01.<estate>, student02.<estate>, ...
   [string]$TenantId,                                   # default: the tenant az is signed in to
   [string]$DomainSuffix,                               # default: the tenant's default verified domain
-  [string]$InitialPassword   = 'Lab-Only-Passw0rd!',   # one shared password; rotate per delivery
+  [string]$InitialPassword,                            # one shared password; default: Get-LabPassword (_estate.ps1)
   [switch]$UniquePasswords,                            # instead: a distinct typed-by-hand password each
   [string[]]$Roles           = @('Power Platform Administrator', 'AI Reader', 'Security Reader', 'Global Reader'),
                                                        # PPA: the /scopes/admin/ connection reads of Lab 01-01.
@@ -90,6 +90,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
+if (-not $UniquePasswords -and -not $Destroy) { $InitialPassword = Get-LabPassword $InitialPassword }
 # The access model - role name, CA policy name, privileges with the exercise step each one serves,
 # companion roles, and Dataverse's unremovable baseline - lives in ONE file that this script and
 # 00b_preflight.ps1 both dot-source, so the enforcer and the checker cannot disagree. It is sourced here,

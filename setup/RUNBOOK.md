@@ -92,7 +92,7 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
    - Join with a **personal or lab email**, never your corporate account.
    - Choose **Instant sandbox (Add-on purchases enabled)** — a 90-day renewable E5 sandbox.
    - Pick the **data-center region**. You can't change it later.
-   - Accept whatever **domain** signup assigns (e.g. `0zwdt94t.onmicrosoft.com`). The scripts use it as is.
+   - Accept whatever **domain** signup assigns (e.g. `a1b2c3d4.onmicrosoft.com`). The scripts use it as is.
    - **Install the content pack** if signup offers it. Its ~16 sample users take E5 seats — you free them
      in step 3.
    - Trouble with the variant, a billing account that doesn't show up, or no Developer Program:
@@ -233,7 +233,20 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
    export HALCOURT_ESTATE=jsmith         # your id
    ```
 
-5. Give attendees the estate id along with the tenant domain.
+5. **Set the lab accounts' password.** Phase 2 creates your personas with it, later phases sign in as them,
+   and Phase 8b gives it to the attendee accounts unless you pass `-UniquePasswords`. The repo is public, so
+   the password never goes in a file the repo tracks. Save it in `setup/lab-secrets.local.json` (gitignored):
+
+   ```bash
+   read -rsp 'Lab password: ' LABPW; echo                  # typed, not echoed or kept in shell history
+   (umask 077; jq -n --arg p "$LABPW" '{labPassword: $p}' > setup/lab-secrets.local.json); unset LABPW
+   ```
+
+   - Resuming or tearing down an estate someone already built? Use the password it was built with: the
+     scripts sign in as its personas.
+   - Or set `HALCOURT_LAB_PASSWORD` in the terminal instead. A script with neither stops and says so.
+
+6. Give attendees the estate id along with the tenant domain.
 
 ### Phase 1 — Azure infrastructure (shared)
 
@@ -263,7 +276,10 @@ an estate deploys nothing.
 
 - **One estate:** carry on with Phases 2 to 6.5 below, one at a time.
 - **Several estates** (one per attendee): skip Phases 2 to 6.5. Run them all with one script —
-  [building-many-estates.md](../reference/building-many-estates.md) — then continue at Phase 6c.
+  [building-many-estates.md](../reference/building-many-estates.md). It also runs Phase 7's admin
+  prerequisite and Phases 8b and 8c for each estate (an attendee account without a seat, and its slice).
+  Then continue at Phase 6c, and at Phase 8b do only the steps the builder doesn't: the attendees' seats,
+  the transcript role (`07c -Estates`) and the printed sign-in cards (`07d`).
 
 ### Phase 2 — Entra identities & personas
 
@@ -661,6 +677,18 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
    exclusion: the admin portals and APIs enforce MFA anyway
    ([attendee-accounts.md](../reference/attendee-accounts.md)).
 
+5. **Print the sign-in cards.** One card per attendee account, two to a Letter page with a cut line:
+   the workshop guide's address, estate id, username, password, tenant domain, their lab environment
+   (`Lab-<estate>-NN`, Phase 8c) and the first sign-in steps. It reads every handout CSV from step 2, so run
+   it after the last 07 run:
+
+   ```bash
+   pwsh setup/scripts/07d_attendee_handouts.ps1        # or -Estates stu01,stu02 for just those
+   ```
+
+   - It writes `setup/attendee-handouts.local.pdf` (and the `.html` it prints from). Both hold the passwords
+     in plain text: gitignored, so print them, never share or publish them, and delete them in Phase 9.
+
 An attendee account is a tenant-wide Power Platform admin: delete the accounts right after the delivery
 (Phase 9).
 
@@ -873,6 +901,7 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    ```bash
    pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy
    rm setup/lab-users-$HALCOURT_ESTATE.local.csv
+   rm -f setup/attendee-handouts.local.pdf setup/attendee-handouts.local.html   # the printed cards (8b step 5)
    ```
 
 3. **Delete the facilitator account.** It also deletes its password file.
@@ -952,6 +981,7 @@ tenant-wide grants — are retired separately: [retiring-shared-resources.md](..
 | `scripts/07_provision_lab_users.ps1` | Phase 8b: attendee accounts and the access model (`_access_model.ps1`) |
 | `scripts/07b_provision_facilitator.ps1` | The facilitator's Exercise 05 demonstration account |
 | `scripts/07c_provision_purview_roles.ps1` | Phase 8b: attendees into Purview's Data Security AI Content Viewers (05-07 KT04); one admin device-code approval |
+| `scripts/07d_attendee_handouts.ps1` | Phase 8b: printable sign-in cards from the handout CSVs (`lib/print_pdf.py` renders the PDF) |
 | `scripts/08_provision_student_slices.ps1` | Phase 8c: an environment per attendee, with the Claims Dataverse seed |
 | `scripts/09b_ex05_scoped_claims_role.ps1` | Exercise 05-03 demonstration: svc-claims' scoped role and fixed subset |
 | `scripts/09_ex05_demo_state.ps1` | Exercise 05 demonstrations: snapshot / diff / restore the shared estate |

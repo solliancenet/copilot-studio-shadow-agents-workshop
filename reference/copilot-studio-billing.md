@@ -73,7 +73,7 @@ surfaces change often.
 - Reasoning models bill twice: *feature rate* + *text and generative AI tools (premium)* per 1K
   tokens.
 
-## Live blocker (2026-09-08, 0zwdt94t.onmicrosoft.com dev sandbox)
+## Live blocker (2026-09-08, the build tenant's dev sandbox)
 
 Attempting Copilot Studio PAYG on the E5 dev sandbox:
 - `Billing → Pay-as-you-go → Add a billing policy` requires an **Azure subscription**; the admin

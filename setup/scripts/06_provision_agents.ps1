@@ -28,7 +28,7 @@ param(
   [string]$Estate      = $env:HALCOURT_ESTATE,
   [string]$TenantId,                                   # default: from az account
   [string]$DomainSuffix,                               # default: tenant's default verified domain
-  [string]$LabPassword = 'Lab-Only-Passw0rd!',
+  [string]$LabPassword,                                 # default: Get-LabPassword (_estate.ps1)
   [string[]]$Agents,                                   # slugs to limit to; default: all with a workspace
   [string]$TargetEnvironment,                          # build into THIS environment instead of the manifest's
                                                        # (per-student slices, Phase 8c); use with -Agents
@@ -42,6 +42,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')
+$LabPassword = Get-LabPassword $LabPassword
 $Estate = Resolve-Estate $Estate
 $AgentsDir = Join-Path (Split-Path $PSScriptRoot -Parent) 'agents'
 $DataDir   = Join-Path (Split-Path $PSScriptRoot -Parent) 'data'

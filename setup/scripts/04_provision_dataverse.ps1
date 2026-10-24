@@ -245,6 +245,7 @@ Write-Host "  Granted $(@($privileges).Count) Global-depth privileges (Claim + C
 
 # --- The service account -------------------------------------------------------------------------------------
 $svcUpn = "$(Get-EstateAlias 'svc-claims' $Estate)@$domain"
+$svcUnlicensed = $false
 $svc = (Invoke-Dv GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$svcUpn'").value | Select-Object -First 1
 if (-not $svc) {
   # Force-sync the user into the environment (what PPAC's "Add user" does).
@@ -268,6 +269,7 @@ if (-not $svc) {
     $svc = (Invoke-Dv GET "systemusers?`$select=systemuserid&`$filter=domainname eq '$svcUpn'").value | Select-Object -First 1
   } catch {
     if ("$_" -notmatch 'userNotLicensed') { throw }
+    $svcUnlicensed = $true
     Write-Warning "$svcUpn has no license, and Dataverse won't add an unlicensed user (userNotLicensed)."
     Write-Warning "Assign it a license, then re-run this script: only the role assignment is left."
   }
@@ -293,5 +295,8 @@ Write-Host "Claim rows:    $(@($claimRows).Count) (linked to a customer: $(@($cl
 $claimRows | ForEach-Object { Write-Host ("  {0,-9} {1,-13} {2,8}  {3}" -f $_."${p}_claimnumber", $_."${p}_status", $_."${p}_amount", $_."${p}_adjuster") }
 $granted = (Invoke-Dv GET "roles($roleId)/roleprivileges_association?`$select=name").value
 Write-Host "Role '$OverBroadRoleName': $(@($granted).Count) privileges ($((@($granted.name) | Sort-Object) -join ', '))"
-Write-Host "svc-claims role assignment: $(if ($assigned) { "done ($svcUpn)" } else { "PENDING - $svcUpn needs a license" })"
+# Two reasons for PENDING: Dataverse refused an unlicensed user, or addUser (asynchronous) hasn't produced the
+# user record yet. Only the first is a licence problem; the second clears on a re-run minutes later (#56).
+$why = if ($svcUnlicensed) { "$svcUpn needs a license" } else { "$svcUpn's Dataverse user record hasn't appeared yet - re-run in a few minutes" }
+Write-Host "svc-claims role assignment: $(if ($assigned) { "done ($svcUpn)" } else { "PENDING - $why" })"
 Write-Host "Phase 5 $(if ($assigned) { 'complete' } else { 'complete except the role assignment' })."

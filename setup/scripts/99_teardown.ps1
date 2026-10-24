@@ -20,7 +20,7 @@ param(
   [string]$Estate      = $env:HALCOURT_ESTATE,
   [string]$TenantId,
   [string]$DomainSuffix,
-  [string]$LabPassword = 'Lab-Only-Passw0rd!',
+  [string]$LabPassword,                                 # default: Get-LabPassword (_estate.ps1), only when signing in as a persona
   [string]$PnpClientId = $env:ENTRAID_APP_ID,          # Phase 4 PnP app (for SharePoint site removal)
   [string]$PnpCertPfx  = $env:HALCOURT_PNP_CERT_PFX,   # app-only cert; omit to skip site removal
   [string]$PnpCertPw   = $env:HALCOURT_PNP_CERT_PW,
@@ -40,7 +40,7 @@ Write-Host "Tearing down estate '$Estate' on $DomainSuffix"
 $script:AdminTokens = @{}
 function Get-AdminToken([string]$r) { if (-not $script:AdminTokens[$r]) { $script:AdminTokens[$r] = az account get-access-token --resource $r --query accessToken -o tsv }; $script:AdminTokens[$r] }
 function Get-PersonaToken([string]$a, [string]$r) {
-  $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $a); password = $LabPassword; scope = "$($r.TrimEnd('/'))/.default" }
+  $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $a); password = (Get-LabPassword $LabPassword); scope = "$($r.TrimEnd('/'))/.default" }
   (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token
 }
 function Invoke-Json([string]$m, [string]$u, [string]$tok, $body) {

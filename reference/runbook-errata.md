@@ -42,7 +42,7 @@ setup Phase 1 needs** for the Container Apps spend — do it once, here, and Pha
 ### Phase 0 · domain and region are fixed
 
 The sandbox **domain is preconfigured and not customizable** — signup assigns an `*.onmicrosoft.com` domain,
-and it may be random (the tenant verified on 2026-09-18 got `0zwdt94t.onmicrosoft.com`). It won't be the
+and it may be random (the tenant verified on 2026-09-18 got an 8-character one like `a1b2c3d4.onmicrosoft.com`). It won't be the
 canon's `halcourtmutual.onmicrosoft.com`, and doesn't need to be: `01_provision_entra.ps1` builds the
 personas on the tenant's default verified domain, and the later scripts find accounts by alias (runbook
 Phase 2). The **data-center region is chosen at signup and cannot be changed afterward**, so pick the region
