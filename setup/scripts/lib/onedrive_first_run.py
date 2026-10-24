@@ -60,7 +60,8 @@ def main():
                     continue                                                    # the page navigated mid-step
                 # First visit: the first-run page says it's ready. Later visits: OneDrive's home page, at the
                 # host root, whose nav has My files, Recycle bin and Storage (its figure loads later).
-                ready = ("/personal/" in page.url or "Your OneDrive is ready" in body
+                # Not the URL alone: an error or still-loading page can sit under /personal/ too.
+                ready = ("Your OneDrive is ready" in body
                          or all(t in body for t in ("My files", "Recycle bin", "Storage")))
             page.screenshot(path=str(out / "onedrive-first-run.png"))
             print("FINAL_URL=" + page.url[:200])

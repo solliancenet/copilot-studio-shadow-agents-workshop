@@ -108,6 +108,12 @@ function Request-OneDriveAsMaker {
 if (Test-OneDriveOnline) {
   Write-Host "OneDrive already online - skipping provisioning."
 } else {
+  # SharePoint never creates a OneDrive for an unlicensed user, and nothing below would say so: every route
+  # just waits out the timeout. Check first (see header: a builder-reclaimed estate resumed past Phase 2).
+  $lic = az rest --method GET --url "https://graph.microsoft.com/v1.0/users/$maker`?`$select=assignedLicenses" --query 'length(assignedLicenses)' -o tsv
+  if ($LASTEXITCODE -eq 0 -and "$lic".Trim() -eq '0') {
+    throw "$maker has no licence, so SharePoint will never create their OneDrive. License the personas first: re-run Phase 2 (10_build_estates.ps1 -From entra), then 03b."
+  }
   Write-Host "Asking $maker to open their own OneDrive (this enqueues it; no admin needed)..."
   Request-OneDriveAsMaker
   # 2) Wait until the personal site answers. If the Graph touch hasn't produced it, the maker opens OneDrive in
