@@ -25,7 +25,7 @@ from it in Exercises 00 and 01, and go back to the admin portals and Copilot Stu
 such as what an agent grounds on and whose credentials its tools use. You join the CSVs into a single
 inventory, one row per agent, across **all four environments**: `Halcourt (default)`, `Halcourt-Prod`,
 `Claims-Test`, and `Maker-Sandbox`. Then you start flagging the conditions that will drive the rest of the
-day — while keeping the discipline that an agent which only *looks* risky is not a finding until you can
+lab — while keeping the discipline that an agent which only *looks* risky is not a finding until you can
 say why.
 
 ## Objectives
