@@ -30,6 +30,7 @@ param(
   [string]$AppConfig    = (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.json'),
   [string]$Pfx          = (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-compliance-app.local.pfx'),
   [switch]$SkipSearchCheck,
+  [string]$LabelVia,              # another estate whose HR-Benefits site accepts labels: label the copy there (see 6.)
   [switch]$Remove                 # teardown: delete this estate's label policy, then its label (Phase 9)
 )
 $ErrorActionPreference = 'Stop'
@@ -208,7 +209,55 @@ for ($i = 0; $i -lt 12; $i++) {
   if ($have | Where-Object sensitivityLabelId -eq $label.ImmutableId) { break }
   Start-Sleep 10
 }
-Write-Host "   copy labelled: $([bool]($have | Where-Object sensitivityLabelId -eq $label.ImmutableId))"
+# Some HR-Benefits sites take the 202 and never apply the label (4 of 19 in the 2026-10-22 batch; the async
+# job's monitor answers generalException). Site, library and label settings match the working sites, and the
+# same label applies in another estate's site. -LabelVia <estate> labels the copy in THAT estate's site, then
+# uploads the encrypted file back over this one: SharePoint reads the label from the file. Same label, same
+# rights, same marker row.
+# The scratch copy is the UNENCRYPTED comp workbook until the label lands, so it goes in the other estate's
+# Leadership/ folder, which drops All-Employees like this one's (03); everywhere else in the library they can
+# read it. If that site doesn't apply the label either, stop before anything is downloaded or replaced.
+if (-not ($have | Where-Object sensitivityLabelId -eq $label.ImmutableId) -and $LabelVia) {
+  $viaSite = Get-EstateName 'HR-Benefits' $LabelVia
+  Write-Host "   not applied here - labelling via $viaSite"
+  $vSite  = Graph GET "sites/$tenant.sharepoint.com:/sites/$viaSite"
+  $vDrive = Graph GET "sites/$($vSite.id)/drive"
+  try { Graph GET "drives/$($vDrive.id)/root:/Leadership" | Out-Null }
+  catch { throw "$viaSite has no Leadership/ folder to stage the unencrypted copy in - pick an estate built by 03." }
+  $work = Join-Path ([IO.Path]::GetTempPath()) "purview-$Estate"; New-Item -ItemType Directory -Force $work | Out-Null
+  $plain = Join-Path $work 'plain.xlsx'; $enc = Join-Path $work 'labelled.xlsx'
+  $gh = @{ Authorization = "Bearer $script:graphToken" }
+  $xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  $tmp = $null
+  try {
+    Invoke-WebRequest -Headers $gh -Uri "https://graph.microsoft.com/v1.0/drives/$($drive.id)/items/$($item.id)/content" -OutFile $plain
+    $tmp = Graph PUT "drives/$($vDrive.id)/root:/Leadership/zz-relabel-$($Estate).xlsx:/content" ([IO.File]::ReadAllBytes($plain)) $xlsx
+    Graph POST "drives/$($vDrive.id)/items/$($tmp.id)/assignSensitivityLabel" @{
+      sensitivityLabelId = "$($label.ImmutableId)"; assignmentMethod = 'privileged'
+      justificationText  = 'Halcourt lab seed for Lab 05-06 (issue #12)' } | Out-Null
+    $seen = $false
+    for ($i = 0; $i -lt 18 -and -not $seen; $i++) {
+      Start-Sleep 10
+      $seen = [bool]((Graph POST "drives/$($vDrive.id)/items/$($tmp.id)/extractSensitivityLabels" @{}).labels | Where-Object sensitivityLabelId -eq $label.ImmutableId)
+    }
+    if (-not $seen) {
+      throw "$viaSite didn't apply the label either (3 min) - nothing was replaced. Rerun with -LabelVia <another estate whose copy is labelled>."
+    }
+    Invoke-WebRequest -Headers $gh -Uri "https://graph.microsoft.com/v1.0/drives/$($vDrive.id)/items/$($tmp.id)/content" -OutFile $enc
+    Graph PUT "drives/$($drive.id)/items/$($item.id)/content" ([IO.File]::ReadAllBytes($enc)) $xlsx | Out-Null
+  } finally {
+    if ($tmp) { try { Graph DELETE "drives/$($vDrive.id)/items/$($tmp.id)" | Out-Null } catch { Write-Warning "   could not delete $viaSite/Leadership/zz-relabel-$($Estate).xlsx - delete it by hand" } }
+    Remove-Item $plain, $enc -ErrorAction SilentlyContinue
+  }
+  for ($i = 0; $i -lt 12; $i++) {
+    $have = (Graph POST "drives/$($drive.id)/items/$($item.id)/extractSensitivityLabels" @{}).labels
+    if ($have | Where-Object sensitivityLabelId -eq $label.ImmutableId) { break }
+    Start-Sleep 10
+  }
+}
+$labelled = [bool]($have | Where-Object sensitivityLabelId -eq $label.ImmutableId)
+$hint = if ($labelled) { '' } elseif ($LabelVia) { " - the labelled file was uploaded but this site hasn't read its label yet; rerun to recheck" } else { ' - rerun later, or with -LabelVia <an estate whose copy is labelled>' }
+Write-Host "   copy labelled: $labelled$hint"
 try {
   $orig = Graph GET "drives/$($drive.id)/root:/Leadership/2026-comp-bands.xlsx"
   $ol = (Graph POST "drives/$($drive.id)/items/$($orig.id)/extractSensitivityLabels" @{}).labels

@@ -1208,6 +1208,28 @@ Building issue #12 (`03c_provision_purview.ps1`) hit four things worth knowing b
    `'Social Security Number'` match finds *Austria Social Security Number* first - match
    `'^U\.S\. Social Security Number'`.
 
+### Phase 4c · Some HR-Benefits sites never apply the label (2026-10-23)
+
+**Symptom.** In the 23-estate batch, 15 of 19 student estates labelled the copy; stu01, stu08, stu11 and stu15
+stayed `copy labelled: False` for over a day. `assignSensitivityLabel` answered 202 every time, but its
+monitor URL only ever said `generalException: Unable to fetch operation status due to internal error`.
+SharePoint's own `_DisplayName` column was empty too, so the read wasn't wrong.
+
+**Ruled out.** Label definitions (encryption, rights, content type), label policies (mode, locations), site
+properties, library settings (IRM, default label, versioning, checkout) and the group's owners all matched a
+working estate. Re-uploading the copy didn't help, and setting the file's Author/Editor to a user didn't either.
+**Narrowed by a 2x2 test:** stu01's label applied to a scratch file in stu02's site, but no label, not even
+stu02's, applied in stu01's site. So the fault is the site, and its cause is still unknown. (The tenant root
+site fails another way: `invalidLabelOwnerEmail`, synchronously.)
+
+**Fix.** `03c -LabelVia <estate>` labels the copy in a working estate's HR-Benefits site, downloads it
+encrypted and uploads it over the copy. SharePoint reads the label from the file on upload, so it's the same
+label with the same rights and marker row. All four estates showed `_DisplayName = Confidential-PII (<estate>)`
+afterwards. The scratch file (`zz-relabel-<estate>.xlsx`) holds the unencrypted comp figures until the label
+lands, so it's staged in that estate's `Leadership/` folder, which All-Employees can't read, and deleted
+afterwards. If that site doesn't apply the label within 3 minutes either, 03c stops before downloading or
+replacing anything.
+
 ### Phase 6 · Underwriting Assistant's MCP calls never ran - rebuilt as a real MCP tool (2026-10-18)
 
 **Symptom.** Driven through the Test pane as Priya, every Underwriting Assistant topic that called the MCP
