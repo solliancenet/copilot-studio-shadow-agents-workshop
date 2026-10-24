@@ -606,7 +606,7 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
     # A 400 here is NOT "already there" (checked just above): it is an account the environment can't see yet.
     # Right after this run creates it, addUser answered 400 in Maker-Sandbox for 17 of 23 estates on
     # 2026-10-23, and a re-run minutes later added every one. So retry for two minutes before giving up.
-    foreach ($try in 1..6) {
+    foreach ($try in 1..7) {   # six 20 s waits between seven attempts: two minutes
       try {
         Invoke-RestMethod -Method POST -Headers @{ Authorization = "Bearer $bapTok" } -ContentType 'application/json' `
           -Uri "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($TargetEnv.Id)/addUser?api-version=2021-04-01" `
@@ -614,7 +614,7 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
         break
       } catch {
         $code = try { [int]$_.Exception.Response.StatusCode } catch { 0 }
-        if ($code -eq 400 -and $try -lt 6) { Start-Sleep -Seconds 20; continue }
+        if ($code -eq 400 -and $try -lt 7) { Start-Sleep -Seconds 20; continue }
         Write-Warning "  $($TargetEnv.Name): could not add $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])"
         break
       }
