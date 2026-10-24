@@ -62,7 +62,10 @@ $cards = foreach ($f in $files) {
            elseif ("$($row.created)" -like 'FAILED*') { "07 couldn't create it ($($row.created))" }
            elseif (-not $row.password) { 'no password' }
            elseif ($row.password -match '^\((unknown|unchanged) - ') { 'no password recorded (07 wrote its placeholder)' }
+           elseif ("$($row.group)" -match '(^|;\s*)Lab-Students\S*\s+FAILED') { "07 couldn't add it to its Lab-Students group, so sign-in will fail ($($row.group))" }
     if ($why) { $problems += "  $($f.Name): $($row.upn) - $why"; continue }
+    # Any other FAILED group is an agents' chat audience: the account signs in, but can't chat with those agents.
+    if ("$($row.group)" -match 'FAILED') { Write-Warning "$($f.Name): $($row.upn) is missing a group ($($row.group)) - it can sign in, but can't chat with every agent. Re-run 07." }
     [pscustomobject]@{ Upn = $row.upn; Password = $row.password; NN = $m.Groups[1].Value; Estate = $m.Groups[2].Value; Domain = $m.Groups[3].Value }
   }
 }
