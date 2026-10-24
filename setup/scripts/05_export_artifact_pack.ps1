@@ -319,14 +319,35 @@ try {
     foreach ($e in $p.environments) { $dlpByEnv[$e.name] = $p.displayName }
   }
 } catch { }  # [verify] Get-DlpPolicy shape / cmdlet name across module versions
+# maker_access: who can build there, read from the tenant the way Task 00-02 has attendees read it - each
+# environment's Environment Maker members (System Administrator in the Developer one, whose owner builds as
+# admin). 06 grants those roles person by person; there is no makers group. Only the estate's personas count
+# (the users export above): Microsoft's service accounts and the admin who built the lab are left out. By
+# display name, alphabetically. The default environment lets every licensed user build. Read, not derived
+# from the manifest, so a missed or extra role assignment shows up in `git diff`.
+$nameByAlias = @{}
+foreach ($u in $users) { $nameByAlias[($u.upn.Split('@')[0] -replace "\.$estateRx$", '')] = $u.display_name }
+function Get-MakerAccess([object]$Env) {
+  if ($Env.EnvironmentType -eq 'Default') { return 'All users' }
+  $orgUrl = $Env.Internal.properties.linkedEnvironmentMetadata.instanceApiUrl
+  if (-not $orgUrl) { return '' }
+  $role = if ($Env.EnvironmentType -eq 'Developer') { 'System Administrator' } else { 'Environment Maker' }
+  try {
+    $h = @{ Authorization = "Bearer $(Get-DataverseToken -ResourceUrl $orgUrl)"; Accept = 'application/json' }
+    $filter = [uri]::EscapeDataString("name eq '$role' and _parentroleid_value eq null")
+    $members = @((Invoke-RestMethod -Headers $h -Uri "$orgUrl/api/data/v9.2/roles?`$select=roleid&`$filter=$filter&`$expand=systemuserroles_association(`$select=domainname)").value |
+                 ForEach-Object { $_.systemuserroles_association } | ForEach-Object domainname)
+  } catch {
+    Write-Warning "Could not read $role members in '$($Env.DisplayName)' ($($_.Exception.Message.Split([Environment]::NewLine)[0])) - maker_access left blank."
+    return ''
+  }
+  $names = @($members | Where-Object { $_ -and (Test-EstatePrincipal $_) } |
+             ForEach-Object { $nameByAlias[($_.Split('@')[0] -replace "\.$estateRx$", '')] } | Where-Object { $_ } | Sort-Object -Unique)
+  if ($Env.EnvironmentType -eq 'Developer') { $names = @($names | ForEach-Object { "$_ (owner)" }) }
+  $names -join '; '
+}
 $envRows = foreach ($env in $environments) {
-  $maker = switch ($env.EnvironmentType) {
-    'Default'    { 'All users' }
-    'Production' { 'Makers group' }
-    'Sandbox'   { 'Claims team' }
-    'Developer' { 'Individual maker' }
-    default     { '' }
-  }  # [verify] maker_access is a security-group assignment, not a native env property — mapped by env role
+  $maker = Get-MakerAccess $env
   [pscustomobject]@{
     environment = $env.DisplayName
     type        = $env.EnvironmentType
