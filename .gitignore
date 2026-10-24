@@ -31,8 +31,10 @@ Thumbs.db
 
 # Local-only facilitator scratch (never commit filled answer keys with real tenant data)
 **/*.answers.local.md
-# Attendee handouts from 07_provision_lab_users.ps1 - PLAINTEXT passwords
+# Attendee handouts from 07_provision_lab_users.ps1 and 07d's printable cards - PLAINTEXT passwords
 **/*.local.csv
+setup/**/*.local.html
+setup/**/*.local.pdf
 setup/**/secrets.*
 setup/**/*.local.json
 setup/**/*.local.pfx
