@@ -17,13 +17,21 @@ ASCII only.
 #>
 param(
   [string[]]$Estates,                                 # default: every setup/lab-users-*.local.csv
-  [string]$GuideUrl = 'https://solliancenet.github.io/copilot-studio-shadow-agents-workshop/',
+  [string]$GuideUrl,                                  # default: url + baseurl from _config.yml (the published site)
   [string]$HandoutDir,                                # where 07's CSVs are; default: setup/
   [string]$OutBase,                                   # default: setup/attendee-handouts.local
   [switch]$HtmlOnly
 )
 $ErrorActionPreference = 'Stop'
 $setup = Split-Path -Parent $PSScriptRoot
+# The published site's address, from the same _config.yml values Jekyll builds it with.
+if (-not $GuideUrl) {
+  $cfg = Get-Content (Join-Path (Split-Path -Parent $setup) '_config.yml') -ErrorAction SilentlyContinue
+  $url  = ($cfg | Select-String '^url:\s*"?([^"#\s]+)"?' | Select-Object -First 1).Matches.Groups[1].Value
+  $base = ($cfg | Select-String '^baseurl:\s*"?([^"#\s]*)"?' | Select-Object -First 1).Matches.Groups[1].Value
+  if (-not $url) { throw 'No url in _config.yml - pass -GuideUrl.' }
+  $GuideUrl = "$url$base/"
+}
 if (-not $HandoutDir) { $HandoutDir = $setup }
 if (-not $OutBase) { $OutBase = Join-Path $setup 'attendee-handouts.local' }
 
@@ -72,7 +80,7 @@ $body = @(foreach ($c in $cards) {
   <ol>
     <li>Open a <b>private browser window</b>, so your work account doesn't sign you in to the wrong tenant.</li>
     <li>Go to <span class="mono">admin.powerplatform.microsoft.com</span> and sign in with the username and password above.</li>
-    <li>When asked, set up <b>Microsoft Authenticator</b> on your phone. This happens once, at your first sign-in.</li>
+    <li>When asked, set up <b>Microsoft Authenticator</b> (or another authenticator app) on your phone. This happens once, at your first sign-in.</li>
     <li>Open the workshop guide and start at <b>Exercise 00</b>.</li>
   </ol>
   <footer>A lab-only account, deleted after the workshop. Don't use it for anything else.</footer>
@@ -114,13 +122,14 @@ $(@(for ($i = 0; $i -lt $body.Count; $i += 2) {
 "@
 
 $htmlPath = "$OutBase.html"; $pdfPath = "$OutBase.pdf"
+# Create both files empty and owner-only BEFORE a password goes into them; writing later keeps the mode.
+foreach ($f in $htmlPath, $pdfPath) { Set-Content -Path $f -Value $null -NoNewline; if (-not $IsWindows) { chmod 600 $f } }
 Set-Content -Path $htmlPath -Value $html -Encoding utf8
-if (-not $IsWindows) { chmod 600 $htmlPath }
 Write-Host "$($cards.Count) card(s) from $($files.Count) handout file(s) -> $htmlPath"
-if (-not $HtmlOnly) {
+if ($HtmlOnly) { Remove-Item $pdfPath -ErrorAction SilentlyContinue }
+else {
   $out = python3 (Join-Path $PSScriptRoot 'lib/print_pdf.py') --html $htmlPath --pdf $pdfPath 2>&1
   if ($LASTEXITCODE) { throw "PDF rendering failed (open the HTML and print it instead): $($out -join ' ')" }
-  if (-not $IsWindows) { chmod 600 $pdfPath }
   Write-Host "Print: $pdfPath ($([math]::Ceiling($cards.Count / 2)) page(s), two cards a page - cut on the dashed line)"
 }
 Write-Warning 'These files hold PLAINTEXT passwords. They are gitignored; print them, never share them, and delete them after the delivery.'
