@@ -58,3 +58,6 @@ setup/ex05-state/
 
 # Claude Code per-machine settings
 .claude/settings.local.json
+
+# Artifact-pack zips: built by the Pages workflow on deploy (issue #68), never committed
+worksheets/artifact-pack/*.zip

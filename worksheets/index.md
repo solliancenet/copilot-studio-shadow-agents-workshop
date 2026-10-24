@@ -21,6 +21,10 @@ by hand, and `connections-export.csv` also lists three integrations that aren't 
 (an HTTP action, an MCP server and a cloud flow) so every credential sits in one file. Either way, join
 across them to answer *how many agents, who owns them, what can they reach*.
 
+**Download them all at once:** [blank set (zip)]({{ '/worksheets/artifact-pack/artifact-pack-blank.zip' | relative_url }})
+or [filled-in set (zip)]({{ '/worksheets/artifact-pack/artifact-pack-filled.zip' | relative_url }}). Each
+zip holds all six CSVs. Or download them one at a time from the table.
+
 | Export | What's in it | Blank | Filled in |
 |---|---|---|---|
 | `agents-export.csv` | Every agent, environment, owner, status, dates | [download]({% link worksheets/artifact-pack/blank/agents-export.csv %}) | [download]({% link worksheets/artifact-pack/agents-export.csv %}) |
