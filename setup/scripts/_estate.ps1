@@ -38,3 +38,18 @@ function Resolve-Estate([string]$Estate) {
 function Get-EstateName([string]$Name, [string]$Estate)        { "$Name-$Estate" }
 function Get-EstateAlias([string]$Alias, [string]$Estate)      { "$Alias.$Estate" }
 function Get-EstateDisplayName([string]$Name, [string]$Estate) { "$Name ($Estate)" }
+
+# The lab accounts' password (personas and attendees) is a SECRET: the repo is public, so it never appears in
+# it. Pass it (-LabPassword / -InitialPassword), set HALCOURT_LAB_PASSWORD, or keep it in
+# setup/lab-secrets.local.json as {"labPassword": "..."} (gitignored, like the other *.local.json files).
+$script:LabSecretsFile = Join-Path (Split-Path -Parent $PSScriptRoot) 'lab-secrets.local.json'
+function Get-LabPassword([string]$Given) {
+  if ($Given) { return $Given }
+  if ($env:HALCOURT_LAB_PASSWORD) { return $env:HALCOURT_LAB_PASSWORD }
+  if (Test-Path $script:LabSecretsFile) {
+    try { $p = (Get-Content $script:LabSecretsFile -Raw | ConvertFrom-Json).labPassword }
+    catch { throw "$($script:LabSecretsFile) isn't valid JSON - it should be {""labPassword"": ""...""}." }
+    if ($p) { return $p }
+  }
+  throw "No lab password. Put it in setup/lab-secrets.local.json as {""labPassword"": ""...""} (gitignored), or set HALCOURT_LAB_PASSWORD. Never commit it."
+}

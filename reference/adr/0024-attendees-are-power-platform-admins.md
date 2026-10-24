@@ -8,7 +8,7 @@
 
 Lab 01-01 has attendees enumerate an environment's connections. Only the tenant-admin Power Platform
 endpoints under `/scopes/admin/` return another person's connections, and only a Power Platform
-Administrator reaches them. Both weaker options were tested on `0zwdt94t`, 2026-10-13, and both fail:
+Administrator reaches them. Both weaker options were tested on the build tenant, 2026-10-13, and both fail:
 
 | Option | Result |
 |---|---|
