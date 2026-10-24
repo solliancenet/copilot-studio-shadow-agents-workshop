@@ -15,26 +15,38 @@ admin with one device-code approval (_auth.ps1, Connect-LabComplianceAdmin). Saf
 attendees out again after the delivery. Isolated training tenants only. ASCII only.
 
   pwsh setup/scripts/07c_provision_purview_roles.ps1            # estate from HALCOURT_ESTATE
+  pwsh setup/scripts/07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02   # several, ONE sign-in
   pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove
+
+-Estates is for a delivery with an estate per attendee (10_build_estates): one device code covers them all,
+where one run per estate would ask for one each.
 #>
 param(
   [string]$Estate = $env:HALCOURT_ESTATE,
+  [string[]]$Estates,                                # several estates under one sign-in (comma-separated)
   [string]$Prefix = 'student',                       # 07's -Prefix
   [string[]]$RoleGroups = @('DataSecurityAIContentViewers'),
   [switch]$Remove
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_estate.ps1')          # also the tenant guard
-$Estate = Resolve-Estate $Estate
+# `pwsh -File ... -Estates a,b` arrives as one string 'a,b'; split it (as 10_build_estates does).
+$Estates = @($Estates | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
+if ($Estates -and $PSBoundParameters.ContainsKey('Estate')) { throw 'Pass -Estate or -Estates, not both.' }
+$Estates = if ($Estates) { @($Estates | ForEach-Object { Resolve-Estate $_ }) } else { @(Resolve-Estate $Estate) }
 . (Join-Path $PSScriptRoot '_auth.ps1')
 
 $domain = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isInitial].name | [0]" -o tsv
-$rx = "^$([regex]::Escape($Prefix))\d+\.$([regex]::Escape($Estate))@"
-$users = @(az ad user list --filter "startswith(userPrincipalName,'$Prefix')" --query "[].{upn:userPrincipalName,name:displayName}" -o json | ConvertFrom-Json | Where-Object { $_.upn -match $rx } | Sort-Object upn)
+$all = @(az ad user list --filter "startswith(userPrincipalName,'$Prefix')" --query "[].{upn:userPrincipalName,name:displayName}" -o json | ConvertFrom-Json)
+$users = @(); $legacyGroups = @()
+foreach ($e in $Estates) {
+  $rx = "^$([regex]::Escape($Prefix))\d+\.$([regex]::Escape($e))@"
+  $mine = @($all | Where-Object { $_.upn -match $rx } | Sort-Object upn)
+  if (-not $mine -and -not $Remove) { throw "No $Prefix<NN>.$e accounts - run 07_provision_lab_users.ps1 -Estate $e first." }
+  $users += $mine; $legacyGroups += Get-EstateName 'Lab-Students' $e
+}
 $attendees = @($users.upn)
-if (-not $attendees -and -not $Remove) { throw "No $Prefix<NN>.$Estate accounts - run 07_provision_lab_users.ps1 first." }
-Write-Host "Attendees ($($attendees.Count)): $($attendees -join ', ')"
-$legacyGroup = Get-EstateName 'Lab-Students' $Estate
+Write-Host "Attendees ($($attendees.Count), $($Estates.Count) estate(s)): $($attendees -join ', ')"
 
 Connect-LabComplianceAdmin -Organization $domain
 foreach ($rg in $RoleGroups) {
@@ -42,8 +54,10 @@ foreach ($rg in $RoleGroups) {
   # membership is matched on the Entra display name - unique per lab account (07 builds it from the estate).
   $have = @(Get-RoleGroupMember -Identity $rg)
   $names = @($have | ForEach-Object { "$($_.Name)"; "$($_.DisplayName)" } | Where-Object { $_ })
-  if ($have | Where-Object { $_.Name -eq $legacyGroup -or $_.DisplayName -eq $legacyGroup }) {
-    Remove-RoleGroupMember -Identity $rg -Member $legacyGroup -Confirm:$false; Write-Host "  ${rg}: removed $legacyGroup (CA-exclusion group, not the attendees)"
+  foreach ($legacyGroup in $legacyGroups) {
+    if ($have | Where-Object { $_.Name -eq $legacyGroup -or $_.DisplayName -eq $legacyGroup }) {
+      Remove-RoleGroupMember -Identity $rg -Member $legacyGroup -Confirm:$false; Write-Host "  ${rg}: removed $legacyGroup (CA-exclusion group, not the attendees)"
+    }
   }
   foreach ($u in $users) {
     $present = $u.name -in $names
