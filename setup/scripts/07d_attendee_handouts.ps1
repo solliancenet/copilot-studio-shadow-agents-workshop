@@ -50,12 +50,24 @@ function HtmlEnc([string]$s) { [System.Net.WebUtility]::HtmlEncode($s) }
 
 # One card per account. The estate id and the NN of Lab-<estate>-NN come from the UPN
 # (student01.stu03@domain -> 01, stu03), the same rule 07 and 08 use to build them.
+# A row that can't sign anyone in stops the run rather than printing a card for it: printing a partial set
+# without noticing is worse than fixing the row first. 07 writes such rows when an account failed to create
+# (created = 'FAILED: ...') and, for an existing account whose password it doesn't have, a marker in place
+# of the password: '(unknown - ...)', or '(unchanged - ...)' from older versions ($pwMarkers in 07).
+$problems = @()
 $cards = foreach ($f in $files) {
   foreach ($row in Import-Csv $f) {
-    if ($row.upn -notmatch '^[a-z]+(\d+)\.([a-z0-9]+)@(.+)$') { Write-Warning "Skipping '$($row.upn)' in $($f.Name): not <prefix><NN>.<estate>@<domain>"; continue }
-    if (-not $row.password) { Write-Warning "Skipping $($row.upn): no password in $($f.Name)"; continue }
-    [pscustomobject]@{ Upn = $row.upn; Password = $row.password; NN = $Matches[1]; Estate = $Matches[2]; Domain = $Matches[3] }
+    $m = [regex]::Match("$($row.upn)", '^[a-z]+(\d+)\.([a-z0-9]+)@(.+)$')
+    $why = if (-not $m.Success) { 'not <prefix><NN>.<estate>@<domain>' }
+           elseif ("$($row.created)" -like 'FAILED*') { "07 couldn't create it ($($row.created))" }
+           elseif (-not $row.password) { 'no password' }
+           elseif ($row.password -match '^\((unknown|unchanged) - ') { 'no password recorded (07 wrote its placeholder)' }
+    if ($why) { $problems += "  $($f.Name): $($row.upn) - $why"; continue }
+    [pscustomobject]@{ Upn = $row.upn; Password = $row.password; NN = $m.Groups[1].Value; Estate = $m.Groups[2].Value; Domain = $m.Groups[3].Value }
   }
+}
+if ($problems) {
+  throw "Not printing: $($problems.Count) row(s) can't sign anyone in. Re-run 07 for those estates (or reset the account's password and correct its CSV row), then run this again.`n$($problems -join "`n")"
 }
 $cards = @($cards | Sort-Object Estate, NN)
 if (-not $cards) { throw 'No attendee accounts found in the handout CSVs.' }
