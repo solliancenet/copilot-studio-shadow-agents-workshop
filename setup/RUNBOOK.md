@@ -648,6 +648,9 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
    pwsh setup/scripts/07c_provision_purview_roles.ps1
    ```
 
+   - An estate per attendee? Pass them all, so one approval covers them:
+     `07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02`.
+
 4. **Tell attendees to bring an authenticator app.** Their accounts hold admin roles, so Entra makes each one
    register MFA at first sign-in — about two minutes, once. Don't try to avoid it with a Conditional Access
    exclusion: the admin portals and APIs enforce MFA anyway

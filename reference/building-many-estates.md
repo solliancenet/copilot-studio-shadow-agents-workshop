@@ -22,6 +22,8 @@ pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -From users           # j
   attendees - can use them. The published agents keep answering without the owners' seats (errata:
   *An agent owner without a seat*); an owner without a seat can't open Copilot Studio, so re-run Phase 2
   for that estate before changing its agents.
+- **Purview's transcript role** (RUNBOOK Phase 8b step 3) needs one device-code approval as the admin; pass
+  every estate so that one approval covers them all: `07c_provision_purview_roles.ps1 -Estates fac01,stu01,...`.
 - **Attendee seats** come the day before the delivery, once the persona seats are reclaimed: re-run
   `07_provision_lab_users.ps1 -Count 1` (without `-NoLicense`) per estate (RUNBOOK Phase 8b).
 - **Phase 4c** usually reports the label not yet in SharePoint: re-run it hours later with
