@@ -603,12 +603,21 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
     $have = $null
     try { $have = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'systemusers' 'systemuserid' "azureactivedirectoryobjectid eq $($u.Id)") $null).value | Select-Object -First 1 } catch { }
     if ($have) { continue }
-    try {
-      Invoke-RestMethod -Method POST -Headers @{ Authorization = "Bearer $bapTok" } -ContentType 'application/json' `
-        -Uri "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($TargetEnv.Id)/addUser?api-version=2021-04-01" `
-        -Body (@{ objectId = $u.Id } | ConvertTo-Json) | Out-Null
-    } catch {
-      Write-Warning "  $($TargetEnv.Name): could not add $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])"
+    # A 400 here is NOT "already there" (checked just above): it is an account the environment can't see yet.
+    # Right after this run creates it, addUser answered 400 in Maker-Sandbox for 17 of 23 estates on
+    # 2026-10-23, and a re-run minutes later added every one. So retry for two minutes before giving up.
+    foreach ($try in 1..6) {
+      try {
+        Invoke-RestMethod -Method POST -Headers @{ Authorization = "Bearer $bapTok" } -ContentType 'application/json' `
+          -Uri "https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments/$($TargetEnv.Id)/addUser?api-version=2021-04-01" `
+          -Body (@{ objectId = $u.Id } | ConvertTo-Json) | Out-Null
+        break
+      } catch {
+        $code = try { [int]$_.Exception.Response.StatusCode } catch { 0 }
+        if ($code -eq 400 -and $try -lt 6) { Start-Sleep -Seconds 20; continue }
+        Write-Warning "  $($TargetEnv.Name): could not add $($u.Upn) - $($_.Exception.Message.Split([char]10)[0])"
+        break
+      }
     }
   }
   # 2. The role is created once per environment, but its PRIVILEGES are reconciled on EVERY run.
@@ -681,11 +690,11 @@ function Grant-DvReader($TargetEnv, [object[]]$Users) {
     $cr = (Invoke-Dv $TargetEnv.OrgUrl GET (Get-DvFilter 'roles' 'roleid,name' "name eq '$cn'") $null).value | Select-Object -First 1
     if ($cr) { $cr } else { Write-Warning "  $($TargetEnv.Name): built-in role '$cn' not found - Copilot Studio agent pages will not open." }
   })
-  # 3. Assign it. Dataverse provisions the user record asynchronously, so give it a few seconds to appear.
+  # 3. Assign it. Dataverse provisions the user record asynchronously, so give it up to two minutes to appear.
   $granted = 0
   foreach ($u in $Users) {
     $su = $null
-    foreach ($try in 1..6) {
+    foreach ($try in 1..24) {
       # Match on the ENTRA OBJECT ID, never the UPN. A destroy/recreate cycle leaves the old, dead
       # systemuser record behind under the same UPN, and granting the role to that one looks like it
       # worked while the live account still gets 0x80042f09.

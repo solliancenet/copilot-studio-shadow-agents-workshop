@@ -1092,6 +1092,21 @@ automation, so this is untested rather than proven. Also unverified: Module 5 re
 Claim/Customer rows **as the attendee**, which Administrative access mode would block; retests performed by
 chatting with the agent run as `svc-claims` and are unaffected.
 
+### Phase 8b · A just-created attendee can't be added to an environment yet (2026-10-23)
+
+**Symptom.** 07 created `student01.<estate>` in 23 estates, one estate after another. In 17 of them, adding the
+account to `Maker-Sandbox-<estate>` (2 also in `Halcourt-Prod-<estate>`) answered `400 (Bad Request)`, and the
+read-only role was then skipped: *no user record ... yet - re-run to finish the grant*. The preflight flagged
+each as `no student*.<estate> accounts in this environment` or `lacks Lab Reviewer (read-only)`.
+
+**Evidence.** It isn't "already there": 07 checks for the user record before calling `addUser`. A re-run of 07
+minutes later added the account in 16 of the 17. stu12 answered 400 a second time, then the same `addUser`
+call, by hand a few minutes on, succeeded. So the environment can't see the new Entra account for a few
+minutes, and the time it takes varies.
+
+**Fix.** 07 retries a 400 from `addUser` for two minutes (6 x 20 s), and waits up to two minutes (was 30 s) for
+the user record before granting the role. A re-run still finishes anything left.
+
 ### Phase 8b · PPAC's environment Users list needs prvReadPosition (2026-10-17)
 
 **Symptom.** As an attendee (Lab Reviewer + Bot Viewer, licensed), **Environments → `Claims-Test-<estate>` →
