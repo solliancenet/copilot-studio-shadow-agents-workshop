@@ -278,8 +278,8 @@ an estate deploys nothing.
 - **Several estates** (one per attendee): skip Phases 2 to 6.5. Run them all with one script —
   [building-many-estates.md](../reference/building-many-estates.md). It also runs Phase 7's admin
   prerequisite and Phases 8b and 8c for each estate (an attendee account without a seat, and its slice).
-  Then continue at Phase 6c, and at Phase 8b do only the steps the builder doesn't: the attendees' seats
-  and the transcript role (`07c -Estates`).
+  Then continue at Phase 6c, and at Phase 8b do only the steps the builder doesn't: the attendees' seats,
+  the transcript role (`07c -Estates`) and the printed sign-in cards (`07d`).
 
 ### Phase 2 — Entra identities & personas
 
