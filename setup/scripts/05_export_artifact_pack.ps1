@@ -63,9 +63,15 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 # keep the shapes the exports below were written against.
 $bapRoot = 'https://api.bap.microsoft.com'
 $ppRoot  = 'https://api.powerapps.com/providers/Microsoft.PowerApps'
+# A failed call throws with az's error. It used to return $null, so a 404 read as "nothing found" - the
+# sharing call below sat on a dead address for weeks and exported every connection as unshared (#72).
 function Invoke-Pp([string]$Url) {
-  $out = az rest --method GET --url $Url --resource 'https://service.powerapps.com/' 2>$null
-  if ($LASTEXITCODE -or -not $out) { return $null }
+  $errFile = New-TemporaryFile
+  try {
+    $out = az rest --method GET --url $Url --resource 'https://service.powerapps.com/' 2>$errFile
+    if ($LASTEXITCODE) { throw "GET $Url failed: $((Get-Content $errFile -Raw).Trim())" }
+  } finally { Remove-Item $errFile -ErrorAction SilentlyContinue }
+  if (-not $out) { return $null }
   ($out | Out-String) | ConvertFrom-Json
 }
 function Get-AdminPowerAppEnvironment {
@@ -93,13 +99,22 @@ function Get-AdminPowerAppConnection([string]$EnvironmentName) {
     }
   }
 }
+# /permissions, not /roleAssignments: the latter returns 404 for every connection, as the admin and as a
+# student (#72). Same path Task 01-01 KT02 step 5 has attendees call.
 function Get-AdminPowerAppConnectionRoleAssignment {
   param([string]$EnvironmentName, [string]$ConnectorName, [string]$ConnectionName)
-  $url = "$ppRoot/scopes/admin/environments/$EnvironmentName/apis/$ConnectorName/connections/$ConnectionName/roleAssignments?api-version=2016-11-01"
+  $url = "$ppRoot/scopes/admin/environments/$EnvironmentName/apis/$ConnectorName/connections/$ConnectionName/permissions?api-version=2016-11-01"
   foreach ($r in (Invoke-Pp $url).value) {
+    $p = $r.properties.principal
+    # [verify] A group principal may carry only its id; name it from Graph so shared_with reads as the canon does.
+    $name = if ($p.displayName) { $p.displayName } elseif ($p.email) { $p.email } elseif ($p.id) {
+      try { (Get-MgDirectoryObject -DirectoryObjectId $p.id).AdditionalProperties.displayName } catch { $p.id }
+    }
     [pscustomobject]@{
-      PrincipalType        = $r.properties.principal.type
-      PrincipalDisplayName = if ($r.properties.principal.displayName) { $r.properties.principal.displayName } else { $r.properties.principal.email }
+      RoleName             = $r.properties.roleName      # Owner / CanEdit / CanView
+      PrincipalId          = $p.id
+      PrincipalType        = $p.type                     # User / Group / Tenant
+      PrincipalDisplayName = $name
     }
   }
 }
@@ -217,16 +232,15 @@ function Get-ConnectionUsers([string]$EnvName, [string]$EnvDisplay, [string]$Con
 $connections = foreach ($env in $environments) {
   foreach ($conn in (Get-AdminPowerAppConnection -EnvironmentName $env.EnvironmentName)) {
     if ($env.EnvironmentType -eq 'Default' -and -not (Test-EstatePrincipal $conn.CreatedBy.userPrincipalName)) { continue }
-    # Sharing principals (owner is excluded from the "shared_with" audience list).
-    $shares = @()
-    try {
-      $shares = Get-AdminPowerAppConnectionRoleAssignment `
+    # Sharing principals, less the owner. Owner is a role, not a principal type (that is User/Group), so the
+    # old PrincipalType filter never matched; the creator's id is checked too in case the role is missing.
+    # No catch: a failed read must stop the export, not publish the connection as unshared (#72).
+    $shares = @(Get-AdminPowerAppConnectionRoleAssignment `
                   -EnvironmentName $env.EnvironmentName `
                   -ConnectorName $conn.ConnectorName `
                   -ConnectionName $conn.ConnectionName |
-                Where-Object { $_.PrincipalType -ne 'Owner' } |
-                ForEach-Object { $_.PrincipalDisplayName }
-    } catch { }  # [verify] connection role-assignment cmdlet naming across module versions
+                Where-Object { $_.RoleName -ne 'Owner' -and $_.PrincipalId -ne $conn.CreatedBy.id } |
+                ForEach-Object { $_.PrincipalDisplayName })
     [pscustomobject]@{
       connection_name      = $conn.DisplayName
       connector            = $conn.ConnectorName
@@ -362,7 +376,10 @@ try {
   foreach ($p in (Get-DlpPolicy).value) {
     foreach ($e in $p.environments) { $dlpByEnv[$e.name] = $p.displayName }
   }
-} catch { }  # [verify] Get-DlpPolicy shape / cmdlet name across module versions
+} catch {
+  # [verify] Get-DlpPolicy shape. Keep going, but say so: a blank dlp_policy is itself a finding in the pack.
+  Write-Warning "Could not read DLP policies ($($_.Exception.Message.Split([Environment]::NewLine)[0])) - dlp_policy left blank."
+}
 # maker_access: who can build there, read from the tenant the way Task 00-02 has attendees read it - each
 # environment's Environment Maker members (System Administrator in the Developer one, whose owner builds as
 # admin). 06 grants those roles person by person; there is no makers group. Only the estate's personas count

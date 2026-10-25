@@ -1,6 +1,11 @@
 # ADR-0002: Attendees share one estate; facilitators build individual estates
 
-**Status:** Accepted, with open questions (below)
+**Status:** Superseded in part (2026-10-22). Matt decided on an estate per person: one per attendee
+(`stu01`–`stu20`) and one per facilitator (`fac01`–`fac03`), built by `10_build_estates.ps1 -ReclaimSeats`
+([#30](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/issues/30)). "A delivery uses
+one shared estate" no longer holds. Whether Exercise 05 stays demonstrated is still open: 05-02's DLP lands
+on the one default environment every estate shares, so it collides across attendees. A replacement record
+is due once that is settled.
 **Applies to:** `setup/RUNBOOK.md` intro, Phase 8b, the Exercise 05 demo table; `index.md` prerequisites
 
 ## Context
