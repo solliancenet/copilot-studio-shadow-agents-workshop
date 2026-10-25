@@ -120,7 +120,8 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Env / Owner:** Halcourt-Prod / Marcus Webb.
 - **Data sensitivity (by reach):** **Compensation** — whole-site `HR-Benefits` grounding reaches `Leadership/2026-comp-bands.xlsx`.
 - **Purpose:** Answer employee benefits & open-enrollment questions.
-- **Connections:** SharePoint (Marcus's user connection).
+- **Connections:** None live: the SharePoint knowledge source is a `SharePointSearchSource` with no
+  connection reference. The pack's `SP-HR-Benefits` row is a known mismatch (#78).
 - **Connectors / tools:** SharePoint (knowledge only). No tools or custom actions.
 - **Grounding:** SharePoint site `HR-Benefits` — **whole site**, incl. `Leadership/`.
 - **PLANTED PROBLEM A (Scenario A — grounding injection):** `Open-Enrollment-FAQ.docx` carries hidden
