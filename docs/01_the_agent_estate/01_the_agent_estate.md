@@ -15,15 +15,12 @@ claims assistant, an underwriting tool, a policy lookup bot, and more you have n
 the obvious governance questions and nobody in the room can answer them: *How many agents do we have? Who
 owns them? What can they actually reach?*
 
-The reason it is hard is recent and structural. **Since May 2026, every new Copilot Studio agent gets an
-Entra Agent ID automatically** — so each new agent is a principal in Entra. Older agents may still sit on
+Microsoft gives you a starting point: **since May 2026 every new Copilot Studio agent gets an Entra Agent
+ID**, and **Agent 365 (GA May 1, 2026)** lists your agents with their owners. Older agents may still sit on
 a legacy app registration. But that identity is only half the answer to "who is acting?": every tool call
 also carries its own credential — the user's, the maker's, a service account's, or a static key — and
-grounding reads with its own scope. **Agent 365 went GA on May 1, 2026**, adding an admin and governance
-surface on top.
-The catch: the governance *surface* arrived faster than any governance *practice* did. In a real tenant
-these identities quickly number in the hundreds. At Halcourt they're already spread across environments
-you don't all control, with no map of what they can touch.
+grounding reads with its own scope. At Halcourt the agents are already spread across environments you
+don't all control, with no map of what they can touch.
 
 Before you can inventory, map, or secure any of this, you need a shared mental model of what an agent
 *is* as a security object — the hops a request travels, the identities involved, and the trust boundaries
