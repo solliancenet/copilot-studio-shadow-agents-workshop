@@ -26,10 +26,10 @@ review would skip. And an agent that only *looks* risky is not a finding until y
 After this exercise you will be able to:
 
 - Enumerate the discovery surfaces available for a Copilot Studio estate — the Microsoft 365 admin center
-  agent registry, the Power Platform admin center Inventory page, the CoE Starter Kit inventory, Microsoft
+  agent registry, the Power Platform admin center Inventory page, Microsoft
   Graph for agent identities, and your five CSVs — and state what each **reveals** and what it
   **misses**.
-- Join your five CSVs (agents, connections, agent identities, users, environments) into one complete
+- Combine your five CSVs (agents, connections, agent identities, users, environments) into one complete
   inventory row per agent, covering every environment including the sandbox and personal ones, and
   classify each agent by the most sensitive data it can reach.
 - Distinguish the **agent owner** from the **connection owner**, and explain why recording only the agent
