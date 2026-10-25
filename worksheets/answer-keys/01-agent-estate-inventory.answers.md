@@ -47,5 +47,5 @@ grounding data, so Benefits Buddy may be classified from its SharePoint connecti
 
 **Expected count:** 10 agents, 4 environments; 3 agents flagged Orphaned or Unknown / ambiguous owner
 (Onboarding Guide, Policy Lookup Bot, Sales Nudge); 3 agents flagged Shared connection (Claims Copilot on
-DV-Claims-Shared, Sales Nudge on DV-CRM-Shared, Onboarding Guide on SP-Onboarding and
-O365-Outlook-Onboarding).
+DV-Claims-Shared, Sales Nudge on DV-CRM-Shared, Onboarding Guide on
+O365-Outlook-Onboarding; its SP-Onboarding row is SharePoint, so it doesn't count here).

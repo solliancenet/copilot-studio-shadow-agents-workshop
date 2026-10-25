@@ -29,17 +29,19 @@ fixing anything.
 
 You work in two places, and the difference matters all day:
 
-- **The shared estate:** Halcourt Mutual's environments, agents, connections and identities, built once and
-  shared by everyone in the room. You *observe* it: your lab account has the access the tasks need to read
-  it, and you don't change it. In Exercise 05, your facilitator applies each control to it, once, for the
-  room, and you retest.
+- **Your estate:** Halcourt Mutual's environments, agents, connections and identities, built for you and
+  named with your estate id. You *observe* it: your lab account has the access the tasks need to read it,
+  and you leave it as built, because every later exercise depends on finding it broken. The same account
+  can reach other attendees' estates too, so leave theirs alone as well. The default environment,
+  `Halcourt (default)`, is shared by every estate in the tenant. In Exercise 05, your facilitator
+  demonstrates each control, and you record the retest.
 - **Your own lab environment:** an environment provisioned for you alone, named `Lab-<estate_id>-NN`. It
   carries a copy of the Claims Dataverse set-up: the `Claim` and `Customer` tables with their seeded rows,
   and the same role on the same service account. You are its **administrator**. Exercise 03 sends you there
   to open that security role and read its scope, which works whether or not your lab account has a
   license.
 
-The rule that follows: **observe the shared estate; make changes only in your own environment.** Over the day you will build a running **Estate Binder** that answers all three
+The rule that follows: **observe your estate; make changes only in your own lab environment.** Over the day you will build a running **Estate Binder** that answers all three
 questions and says whether each of Microsoft's controls **CLOSES IT**, **DENTS IT**, or **MISSES IT**.
 
 This exercise gets you access and oriented. No findings yet — just terrain. If live tenant access is
@@ -50,7 +52,7 @@ unavailable, use the artifact pack for the discovery and analysis tasks.
 After this exercise you will be able to:
 
 - Sign in to the shared Halcourt Mutual demo tenant with the lab account the facilitator hands out, open
-  the **Power Platform admin center**, and tell the shared estate apart from your own lab environment.
+  the **Power Platform admin center**, and tell your estate apart from your own lab environment.
 - Download the **artifact pack** — the blank CSVs you fill in from the tenant, or the filled-in set if you
   can't reach it — and confirm all five CSVs open.
 - Name Halcourt Mutual's **four Power Platform environments** and read their type, DLP, and managed status
