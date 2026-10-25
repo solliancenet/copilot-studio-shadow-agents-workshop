@@ -121,7 +121,7 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Data sensitivity (by reach):** **Compensation** — whole-site `HR-Benefits` grounding reaches `Leadership/2026-comp-bands.xlsx`.
 - **Purpose:** Answer employee benefits & open-enrollment questions.
 - **Connections:** SharePoint (Marcus's user connection).
-- **Connectors / tools:** SharePoint, Office 365 Users. No custom actions.
+- **Connectors / tools:** SharePoint (knowledge only). No tools or custom actions.
 - **Grounding:** SharePoint site `HR-Benefits` — **whole site**, incl. `Leadership/`.
 - **PLANTED PROBLEM A (Scenario A — grounding injection):** `Open-Enrollment-FAQ.docx` carries hidden
   instructions (see **SPOILER: Injection payload**). The agent ingests them as if authoritative.
@@ -138,7 +138,8 @@ Ten agents: **eight planted** + **two decoys**. Slugs, owners, and identities ar
 - **Connectors / tools:** Dataverse — `List rows` (Claim, Customer). No update tool: the instructions mention status updates, but the agent can only read - 05-07's attribution lesson depends on that (a read leaves no downstream record), and 04-04 reasons the write half rather than running it.
 - **Grounding:** `Claims-Knowledge`.
 - **PLANTED PROBLEM A (Scenario C — excess connector):** svc-claims has broad Dataverse role
-  (System Customizer + read/write on **all** Claim and Customer rows, incl. PII). Job needs read of the
+  (custom role `svc-claims Dataverse Full Access`: organization-depth create/read/write/append/assign/share
+  on **all** Claim and Customer rows, incl. PII; `04_provision_dataverse.ps1`). Job needs read of the
   *requesting adjuster's own* claims only.
 - **PLANTED PROBLEM B (Scenario D — confused deputy):** the agent acts as **svc-claims**, not the user.
   Jordan Blake (low-priv) can chat with it and read/modify **any** claim — authority Jordan lacks.
