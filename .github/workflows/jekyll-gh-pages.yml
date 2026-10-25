@@ -32,6 +32,16 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
+      # One-click downloads of the artifact pack (issue #68): built from the committed CSVs on every deploy,
+      # so they can't drift from them. Jekyll copies them into _site like any other static file.
+      - name: Zip the artifact pack
+        run: |
+          set -e
+          cd worksheets/artifact-pack
+          zip -j -X artifact-pack-blank.zip blank/*.csv
+          zip -j -X artifact-pack-filled.zip *.csv
+          unzip -l artifact-pack-blank.zip; unzip -l artifact-pack-filled.zip
+
       - name: Build site
         run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
