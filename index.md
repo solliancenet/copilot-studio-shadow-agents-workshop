@@ -110,9 +110,8 @@ first-week starting list and further reading are in the [Appendix]({% link appen
   - You gather the estate's data into blank CSVs from the
     [Estate Binder]({% link worksheets/index.md %}#the-artifact-pack).
 - Without tenant access: the filled-in **artifact pack** in the same place, which covers every hands-on task.
-- Optional: a Copilot-enabled editor for the analysis tasks — see
-  [`.github/copilot-instructions.md`](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/blob/main/.github/copilot-instructions.md){:target="_blank"}
-  in the workshop repo.
+- Optional: an AI-enabled editor, such as Visual Studio Code with GitHub Copilot, to help collate and
+  analyze the data you gather.
 
 {: .warning }
 > Everything you do runs against a **training estate that was deliberately built to be broken**. Do not
