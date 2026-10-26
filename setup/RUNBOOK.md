@@ -1001,7 +1001,9 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       **Resubmit** or **Edit**.
    4. **Show the room** that run next to the same attendee's `CopilotInteraction` event: in their KT01
       search, the row whose **AgentName** is Expense Helper. The run says which agent called it and when, not
-      who asked. Only matching the two by agent and time links them, so attribution is **cross-log only**.
+      who asked. Matching the two by agent and time is **cross-log only** - or **partial** if more than one
+      run sits near that time (the attendee submitted twice, or you tested), since the time match then
+      doesn't single one out. The flow writes nothing, so the run is not evidence a privileged approval ran.
       If the event hasn't arrived yet (it can take hours), show the run and say the match has to wait for it.
    5. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
       nothing. "Auto-approved" (under $500) is only the reply.
