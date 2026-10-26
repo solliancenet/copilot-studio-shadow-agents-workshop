@@ -727,8 +727,9 @@ scenarios themselves need someone to talk to the agents.
    any `[verify]` item you can and update `AGENTS.md`.
 
 5. **Check the agent registry (Task 05-05).** As the facilitator, with AI Administrator activated:
-   **Microsoft 365 admin center** → **Agents** → **All agents** → **Registry**, search for the estate id:
-   expect only Expense Helper and Onboarding Guide (the default-environment agents), with **Block** available
+   **Microsoft 365 admin center** → **Agents** → **All agents** → **Registry** must list all ten estate
+   agents: Expense Helper and Onboarding Guide carry the estate id, and the rest have plain names, one
+   entry per estate in the tenant. An estate-id search shows "Showing 2 of 2". **Block** must be available
    on Onboarding Guide. If you try Block, unblock straight away.
 
    - Whether the tenant's Agent 365 licensing lasts until the delivery is open:
@@ -968,10 +969,10 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
 
    1. Activate the facilitator's **AI Administrator** in PIM.
    2. **Microsoft 365 admin center** → **Agents** → **All agents** → **Registry**, search for the estate id,
-      select **Onboarding Guide** → **Block** → confirm *(not yet walked)*. Never **Delete**: it can't be undone.
-   3. Wait for KT05 (attendees read Onboarding Guide's **Status**).
-   4. **Put it back:** select Onboarding Guide again → **Unblock** (label to confirm) → confirm. Let AI
-      Administrator lapse.
+      select **Onboarding Guide** → **Block** → confirm. The status reads **Blocked**, with the banner
+      "Agent blocked". Never **Delete**: it can't be undone.
+   3. Wait for KT05 (attendees read Onboarding Guide's **Status**; lab accounts can't Block).
+   4. **Put it back:** select Onboarding Guide again → **Unblock** → confirm. Let AI Administrator lapse.
 
    **05-06 — Show the labelled copy** (KT01 step 3; nothing changes)
 
