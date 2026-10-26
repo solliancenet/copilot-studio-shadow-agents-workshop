@@ -33,7 +33,9 @@ flowchart LR
   C --> W["WATCH IT<br/>logging · detection · lifecycle"]
   W --> G{"Production<br/>promotion gate"}
   G -->|all stages pass| P["Promote to production"]
-  G -->|any stage fails| R["Remediate — do not promote"]
+  G -->|a stage fails| E{"Formal exception<br/>valid and unexpired?"}
+  E -->|yes| P
+  E -->|no| R["Remediate — do not promote"]
 ```
 
 | Stage | What it asks | Where you already did it |
