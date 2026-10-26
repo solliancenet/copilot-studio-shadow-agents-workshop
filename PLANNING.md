@@ -14,7 +14,7 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 |---|------|--------|-------|
 | 1 | Make the workshop public and enable GitHub Pages | OPEN — deferred | Repo stays **private** for now. Decide first: making the repo public exposes `AGENTS.md`, `PLANNING.md`, `setup/`, and `worksheets/answer-keys/` in **source** — the Pages `exclude:` only affects the rendered site, not the public repo tree. |
 | 2 | Resolve the `[verify]` 2026 product-surface items | OPEN | Agent 365 admin/Graph surfaces, Conditional Access for workload identities, Purview coverage of Copilot Studio, `pac solution` agent portability, licensing. Feeds the Module 5 verdicts (see the verification list below). Also confirm lab accounts can open the Microsoft 365 admin center agent registry without Agent 365 licensing; 01_01 and 02_01 rely on it. |
-| 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. |
+| 3 | Dry-run `setup/RUNBOOK.md` in a live tenant | OPEN | Confirm every planted problem reproduces and every CLOSES/DENTS/MISSES verdict holds; regenerate the artifact pack and diff against the committed CSVs. The diff can't come back clean until #18 is resolved. |
 | 4 | Capture the 13 screenshots | OPEN | Referenced by the labs; list in `setup/screenshot-capture-list.md`. |
 | 5 | Reconcile ~7h of content into the 6h slot | OPEN | Compression plan already drafted below (Timing reconciliation). The Module 4 landing page says 60 minutes and also roughly 15 minutes per scenario across six scenarios. |
 | 6 | **RESOLVED — the "0 GB Dataverse" blocker was false** | RESOLVED | Live run 2026-09-08: the E5 sandbox carried **5 GB prepaid Dataverse** (not 0 GB), and a Dataverse-backed env (`Claims-Test`) created normally, no PAYG needed. Copilot Studio billing also resolved — a **region-matched PPAC billing plan** (`ppccdevcanada`, Copilot Studio meter) was linked to Claims-Test after fixing **RBAC** (Entra → Access management for Azure resources → Contributor). Lesson: billing plans are **region-locked** and must match the env region. |
@@ -29,8 +29,44 @@ This repo is run PM-style: items are executed by assigned agents (a prompt is pr
 | 15 | Student licensing | OPEN (documented, not automated) | Every lab account is unlicensed today, and the tenant has 0 free E5 seats (25/25 used). Per student (plus the facilitator): (1) **Microsoft 365 E5** or another license that includes Microsoft 365 — Copilot Studio records `CopilotInteraction` audit events only for licensed users (05_07), and it's likely needed to open the published agents in Teams / Microsoft 365 Copilot / SharePoint (Exercise 04's published-agent route); (2) **Microsoft Agent 365** — not in E5; an add-on to E5 or included in E7 — for registry risk signals (05_05) and Conditional Access for agents (05_04), licensed per user. No separate Copilot Studio license: chatting with a published agent draws on tenant capacity. Seats = students per delivery + facilitator. Supersedes the licensing notes in items 8 and 9. Documented as a delivery requirement in RUNBOOK Prerequisites → *Student licences* and the capabilities table; seats are still not provisioned. |
 | 16 | Audit and Defender provisioning for Exercise 05 | PARTLY DONE (2026-10-20): audit scripted - `04b_provision_audit.ps1`, RUNBOOK Phase 5b (Purview Audit was OFF on this tenant, not on by default). Defender real-time protection: not used, 05-07 KT06 is reasoned (Agent 365 licence). Was: | 05_07 reconstructs Exercise 04 from the logs, so auditing must be on before Exercise 04 runs: turn on Dataverse auditing in `Claims-Test` (environment + `Claim` and `Customer` tables); confirm Purview Audit is on (on by default); set up Defender real-time protection for the estate's agents (needs a Defender admin, an Entra app and the Microsoft 365 app connector). `CopilotInteraction` events need licensed lab accounts — see item 15. Now a manual checklist in RUNBOOK *Before delivery — preflight, audit and Exercise 04 notes*; still open there: attendees have no read access to audit history (05_07 KT03). **Read-audit finding (Learn, 2026-10-07):** Dataverse auditing never logs reads, and read logs reach Purview only for production environments, so Claims Copilot's reads in sandbox `Claims-Test` are logged nowhere downstream; 05_07 KT03–04 now teach that gap (downstream record unavailable, attribution rests on the `CopilotInteraction` event) instead of assuming a read event. |
 | 17 | Remove non-lab exercises (old Exercise 07 and the wrap-up) | DONE | Both were lecture content dressed as labs. The lab ends at Exercise 06's promotion gate. The tenant crosswalk, first-week quick wins, ranking rule, leadership tip and further reading moved to `appendix.md`, next to `index.md`; the Own-Estate Assessment worksheet stays in the Estate Binder. |
+| 18 | Fix the artifact-pack export script: `05_export_artifact_pack.ps1` can't reproduce the committed CSVs | OPEN | Found in the 2026-09-28 pack review. (a) `used_by_agent` takes the **first** agent in the environment (`Select-Object -First 1`), so all five Halcourt-Prod connections would be attributed to one agent. That breaks the connection-to-agent joins Modules 2–6 depend on. (b) `auth_type` reads `ConnectionParametersType`, which won't produce the canon labels (`API key in action config`, `Static bearer token`, `Runs as owner`). (c) `maker_access` is guessed from the environment type, not read from the tenant. Net effect: the committed pack is really hand-written, and the #3 / RUNBOOK Phase 8 "diffs clean" check can't pass. Decide between two fixes: make the script read the real connection-to-agent binding (each bot's connection references in Dataverse) and map the auth labels, **or** state in `setup/RUNBOOK.md` that the committed pack is hand-written from `AGENTS.md` and the script is only a reference export. |
+| 19 | Fix the `tom.dean` timeline contradiction in the pack | OPEN | `users-export.csv` gives him `last_sign_in_utc = 2026-01-30`. But `agents-export.csv` says he created **Onboarding Guide** on 2026-03-16 (last modified 2026-03-29), and `cs-agent-onboarding-default` was created 2026-03-16. An attendee will notice that the "departed owner" built the agent after his last sign-in, which undercuts Scenario F. Move his last sign-in after 2026-03-29 (e.g. early April) and update `AGENTS.md` to match. |
+| 20 | Correct the artifact-pack description in `index.md` | DONE | `index.md:87` calls the pack "exported inventory + screenshots", but the pack is only five CSVs. The screenshots are inline in the task pages (`media/`, not captured yet — #4). Either fix the wording or deliver #21. Done: `index.md` no longer has that wording (checked 2026-10-26). |
+| 21 | Add portal screenshots to the artifact pack | OPEN — idea | Pair each CSV with the admin-portal screen it came from, so offline attendees see what the same facts look like in their **own** tenant and know where to find them after the workshop. See *Idea — portal screenshots in the artifact pack* below. |
 
-_Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet.
+_Status legend:_ OPEN · IN PROGRESS · BLOCKED · DONE. `deferred` = agreed not to execute yet. `idea` = proposed, not yet agreed.
+
+### Idea — portal screenshots in the artifact pack (#21)
+
+**Why.** The pack teaches the joins but not where the data lives. An attendee who works offline all day
+never sees the Power Platform admin center, Entra, or Copilot Studio screens they'll use on their own
+estate. The lab pages also admit that some facts aren't in any CSV: grounding scope, how broad a Dataverse
+role is, SharePoint site membership, an API key's scope on the server, and the MCP tool list. Offline,
+those become open questions. Screenshots fill both gaps: students recognize the portal, and the offline
+path gets evidence it currently lacks.
+
+**Proposed contents** (`worksheets/artifact-pack/screenshots/`, or a zip next to the CSVs):
+
+| Pairs with | Portal view to capture |
+|---|---|
+| `environments-export.csv` | PPAC → Manage → Environments (type, managed); PPAC → Policies → Data policies showing which environments `Halcourt-Prod-DLP` covers |
+| `agents-export.csv` | Agent inventory across **all** environments, including the default and developer environments (PPAC or Copilot Studio) |
+| `connections-export.csv` | Connection list and detail: owner, shared-with, authentication |
+| `agent-identities-export.csv` | Entra admin center: the `cs-agent-*` agent identities / enterprise apps |
+| `users-export.csv` | Entra → Users: account enabled and last sign-in (shows `tom.dean` disabled) |
+| *(offline gaps — no CSV)* | Benefits Buddy grounding scope · Claims Copilot Dataverse role · HR-Benefits site membership · Policy Lookup Bot HTTP action (key redacted) · Underwriting MCP tool list |
+
+**Rules if we build it.**
+- Capture from the canonical estate **during the same Phase 7 run** as the CSV export, so the values on
+  screen match the CSVs exactly. Recapture whenever the pack is regenerated, or the screenshots will drift
+  from the CSVs.
+- Several overlap the 13 inline screenshots in #4 (`ex00_t01`, `ex03_t01`, `ex04_t01`, `ex04_t03`,
+  `ex04_t05`, `ex06_t02`, `ex06_t04`). Capture each once and use it in both places.
+- Include a short index that maps each image to the CSV columns it backs up. Say plainly that Microsoft
+  changes these portals often: the columns are what matter, and the screens are for recognizing the portal.
+- Watch for spoilers: the offline-gap screenshots show findings directly. Decide image by image whether it
+  goes in the pack or stays inline in the Module 4 walk-through, and keep captions neutral.
+- Redact secrets and any values that aren't part of the canon, per `setup/screenshot-capture-list.md`.
 
 ### Sequencing decision + top blocker (live-tenant walkthrough findings)
 
