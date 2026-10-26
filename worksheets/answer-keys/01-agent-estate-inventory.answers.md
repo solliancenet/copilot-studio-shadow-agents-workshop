@@ -16,7 +16,7 @@
 | Team Wiki | Sandbox | dev.kim (ok) | Compensation (grounds on `HR-Benefits` and `Claims-Knowledge`; classify up) | | ✅ | | | | ✅ |
 | Sales Nudge | Prod | lena.ford (ok) | PII (CRM/Dataverse under Tom Dean's broad CRM access) | | | | ✅ (tom.dean CRM) | ✅ (conn≠agent owner) | |
 | HR FAQ v2 (copy) | Prod | marcus.webb (ok) | Internal (`HR FAQ` library only) | | | | | | (no flag) |
-| Meeting Notes Summarizer | Sandbox | dev.kim (ok) | Internal (Dev's own OneDrive notes) | | | | | | (decoy — clean) |
+| Meeting Notes Summarizer | Sandbox | dev.kim (ok) | Internal (Dev's own OneDrive notes) | | ✅ until cleared | | | | (decoy) |
 
 **When attendees can know these.** In Task 02-02, an attendee can't yet see two of these values, and
 the suggested inventory there shows them as Unknown. Don't correct an Unknown before the attendee has the
