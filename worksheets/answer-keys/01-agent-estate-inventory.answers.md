@@ -13,14 +13,21 @@
 | Underwriting Assistant | Prod | priya.nair (ok) | Internal (pricing DB via `run_query`) | | | | | | |
 | Expense Helper | Default | sam.olsen (ok) | Internal (expense records) | | | | | | |
 | Onboarding Guide | Default | **tom.dean (LEFT 2026-01-30, still enabled)** | Internal (SharePoint + mail send) | ✅ | | | ✅ (tom.dean) | | ✅ |
-| Team Wiki | Sandbox | dev.kim (ok) | Internal (every site Dev can read — not `Leadership/`) | | ✅ | | | | ✅ |
+| Team Wiki | Sandbox | dev.kim (ok) | Compensation (grounds on `HR-Benefits` and `Claims-Knowledge`; classify up) | | ✅ | | | | ✅ |
 | Sales Nudge | Prod | lena.ford (ok) | PII (CRM/Dataverse under Tom Dean's broad CRM access) | | | | ✅ (tom.dean CRM) | ✅ (conn≠agent owner) | |
-| HR FAQ v2 (copy) | Prod | marcus.webb (ok) | Internal (`HR FAQ` library only) | | | | | | (decoy — clean) |
-| Meeting Notes Summarizer | Sandbox | dev.kim (ok) | Internal (Dev's own OneDrive notes) | | | | | | (decoy — clean) |
+| HR FAQ v2 (copy) | Prod | marcus.webb (ok) | Internal (`HR FAQ` library only) | | | | | | (no flag) |
+| Meeting Notes Summarizer | Sandbox | dev.kim (ok) | Internal (Dev's own OneDrive notes) | | ✅ until cleared | | | | (decoy) |
+
+**When attendees can know these.** In Task 02-02, an attendee can't yet see two of these values, and
+the suggested inventory there shows them as Unknown. Don't correct an Unknown before the attendee has the
+evidence:
+- **Policy Lookup Bot = PII:** what the Policy API returns (customer records) only shows up in Exercise 03.
+- **Meeting Notes Summarizer = Internal:** only once the attendee checks what *DevKim-OneDrive-Notes* holds,
+  which Task 02-03's clearance step asks them to do.
 
 Data sensitivity is by **reach**, not intent. An attendee working from the artifact pack alone has no
-grounding data, so Benefits Buddy may be classified from its SharePoint connection only; accept
-"Compensation (from connections only)" or a classify-up equivalent.
+grounding data, so Benefits Buddy is classified from its description only; accept
+"Compensation (HR/benefits site)" or a classify-up equivalent.
 
 ## The joins that reveal the findings
 
@@ -42,8 +49,10 @@ grounding data, so Benefits Buddy may be classified from its SharePoint connecti
 - **Onboarding Guide is not Unknown / ambiguous owner:** its owner is a known, named person who has left.
   That is the Orphan flag.
 - **Team Wiki:** `Maker-Sandbox`, personal env, not in any sanctioned list — pure shadow.
-- **Decoys:** HR FAQ v2 and Meeting Notes Summarizer look risky by name/location but have least-privilege,
-  single-source grounding and no actions. Correctly cleared.
+- **Decoy:** Meeting Notes Summarizer takes the shadow flag by location, but has single-source grounding
+  and no actions: cleared once the attendee checks what its source holds.
+- **HR FAQ v2 (copy)** takes no flag (no hunt looks at names), so there's nothing to clear; like Benefits
+  Buddy, it's unflagged, not cleared.
 
 **Expected count:** 10 agents, 4 environments; 3 agents flagged Orphaned or Unknown / ambiguous owner
 (Onboarding Guide, Policy Lookup Bot, Sales Nudge); 3 agents flagged Shared connection (Claims Copilot on
