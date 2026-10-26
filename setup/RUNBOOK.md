@@ -727,8 +727,10 @@ scenarios themselves need someone to talk to the agents.
    any `[verify]` item you can and update `AGENTS.md`.
 
 5. **Check the agent registry (Task 05-05).** As the facilitator, with AI Administrator activated:
-   **Microsoft 365 admin center** → **Agents** must list all ten estate agents, with **Block** available on
-   Onboarding Guide. If you try Block, unblock straight away.
+   **Microsoft 365 admin center** → **Agents** → **All agents** → **Registry** must list all ten estate
+   agents: Expense Helper and Onboarding Guide carry the estate id, and the rest have plain names, one
+   entry per estate in the tenant. An estate-id search shows "Showing 2 of 2". **Block** must be available
+   on Onboarding Guide. If you try Block, unblock straight away.
 
    - Whether the tenant's Agent 365 licensing lasts until the delivery is open:
      [PLANNING item 8](../PLANNING.md).
@@ -913,59 +915,64 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    retests are done. Sign in as the facilitator account unless a task says otherwise. The click paths come
    from each task's page; those marked *(not yet walked)* haven't been run as the facilitator.
 
-   **05-01 — Block HTTP and custom connectors in Prod** (attendees follow KT02, retest in KT03 and KT05)
+   **05-01 — Block HTTP and custom connectors in Prod** (attendees follow KT02; retests in KT03 and KT05)
 
    1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** →
-      `Halcourt-Prod-DLP-<estate>` → **Edit Policy** *(not yet walked)*.
-   2. Move **HTTP** and **HTTP with Microsoft Entra ID** to **Blocked**; set **custom connectors** to
-      **Blocked**; leave **Dataverse** and **SharePoint** in **Business**. Save.
-   3. **Show the room** the Blocked group, then wait for KT03 (Policy Lookup Bot and Underwriting Assistant)
-      and KT05. Expect Policy Lookup Bot's HTTP call to fail (`DataLossPreventionViolation`), and maybe
-      agents that won't publish (the page's warning). Don't predict the MCP half: in the reference build,
-      blocking custom connectors did **not** stop Underwriting Assistant's MCP tool. Record what the
-      retest shows — either result is a finding, not a broken demonstration.
-   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp`
+      `Halcourt-Prod-DLP-<estate>` → **Edit Policy**.
+   2. On **Prebuilt connectors**, search `http` and move all five matches to **Blocked** (HTTP, HTTP with
+      Microsoft Entra ID, HTTP with Microsoft Entra ID (preauthorized), When a HTTP request is received,
+      HTTP Webhook). On **Custom connectors**, set the `*` pattern to **Blocked**. Leave **Dataverse** and
+      **SharePoint** in **Business**. **Next** through to **Review** and save.
+   3. **Show the room** the Blocked group, then run KT03 (Policy Lookup Bot) and KT05 (Claims Copilot) on
+      screen in this estate. Expect Policy Lookup Bot's HTTP call to fail (`DataLossPreventionViolation`),
+      and maybe agents that won't publish (the page's warning). Underwriting Assistant isn't retested.
+   4. **Leave it in place** for 05-02; the put-back is 05-02's step 5.
 
-   **05-02 — A data policy on the default environment** (KT03; retests in KT06 and KT08)
+   **05-02 — Add the default environment to the policy** (KT02; retests in KT05)
 
-   1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** → **New
-      policy**, named `Halcourt-Default-DLP-<estate>`, scoped to **Halcourt (default)** only, with **HTTP**,
-      **HTTP with Microsoft Entra ID** and **custom connectors** **Blocked** *(not yet walked)*.
-   2. **Show the room** the policy, and that you can't fence the default environment's makers: every
+   1. Open `Halcourt-Prod-DLP-<estate>` → **Edit Policy** → **Next** to **Environments**.
+   2. On **Available**, search `default`, tick `Halcourt (default)`, **+ Add to policy**. **Next** and save on
+      **Review**. The default environment now carries 05-01's blocks.
+   3. **Show the room** the policy, and that you can't fence the default environment's makers: every
       licensed user is an Environment Maker there.
-   3. Wait for KT06 and KT08.
-   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` — it deletes the new policy (the estate id in its
-      name is what allows that).
+   4. Wait for KT05.
+   5. **Put it back:** remove `Halcourt (default)` from the policy the same way, then
+      `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` to restore 05-01's baseline.
 
-   **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT05, KT07)
+   **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT04)
 
    1. **Scenario B, as the site owner** — the account Phase 4 made owner of `HR-Benefits-<estate>`
       (`-SiteOwner`; by default the admin who ran it). Members, Marcus included, have Edit, which can't
-      change permissions. Remove the knowledge source's effective reader's permission on `Leadership/` —
-      the route KT01 step 3 offers *(not yet walked)*. Don't narrow the Knowledge
-      instead: that did not stop the leak within an hour
+      change permissions. Don't narrow the Knowledge instead: that did not stop the leak within an hour
       ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)).
-   2. **Scenarios C and D:** the scoped `svc-claims` role and its fixed data subset, by script:
+      1. Open `HR-Benefits-<estate>` → **Documents**, tick `Leadership`, select **Details** → **Manage access**.
+      2. Open **HR Benefits Members** (the `HR-Benefits-<estate>` Members group), choose **No direct access**, select **Apply**.
+      3. Check **Details** → **Has access**: nobody listed, and "This item is not shared".
+      4. After the retests, grant **HR Benefits Members** **Can edit** on the folder again.
+   2. **Scenarios C and D:** snapshot, then the scoped `svc-claims` role and its fixed data subset, by script:
 
       ```bash
-      pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1
+      pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control ClaimsRoles -Estate <estate>
+      pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1 -Estate <estate>
       ```
 
-   3. **Show the room** the new role in **Claims-Test**'s security roles, and the permission change. Wait for
-      KT03, KT05 and KT07.
-   4. **Put it back:** restore the `Leadership/` permission by hand, as the site owner, then
-      `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles` (the role, Basic User and record owners).
+   3. **Show the room** the new role in **Claims-Test-<estate>**'s security roles, and the permission change.
+      Wait for KT03 and KT04.
+   4. **Put it back:** restore `Leadership/` by granting **HR Benefits Members** **Can edit** again (step 1.4),
+      then `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles -Estate <estate>`
+      (the role, Basic User and record owners).
 
    **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
    policy locks out the tenant.
 
-   **05-05 — Block Onboarding Guide** (KT06)
+   **05-05 — Block Onboarding Guide** (KT05)
 
    1. Activate the facilitator's **AI Administrator** in PIM.
-   2. **Microsoft 365 admin center** → **Agents** → **Onboarding Guide** → **Block** *(not yet walked)*.
-      Never **Delete**: it can't be undone.
-   3. Wait for KT06 (can Onboarding Guide still send mail?).
-   4. **Put it back:** the same page → **Unblock**, by hand. Let AI Administrator lapse.
+   2. **Microsoft 365 admin center** → **Agents** → **All agents** → **Registry**, search for the estate id,
+      select **Onboarding Guide** → **Block** → confirm. The status reads **Blocked**, with the banner
+      "Agent blocked". Never **Delete**: it can't be undone.
+   3. Wait for KT05 (attendees read Onboarding Guide's **Status**; lab accounts can't Block).
+   4. **Put it back:** select Onboarding Guide again → **Unblock** → confirm. Let AI Administrator lapse.
 
    **05-06 — Show the labelled copy** (KT01 step 3; nothing changes)
 
