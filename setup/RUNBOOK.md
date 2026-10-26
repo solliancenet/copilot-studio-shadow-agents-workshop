@@ -937,24 +937,28 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` — it deletes the new policy (the estate id in its
       name is what allows that).
 
-   **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT05, KT07)
+   **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT04)
 
    1. **Scenario B, as the site owner** — the account Phase 4 made owner of `HR-Benefits-<estate>`
       (`-SiteOwner`; by default the admin who ran it). Members, Marcus included, have Edit, which can't
-      change permissions. Remove the knowledge source's effective reader's permission on `Leadership/` —
-      the route KT01 step 3 offers *(not yet walked)*. Don't narrow the Knowledge
-      instead: that did not stop the leak within an hour
+      change permissions. Don't narrow the Knowledge instead: that did not stop the leak within an hour
       ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)).
-   2. **Scenarios C and D:** the scoped `svc-claims` role and its fixed data subset, by script:
+      1. Open `HR-Benefits-<estate>` → **Documents**, tick `Leadership`, select **Details** → **Manage access**.
+      2. Open **HR Benefits Members** (the `HR-Benefits-<estate>` Members group), choose **No direct access**, select **Apply**.
+      3. Check **Details** → **Has access**: nobody listed, and "This item is not shared".
+      4. After the retests, grant **HR Benefits Members** **Can edit** on the folder again.
+   2. **Scenarios C and D:** snapshot, then the scoped `svc-claims` role and its fixed data subset, by script:
 
       ```bash
-      pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1
+      pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control ClaimsRoles -Estate <estate>
+      pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1 -Estate <estate>
       ```
 
-   3. **Show the room** the new role in **Claims-Test**'s security roles, and the permission change. Wait for
-      KT03, KT05 and KT07.
-   4. **Put it back:** restore the `Leadership/` permission by hand, as the site owner, then
-      `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles` (the role, Basic User and record owners).
+   3. **Show the room** the new role in **Claims-Test-<estate>**'s security roles, and the permission change.
+      Wait for KT03 and KT04.
+   4. **Put it back:** restore `Leadership/` by granting **HR Benefits Members** **Can edit** again (step 1.4),
+      then `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles -Estate <estate>`
+      (the role, Basic User and record owners).
 
    **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
    policy locks out the tenant.
