@@ -915,29 +915,29 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    retests are done. Sign in as the facilitator account unless a task says otherwise. The click paths come
    from each task's page; those marked *(not yet walked)* haven't been run as the facilitator.
 
-   **05-01 — Block HTTP and custom connectors in Prod** (attendees follow KT02, retest in KT03 and KT05)
+   **05-01 — Block HTTP and custom connectors in Prod** (attendees follow KT02; retests in KT03 and KT05)
 
    1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** →
-      `Halcourt-Prod-DLP-<estate>` → **Edit Policy** *(not yet walked)*.
-   2. Move **HTTP** and **HTTP with Microsoft Entra ID** to **Blocked**; set **custom connectors** to
-      **Blocked**; leave **Dataverse** and **SharePoint** in **Business**. Save.
-   3. **Show the room** the Blocked group, then wait for KT03 (Policy Lookup Bot and Underwriting Assistant)
-      and KT05. Expect Policy Lookup Bot's HTTP call to fail (`DataLossPreventionViolation`), and maybe
-      agents that won't publish (the page's warning). Don't predict the MCP half: in the reference build,
-      blocking custom connectors did **not** stop Underwriting Assistant's MCP tool. Record what the
-      retest shows — either result is a finding, not a broken demonstration.
-   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp`
+      `Halcourt-Prod-DLP-<estate>` → **Edit Policy**.
+   2. On **Prebuilt connectors**, search `http` and move all five matches to **Blocked** (HTTP, HTTP with
+      Microsoft Entra ID, HTTP with Microsoft Entra ID (preauthorized), When a HTTP request is received,
+      HTTP Webhook). On **Custom connectors**, set the `*` pattern to **Blocked**. Leave **Dataverse** and
+      **SharePoint** in **Business**. **Next** through to **Review** and save.
+   3. **Show the room** the Blocked group, then run KT03 (Policy Lookup Bot) and KT05 (Claims Copilot) on
+      screen in this estate. Expect Policy Lookup Bot's HTTP call to fail (`DataLossPreventionViolation`),
+      and maybe agents that won't publish (the page's warning). Underwriting Assistant isn't retested.
+   4. **Leave it in place** for 05-02; the put-back is 05-02's step 5.
 
-   **05-02 — A data policy on the default environment** (KT03; retests in KT06 and KT08)
+   **05-02 — Add the default environment to the policy** (KT02; retests in KT05)
 
-   1. **Power Platform admin center** → **Security** → **Data and privacy** → **Data policy** → **New
-      policy**, named `Halcourt-Default-DLP-<estate>`, scoped to **Halcourt (default)** only, with **HTTP**,
-      **HTTP with Microsoft Entra ID** and **custom connectors** **Blocked** *(not yet walked)*.
-   2. **Show the room** the policy, and that you can't fence the default environment's makers: every
+   1. Open `Halcourt-Prod-DLP-<estate>` → **Edit Policy** → **Next** to **Environments**.
+   2. On **Available**, search `default`, tick `Halcourt (default)`, **+ Add to policy**. **Next** and save on
+      **Review**. The default environment now carries 05-01's blocks.
+   3. **Show the room** the policy, and that you can't fence the default environment's makers: every
       licensed user is an Environment Maker there.
-   3. Wait for KT06 and KT08.
-   4. **Put it back:** `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` — it deletes the new policy (the estate id in its
-      name is what allows that).
+   4. Wait for KT05.
+   5. **Put it back:** remove `Halcourt (default)` from the policy the same way, then
+      `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control Dlp` to restore 05-01's baseline.
 
    **05-03 — Scope Benefits Buddy's reach, and svc-claims's role** (KT01, KT02; retests in KT03, KT04)
 

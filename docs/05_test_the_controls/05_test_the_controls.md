@@ -16,8 +16,9 @@ the Halcourt Mutual estate misbehaves.
 This exercise returns to that list. For each failure, your facilitator either **applies a Microsoft control
 to the estate**, where it can be done and undone within the session, or you **reason through** what the
 control would do. Then you check whether the attack still works.
-The estate is shared by everyone in the room, so each change is made once, by the facilitator, and undone
-when the retests are done. You are not here to admire
+Each of you has your own estate, and the facilitator applies each control once, in the facilitator's estate,
+then undoes it after the retests. Your own estate never gets the change, so the facilitator runs each
+retest on screen, and you record what it shows as observed (demo). You are not here to admire
 a feature list. You are here to answer one honest question per cell: after this control is on, does the
 attack still work?
 
