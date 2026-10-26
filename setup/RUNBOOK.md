@@ -984,15 +984,20 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    **05-07 — Show Audit × D on Expense Helper** (reveal; nothing changes). Real-time protection stays
    reasoned through (KT06).
 
-   1. In Power Automate (`make.powerautomate.com`), switch to **Halcourt (default)** and, as an admin or as
-      Sam Olsen, open the flow **Submit and auto-approve expense under $500** → **Run history**. Attendees
-      can't open it (#73), so this is shown, not done.
-   2. **Show the room** a run at the time of one attendee's Exercise 04 Expense Helper chat, next to that
-      attendee's `CopilotInteraction` event from KT04. The run executes under Sam Olsen's authority and names
-      no requester; only matching the two by time links them, so attribution is **cross-log only**.
-   3. Say what it isn't: the flow has no actions or connections, so the run writes nothing; "Auto-approved"
-      is only the reply.
-   4. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
+   1. Sign in as a **System Administrator of Halcourt (default)**, such as the tenant admin who built the
+      estates, not the facilitator account: it holds only Environment Maker there and can't open another
+      user's flow. Attendees can't open it either (#73), so this is shown, not done.
+   2. In Power Automate (`make.powerautomate.com`), switch to **Halcourt (default)** → **Solutions** →
+      **Default Solution** → **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense
+      under $500** (24 of them): open the one owned by **Sam Olsen (<estate>)** → **Run history**. A run
+      appears a few minutes after the chat and is kept 28 days.
+   3. **Show the room** a run at the time of one attendee's Exercise 04 Expense Helper chat, next to that
+      attendee's `CopilotInteraction` event from KT04. The run is owned by Sam Olsen and names no requester:
+      the flow's only input is the amount. Only matching the two by time links them, so attribution is
+      **cross-log only**.
+   4. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
+      nothing. "Auto-approved" (under $500) is only the reply.
+   5. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
       channel, and Halcourt-Prod read logging is off by design (04b), so its reads reach no log.
 
 3. **At the end, check everything is back.** Every line must say "same as the snapshot":
