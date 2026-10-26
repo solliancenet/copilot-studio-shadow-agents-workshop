@@ -12,8 +12,8 @@ has_children: true
 You are still Ana Reyes. Exercises 00 and 01 gave you evidence: five CSVs, each from one source, none
 answering a question on its own. This exercise turns that evidence into judgements. You combine the five
 into one row per agent, flag the conditions that make an agent a problem, and clear, with a reason, the
-agents that only look risky. The result is the inventory you'd hand leadership: not what each portal
-shows, but what you have and which of it needs attention.
+agents that only look risky. The result is your working inventory: not what each portal shows, but
+what you have, who is accountable for it, and which agents need a closer look.
 
 Your CSVs hold almost everything you need, including whose credentials each agent's tools use. The one
 thing they don't record is what an agent grounds on: for that, you reopen the agent's **Knowledge** page
