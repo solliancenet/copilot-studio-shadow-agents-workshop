@@ -34,8 +34,9 @@ After this exercise you will be able to:
   classify each agent by the most sensitive data it can reach.
 - Distinguish the **agent owner** from the **connection owner**, and explain why recording only the agent
   owner hides who is accountable for the connections an agent uses.
-- Flag the problem conditions — orphaned, shadow, test-became-prod, shared connection, and unknown or
-  ambiguous owner — and justify **clearing** the agents that look risky but are clean.
+- Flag the problem conditions — orphaned, shadow, test-became-prod, shared connection, unknown or
+  ambiguous owner, and nobody realizes it exists — and justify **clearing** the flagged agents that turn
+  out to be clean.
 
 ## Duration
 
