@@ -76,8 +76,8 @@ Never System Administrator, which would hand every attendee write access to the 
 The reviewer stance - observe the shared estate, change nothing - holds; attendees change only their own
 slice (Phase 8c), where they *are* System Administrator. `-NoDataverseRole` skips all of it.
 
-Extend the model from an exercise's requirement, never from a failing probe. Three exercises in a row (03-02,
-03-04, Exercise 04) had their live path blocked because the role had been sized for 01-02 and grown
+Extend the model from an exercise's requirement, never from a failing probe. Three exercises in a row (two Exercise
+03 tasks, then Exercise 04) had their live path blocked because the role had been sized for 01-02 and grown
 reactively; the preflight now fails before a delivery if an environment's role has drifted from the model.
 
 Two things that bite here, both verified:

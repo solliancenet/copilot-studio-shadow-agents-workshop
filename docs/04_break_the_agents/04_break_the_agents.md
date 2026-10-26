@@ -32,8 +32,8 @@ Microsoft control actually removes each one.
 Each scenario is one task page. For each, you will:
 
 1. **Orient** on the trust boundary the scenario stresses.
-2. **Observe** the failure — either in the live tenant, or by reasoning it out from the exported artifact
-   pack. Both paths are always provided.
+2. **Observe** the failure — in the live tenant, or by reasoning it out from the artifact pack and your own
+   earlier worksheets.
 3. **Record** exactly one row in your **Agent Threat Model**: *Attack → Asset → Trust boundary → Impact →
    Existing control.* Then compare it with the suggested row in that task's reveal.
 
@@ -72,8 +72,8 @@ authorizes, and what you observe. That gap is the whole subject of this exercise
 | [F]({% link docs/04_break_the_agents/04_06.md %}) | Lifecycle (orphan / test-became-prod) | Onboarding Guide; Claims Copilot |
 
 > The live tenant is the preferred path: you drive the agents and read their configuration yourself.
-> Every scenario is also completable **offline** from the five filled-in CSVs in the artifact pack plus
-> the provided screenshots, so you are never blocked when the tenant is slow or the demo queue is long.
+> Every scenario is also completable **offline** from the filled-in CSVs in the artifact pack,
+> so you are never blocked when the tenant is slow or the demo queue is long.
 {: .note }
 
 ## Objectives
@@ -96,10 +96,10 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 60 minutes.
+**Estimated time:** 90 minutes.
 
-This is the centerpiece of the day and the most likely exercise to over-run. Roughly 15 minutes per
-scenario. If the room is tight, run A and D hands-on and take B, C, E, and F as guided walk-throughs in the
+This is the centerpiece of the day and the most likely exercise to over-run. Roughly 15–20 minutes for
+each of A to E, and 5 for F. If the room is tight, run A and D hands-on and take B, C, E, and F as guided walk-throughs in the
 live tenant, or from the artifact pack if you can't reach it — the recorded rows are what matter.
 
 ## Deliverable
