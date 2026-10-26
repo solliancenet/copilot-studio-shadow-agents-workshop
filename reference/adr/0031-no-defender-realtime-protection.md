@@ -1,4 +1,4 @@
-# ADR-0031: Defender real-time protection for agents is not used
+# ADR-0031: Defender real-time protection for agents is not exercised in KT06
 
 **Status:** Accepted (checked 2026-10-20). Amended 2026-10-26: an Agent 365 trial (2026-10-24) removed the
 licence blocker, and the setup in RUNBOOK Phase 5b was run for the `jrc` estate. KT06 still reasons it
