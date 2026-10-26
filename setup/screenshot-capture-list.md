@@ -12,7 +12,7 @@ Total: 13 screenshots.
 | `ex01_t01_kt01_s01.png` | `docs/01_the_agent_estate/01_01.md` | Screenshot of agents-export.csv open in a spreadsheet, one row per agent |
 | `ex02_t01_kt01_s02.png` | `docs/02_discover_and_inventory/02_01.md` | Power Platform admin center Inventory page listing Copilot Studio agents across environments |
 | `ex02_t02_kt01_s01.png` | `docs/02_discover_and_inventory/02_02.md` | The five artifact-pack exports matched on agent name, owner UPN, and environment |
-| `ex03_t02_kt04_s01.png` | `docs/03_identity_and_effective_access/03_02.md` | A completed Agent Access Map block with the seven layer rows filled and the gap classified |
+| `ex03_t02_kt03_s01.png` | `docs/03_identity_and_effective_access/03_02.md` | A completed Agent Access Map block with the seven layer rows filled and the gap classified |
 | `ex04_t01_kt01_s01.png` | `docs/04_break_the_agents/04_01.md` | Benefits Buddy grounding configuration showing the whole HR-Benefits SharePoint site in scope, including a Leadership subfolder |
 | `ex04_t03_kt02_s01.png` | `docs/04_break_the_agents/04_03.md` | Underwriting Assistant's MCP tool Details (Tools page, `/actions`): the **Tools** list with get_quote, get_risk_score and the broad run_query, all switched on (it is one Model Context Protocol tool, not topic nodes) |
 | `ex04_t05_kt02_s01.png` | `docs/04_break_the_agents/04_05.md` | Policy Lookup Bot's topic with the HTTP request node, the API key value redacted (the request is a node in the *Look up policy* topic, not a tool) |
