@@ -992,13 +992,16 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       `make.powerautomate.com/environments/<environment id>/solutions/fd140aaf-4df4-11dd-bd17-0019b9312238`,
       the Default Solution's id in every environment. In its **Objects** pane
       select **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense under $500**
-      (24 of them); the **Owner** column tells them apart, e.g. `# Sam Olsen (<estate>)`. **Select the row**
-      and choose **Details** in the toolbar. Don't select the flow's name: that opens it in the editor.
+      (24 of them); the **Owner** column tells them apart, e.g. `# Sam Olsen (<estate>)`. Open the copy
+      owned by **Sam Olsen (the attendee's estate** whose chat you'll match in step 4), not your own, or
+      there's no run at that attendee's time. **Select the row** and choose **Details** in the toolbar.
+      Don't select the flow's name: that opens it in the editor.
    3. **Details** shows **28-day run history**; a run can take a few minutes to appear. Select the run at
       the time of one attendee's Exercise 04 Expense Helper chat, then **When Copilot Studio calls a flow** →
       **Show raw outputs**. The body is only the amount; the headers name the agent and channel
       (`BotSchemaName:cr458_ExpenseHelper<estate>`, `ChannelId:msteams`) but no user. Don't select
-      **Resubmit** or **Edit**.
+      **Resubmit** or **Edit**, and sign out (or close the private window) when done - this is the tenant
+      admin on the shared screen.
    4. **Show the room** that run next to the same attendee's `CopilotInteraction` event: in their KT01
       search, the row whose **AgentName** is Expense Helper. The run says which agent called it and when, not
       who asked. Matching the two by agent and time is **cross-log only** - or **partial** if more than one
