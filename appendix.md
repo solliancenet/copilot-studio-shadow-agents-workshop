@@ -44,7 +44,8 @@ tenant, a first-week starting list, and further reading.
 > New Copilot Studio agents created since May 2026 get an Entra Agent ID; older Copilot Studio agents may
 > still use a legacy app registration until Microsoft migrates them. Agent 365 went GA on May 1, 2026.
 > Which Agent 365 views you get, which agents are migrated, and how completely Defender sees Copilot
-> Studio activity depend on your licensing and tenant — verify them in yours.
+> Studio activity depend on your licensing and tenant — verify them in yours. If your tenant is in GCC,
+> see [Appendix: GCC tenants]({% link appendix-gcc.md %}) for what's missing or limited there.
 
 ## Your first week
 
