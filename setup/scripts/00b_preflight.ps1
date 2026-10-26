@@ -246,7 +246,7 @@ Check "Attendees are in the agents' chat audience ($($AudienceGroups -join ', ')
 foreach ($en in $wantEnvs) {
   $e = $envs | Where-Object { $_.properties.displayName -eq $en } | Select-Object -First 1
   $org = $e.properties.linkedEnvironmentMetadata.instanceApiUrl
-  Check "'$DvRoleName' matches the access model ($en)" '03-02, 03-04; Copilot Studio steps of 01, 02, 04' {
+  Check "'$DvRoleName' matches the access model ($en)" '03-01, 03-02; Copilot Studio steps of 01, 02, 04' {
     if (-not $org) { return Result 'WARN' 'environment missing or has no Dataverse' }
     $esc  = $DvRoleName.Replace("'", "''")
     $role = (Get-Json "$org/api/data/v9.2/roles?`$select=roleid&`$filter=name eq '$esc'" $org).value | Select-Object -First 1

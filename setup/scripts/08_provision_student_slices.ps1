@@ -1,6 +1,6 @@
 <#
 FACILITATOR-ONLY. Phase 8c - per-student slices, so every attendee can open the svc-claims role as System
-Administrator in 03-02 and 03-04.
+Administrator in 03-01 and 03-02.
 
 The PPAC role editor opens for a System Administrator whatever their licence, but for a reviewer holding the
 read-only Lab Reviewer role only if they have a Dataverse-capable seat: an unlicensed account runs in
@@ -27,7 +27,7 @@ WHAT THIS BUILDS, PER ATTENDEE (slice = one environment, not a whole estate):
   3. `svc-claims` added, then the Phase 5 seed run into it - Claim and Customer with PII rows, and the
      over-broad `svc-claims Dataverse Full Access` role assigned. That is Scenario C/D's substrate;
   4. the attendee added as System Administrator OF THEIR OWN environment, so the role editor opens for
-     them in 03-02 and 03-04 with or without a seat - which it does not in the shared estate.
+     them in 03-01 and 03-02 with or without a seat - which it does not in the shared estate.
 
 NOT BUILT HERE, AND NOT NEEDED WHILE EXERCISE 05 IS DEMONSTRATED. A slice holds no agents and no SharePoint
 site. Only if attendees ever apply Exercise 05's controls in their own slice would each slice need these:
@@ -217,14 +217,14 @@ foreach ($n in 1..$Count) {
   }
 
   # The attendee owns their slice: System Administrator here opens the svc-claims role in the PPAC role
-  # editor for 03-02 and 03-04, licensed or not - which the read-only role in the shared estate does not.
+  # editor for 03-01 and 03-02, licensed or not - which the read-only role in the shared estate does not.
   $studentUpn = "$(Get-EstateAlias ("{0}{1:d2}" -f $StudentPrefix, $n) $Estate)@$DomainSuffix"
   $oid = Add-EnvUser $env.name $studentUpn
   if ($oid) {
     try {
       # addUser is ASYNCHRONOUS and Invoke-DvRetry retries exceptions, not a successful-but-empty
       # result, so a single lookup here can silently miss the record and leave the attendee without
-      # System Administrator - which is exactly the grant 03-02 and 03-04 depend on.
+      # System Administrator - which is exactly the grant 03-01 and 03-02 depend on.
       $su = $null
       foreach ($try in 1..12) {
         $su = (Invoke-DvRetry $url ("systemusers?`$select=systemuserid&`$filter=" + [uri]::EscapeDataString("azureactivedirectoryobjectid eq $oid"))).value | Select-Object -First 1

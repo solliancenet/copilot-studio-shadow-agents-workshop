@@ -17,7 +17,7 @@ row, each patched by adding what the last 403 named:
 
 | Module | What failed | What it needed |
 |---|---|---|
-| 03-02, 03-04 | the PPAC role editor: *"Loading role failed!"* | six metadata reads the editor's `EntityDefinitions` and `recordfilters` calls make |
+| 03-01, 03-02 | the PPAC role editor: *"Loading role failed!"* | six metadata reads the editor's `EntityDefinitions` and `recordfilters` calls make |
 | 01-01 s2-3, 02-01..03, all of 04 | opening an agent in Copilot Studio: *"You need additional access"* | eight Copilot read privileges at Global depth **plus** the built-in `Bot Viewer` |
 
 The role had become a side effect of whichever probe last failed.
@@ -54,7 +54,7 @@ from an exercise's requirement; a privilege nobody can tie to a step does not be
   | student03 | none | custom (complete model) + Bot Viewer | fails (2026-10-17) |
 
   So the model is necessary and, with a seat, sufficient. Without one, attendees hold System Administrator
-  only in their own slice — why 03-02 and 03-04 route there.
+  only in their own slice — why 03-01 and 03-02 route there.
 - **`addUser` ignores the usual licensing rule.** The BAP admin `addUser` endpoint adds an unlicensed user,
   and a role assigned afterwards works.
 - **Match accounts by Entra object id, never by UPN.** A destroy/recreate cycle leaves the previous account's

@@ -34,6 +34,9 @@ You work the Halcourt Mutual estate in the live tenant, or from the filled-in ar
 reach it, and produce an Access Map for three agents that answers one blunt question for each: **can this
 agent obtain data, or cause an action, that its intended users could not?**
 
+In this lab, treat every agent as available to every employee. In a real estate, you'd read each agent's
+sharing.
+
 ## Objectives
 
 After this exercise you will be able to:

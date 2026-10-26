@@ -565,7 +565,7 @@ try {
 }
 
 # --- Dataverse read-only role -------------------------------------------------------------------------------
-# Lab 03-02 and 03-04 send attendees to read the acting identity's SECURITY ROLE inside an environment. Power
+# Lab 03-01 and 03-02 send attendees to read the acting identity's SECURITY ROLE inside an environment. Power
 # Platform Administrator is a TENANT role and grants nothing in Dataverse, so without this the read fails with
 # 0x80042f09 "has not been assigned any roles" (verified 2026-10-13). The fix is a purpose-built role with
 # organization-scope READ on the few tables the exercise needs - never System Administrator, which would hand

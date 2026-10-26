@@ -70,7 +70,7 @@ real Windows desktop browser for interactive sign-in and MFA? See
 8. Validate                    → every planted problem reproduces; verdicts hold
 8b. Lab (attendee) accounts    → per delivery: N native accounts to hand out, removed again afterwards
 8c. Per-student slices         → an environment each, BEFORE Exercise 03: attendees open the svc-claims role
-                                 there as System Administrator (03-02/03-04)
+                                 there as System Administrator (03-01/03-02)
 9. Teardown / reseed
 ```
 
@@ -695,7 +695,7 @@ An attendee account is a tenant-wide Power Platform admin: delete the accounts r
 ### Phase 8c — Per-student slices (needed from Exercise 03)
 
 Each attendee gets a small environment of their own, where they are System Administrator, to open the
-`svc-claims` role in Tasks 03-02 and 03-04. Why, and what a slice holds:
+`svc-claims` role in Tasks 03-01 and 03-02. Why, and what a slice holds:
 [student-slices.md](../reference/student-slices.md).
 
 1. **Build a slice for each attendee account, before the delivery.** The script creates `Lab-<estate>-NN`

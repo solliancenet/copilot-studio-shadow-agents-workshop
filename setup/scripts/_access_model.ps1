@@ -5,7 +5,7 @@
 # needs it. This table is the specification. $DvPrivilegeNames is derived from it, and 07 reconciles every
 # estate environment to exactly this set on every run - adding what is missing and REMOVING what is not
 # listed (07 -KeepExtraPrivileges reports instead). Extend it from an exercise's requirement, never from a
-# failing probe: three modules in a row (03-02, 03-04, then Exercise 04 and the Copilot Studio steps of 01
+# failing probe: three modules in a row (03-01, 03-02, then Exercise 04 and the Copilot Studio steps of 01
 # and 02) had their live path blocked because the role had been sized for 01-02 and grown reactively. A
 # privilege nobody can tie to a step does not belong here.
 #
@@ -77,9 +77,9 @@ $GraphExplorerScopes = @('openid', 'profile', 'offline_access', 'User.Read', 'Us
 $CaPolicyName = 'CA-Require-MFA-Admins'
 
 $DvAccessModel = @(
-  # PPAC: users, roles, connections ........................... Lab 00-02, 01-01, 02-03, 03-01, 03-02, 03-04
-  @{ Privilege = 'prvReadUser';                   Needs = '00-02 KT01 s3 maker access; 03-01 Access panel; 03-04 KT01 s3 acting identity' }
-  @{ Privilege = 'prvReadRole';                   Needs = '00-02 KT01 s3; 03-02 KT01 roles list; 03-04 KT01 s3' }
+  # PPAC: users, roles, connections ........................... Lab 00-02, 01-01, 02-03, 03-01, 03-01, 03-02
+  @{ Privilege = 'prvReadUser';                   Needs = '00-02 KT01 s3 maker access; 03-01 Access panel; 03-01 KT02 s2 acting identity' }
+  @{ Privilege = 'prvReadRole';                   Needs = '00-02 KT01 s3; 03-01 KT02 s2 roles list' }
   @{ Privilege = 'prvReadOrganization';           Needs = '03-01 environment hub' }
   @{ Privilege = 'prvReadBusinessUnit';           Needs = '03-02: a role scoped to a business unit' }
   @{ Privilege = 'prvReadConnector';              Needs = '01-01 KT01 s3 and 02-03 connections' }
@@ -95,7 +95,7 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadRecordAuditHistory';     Env = 'Claims-Test'; Needs = '05-07 KT03: audit records (the audits API; without it 0x80040220)' }
   @{ Privilege = 'prvReadAuditSummary';           Env = 'Claims-Test'; Needs = '05-07 KT03: the Audit Summary view' }
   @{ Privilege = 'prvReadQuery';                  Env = 'Claims-Test'; Needs = '05-07 KT03: Audit Summary renders its views (named in its 403)' }
-  # PPAC role editor: the per-table privilege grid ............................. 03-02 KT01 s2, 03-04 KT01 s3
+  # PPAC role editor: the per-table privilege grid ............................. 03-01 KT02 s2
   @{ Privilege = 'prvReadAttribute';              Needs = '03-02 role editor: EntityDefinitions (named in its 403)' }
   @{ Privilege = 'prvReadEntity';                 Needs = '03-02 role editor: EntityDefinitions' }
   @{ Privilege = 'prvReadRelationship';           Needs = '03-02 role editor: EntityDefinitions (named in its 403)' }
@@ -107,7 +107,7 @@ $DvAccessModel = @(
   @{ Privilege = 'prvReadbot';                    Needs = 'agent list and agent page - GLOBAL depth, the agents belong to the personas' }
   @{ Privilege = 'prvReadbotcomponent';           Needs = 'Knowledge, Topics, Tools' }
   @{ Privilege = 'prvReadbotcomponentcollection'; Needs = 'agent page' }
-  @{ Privilege = 'prvReadconnectionreference';    Needs = '02-02, 03-01, 03-04, 04-02: a connector tool''s Details / credentials setting (Bot Viewer grants it at Basic only: Claims Copilot''s tools said "error obtaining required dependencies")' }
+  @{ Privilege = 'prvReadconnectionreference';    Needs = '02-02, 03-01, 03-02, 04-02: a connector tool''s Details / credentials setting (Bot Viewer grants it at Basic only: Claims Copilot''s tools said "error obtaining required dependencies")' }
   @{ Privilege = 'prvReadmsdynce_botcontent';     Needs = 'agent page' }
   @{ Privilege = 'prvReadAICopilot';              Needs = 'agent page' }
   @{ Privilege = 'prvReadCopilotExampleQuestion'; Needs = 'agent page' }
@@ -129,7 +129,7 @@ $DvCompanionRoles = @('Bot Viewer')
 $TenantCapabilities = @(
   @{ Name = 'Purview sensitivity label Confidential-PII + SSN sensitive info type'; Protects = '05-06 and the Scenario B verdict'; Fallback = 'none - no phase creates them; AGENTS.md lists them as estate components' }
   @{ Name = 'Teams-capable seat per attendee (E5)';           Protects = '04-01, 04-02, 04-04 chat: the agents authenticate with Microsoft, Teams is the only working channel (the M365 Copilot option is greyed out), and Teams refuses an unlicensed account outright - verified 2026-10-17'; Fallback = 'the reveal blocks and the artifact pack' }
-  @{ Name = 'Dataverse-capable licence per attendee';        Protects = 'the access model in the SHARED estate: the PPAC role editor (03-02 KT01 s2, 03-04 KT01 s3, 04-03 KT02 s2) and the Copilot Studio agent pages (01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2, 03-04, 04-01..06, 05-01 KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2). Unlicensed = Administrative mode, which filters the custom role'; Fallback = 'the role editor in 03-02 and 03-04: the attendee''s own slice, where System Administrator survives the filter; everything else: the artifact pack' }
+  @{ Name = 'Dataverse-capable licence per attendee';        Protects = 'the access model in the SHARED estate: the PPAC role editor (03-01 KT02 s2, 04-03 KT02 s2) and the Copilot Studio agent pages (01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02, 04-01..06, 05-01 KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2). Unlicensed = Administrative mode, which filters the custom role'; Fallback = 'the role editor in 03-01 and 03-02: the attendee''s own slice, where System Administrator survives the filter; everything else: the artifact pack' }
 )
 
 # Privileges Dataverse stamps onto EVERY custom role at creation and refuses (HTTP 400) to remove. They are
