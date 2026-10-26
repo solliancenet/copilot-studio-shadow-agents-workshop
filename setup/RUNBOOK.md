@@ -962,6 +962,15 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       then `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles -Estate <estate>`
       (the role, Basic User and record owners).
 
+   {: .warning }
+   > **Known open item for the Scenario C retest (#98).** After the scoped role, Claims Copilot may still
+   > return a claim outside the subset (e.g. "CLM-9003 is currently Approved"). The likely cause is that the
+   > claim data is **also** in the agent's grounding: the build uploaded `claims.csv` into `Claims-Knowledge`,
+   > which the agent can read regardless of the Dataverse role. Present this as the finding it is — least
+   > privilege on one path doesn't help when the same data has a second, indexed path — **not** as the scoped
+   > role failing, and don't wait on "re-check in 15-20 minutes" to fix it (the index won't change the
+   > answer). Being confirmed and resolved in #98.
+
    **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
    policy locks out the tenant.
 
