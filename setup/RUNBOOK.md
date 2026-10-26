@@ -988,16 +988,21 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       estates, not the facilitator account: it holds only Environment Maker there and can't open another
       user's flow. Attendees can't open it either (#73), so this is shown, not done.
    2. In Power Automate (`make.powerautomate.com`), switch to **Halcourt (default)** → **Solutions** →
-      **Default Solution** → **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense
-      under $500** (24 of them): open the one owned by **Sam Olsen (<estate>)** → **Run history**. A run
-      appears a few minutes after the chat and is kept 28 days.
-   3. **Show the room** a run at the time of one attendee's Exercise 04 Expense Helper chat, next to that
-      attendee's `CopilotInteraction` event from KT04. The run is owned by Sam Olsen and names no requester:
-      the flow's only input is the amount. Only matching the two by time links them, so attribution is
-      **cross-log only**.
-   4. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
+      **Default Solution**; it's below the per-agent solutions, so search for it. In its **Objects** pane
+      select **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense under $500**
+      (24 of them); the **Owner** column tells them apart, e.g. `# Sam Olsen (<estate>)`. **Select the row**
+      and choose **Details** in the toolbar. Don't select the flow's name: that opens it in the editor.
+   3. **Details** shows **28-day run history**; a run appears a few minutes after the chat. Select the run at
+      the time of one attendee's Exercise 04 Expense Helper chat, then **When Copilot Studio calls a flow** →
+      **Show raw outputs**. The body is only the amount; the headers name the agent and channel
+      (`BotSchemaName:cr458_ExpenseHelper<estate>`, `ChannelId:msteams`) but no user. Don't select
+      **Resubmit** or **Edit**.
+   4. **Show the room** that run next to the attendee's `CopilotInteraction` event from KT04. The run says
+      which agent called it and when, not who asked. Only matching the two by agent and time links them, so
+      attribution is **cross-log only**.
+   5. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
       nothing. "Auto-approved" (under $500) is only the reply.
-   5. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
+   6. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
       channel, and Halcourt-Prod read logging is off by design (04b), so its reads reach no log.
 
 3. **At the end, check everything is back.** Every line must say "same as the snapshot":
