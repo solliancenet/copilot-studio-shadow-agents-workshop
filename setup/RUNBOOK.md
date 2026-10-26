@@ -468,8 +468,112 @@ an estate deploys nothing.
    - It ends with a `Check` line: `unified audit ingestion`, `environment audit` and `mm_claim` must be
      `True`, and `mm_customer` must be `False` — Customer stays unaudited on purpose.
    - Purview Audit can take up to 60 minutes to start recording.
-   - Defender real-time protection for agents isn't set up — the tenant lacks its licence
-     ([ADR-0031](../reference/adr/0031-no-defender-realtime-protection.md)).
+
+**Defender real-time protection for agents (05-07 KT06) — optional.** KT06 stays reasoned through
+([ADR-0031](../reference/adr/0031-no-defender-realtime-protection.md)); these steps only put the control in
+place. Run on 2026-10-26 for the `jrc` estate: steps 2–6 done, and step 7 showed 3 of 3. Not run: step 5's
+blocking rule, and a tool call through Defender. What the run hit:
+[errata → Phase 5b](../reference/runbook-errata.md#phase-5b--defender-real-time-protection-set-up-for-jrc-2026-10-26).
+
+- **Settings.** In the Defender portal, **Settings** is **Setup & configuration → Settings** in the left
+  menu. The gear at the top right holds only your own preferences.
+- **Licence.** The tenant needs Microsoft Agent 365; without it **Settings → Security for AI** says *"You
+  don't have permission to view this page"*. An admin-led trial is 25 seats for 30 days, so time it to
+  the delivery. With the trial started 2026-10-24, **Security for AI** opened and its **Agent 365** step
+  showed **Done** with nothing to do. Whether attendee accounts need a seat each is open (`[verify]`).
+- **Who.** Steps 2–5 and 7 need a Security Administrator: your tenant admin. The facilitator account no
+  longer holds that role (07b retires it). Step 6 needs a Power Platform Administrator: the facilitator,
+  and also every lab account. **Get started** lists `Lab Student 01 (stu01)` under **Identified Power
+  Platform Admins**, so attendees can change or clear step 6.
+- **How often.** Steps 2–5 and 7 are **once per tenant** and serve every estate: the app's credential names
+  only the tenant and the endpoint, and Defender takes one App ID. Step 6 is **once per estate**: Power
+  Platform has no tenant-wide switch, so each `Halcourt-Prod-<estate>` is set up on its own, by hand.
+  Defender's **Copilot Studio** step turned **Connected** after the first estate, so it says nothing about
+  the others; step 6's save message is the check for each estate.
+
+Learn: *Enable security for AI agents using Microsoft Defender*, *Enable external threat detection and
+protection for Copilot Studio custom agents*, *Protect AI agents in real time using Microsoft Defender*.
+
+2. **Turn on Defender XDR and open Defender for Cloud Apps once.** Once per tenant, as a Security
+   Administrator. In the Microsoft Defender portal (https://security.microsoft.com):
+
+   - Open any item in the left menu, such as **Incidents** or **Advanced hunting**. That onboards Defender
+     XDR. Check: **Settings → Microsoft Defender XDR → Account** shows **Data Retention**, a **Tenant ID**
+     and an **Org ID**.
+   - Open **Settings → Cloud Apps** once: the Defender XDR integration needs one sign-in to Defender for
+     Cloud Apps. Check: **System → About** shows a **Defender for Cloud Apps Tenant ID**, a region and a
+     data center. Don't use the **Cloud apps** item in the left menu for this: it opens the apps
+     themselves, such as OneDrive.
+   - Microsoft doesn't document the *"Hang on! We're preparing new spaces for your data and connecting
+     them"* page the 2026-10-20 build saw, or how long it lasts. On 2026-10-26 neither page showed it.
+
+3. **Turn on security for AI agents.** Once per tenant. **Settings → Security for AI → Get started**, and
+   leave **Enable** on.
+
+   - **Microsoft 365 connector** step: select **Microsoft Entra ID Management events** and **Microsoft 365
+     activities**, then **Connect Microsoft 365**. It shows **Pending connection**, then **Connected**;
+     Learn gives no time. The connector's own status is under **Settings → Cloud Apps → Connected apps →
+     App Connectors**. Without it blocks still happen, but no alerts reach Defender.
+   - **Copilot Studio** step: turn **Real-time protection** on and copy the URL under **Enable Power
+     Platform Integration**. That URL is the *endpoint* in steps 4 and 6; on 2026-10-26 it was
+     `https://mcsaiagents.security.core.microsoft/v1/protection`. **App ID** is required and **Save** stays
+     greyed out until it's filled, so this pane is saved in step 5. Leave it open.
+
+4. **Create the app Copilot Studio signs in to Defender as.** Once per tenant. It has a federated
+   credential and no secret. In the dev container, run `pwsh` and paste this, with the endpoint from step 3:
+
+   ```powershell
+   $endpoint = '<endpoint URL from step 3>'
+   $tenant   = az account show --query tenantId -o tsv
+   function B64Url([byte[]]$b) { [Convert]::ToBase64String($b).Replace('+','-').Replace('/','_').TrimEnd('=') }
+   $subject  = '/eid1/c/pub/t/{0}/a/m1WPnYRZpEaQKq1Cceg--g/{1}' -f (B64Url ([Guid]::Parse($tenant).ToByteArray())), (B64Url ([Text.Encoding]::UTF8.GetBytes($endpoint)))
+   $appId    = az ad app create --display-name 'Defender for Copilot Studio' --sign-in-audience AzureADMyOrg --query appId -o tsv
+   az ad sp create --id $appId | Out-Null
+   @{ name = 'defender-copilot-studio'; issuer = "https://login.microsoftonline.com/$tenant/v2.0"
+      subject = $subject; audiences = @('api://AzureADTokenExchange') } | ConvertTo-Json | Set-Content /tmp/fic.json
+   az ad app federated-credential create --id $appId --parameters /tmp/fic.json | Out-Null
+   $appId
+   ```
+
+   - It prints the App ID, which steps 5 and 6 need. Running it again makes a second app; to find the
+     first: `az ad app list --display-name 'Defender for Copilot Studio' --query '[].appId' -o tsv`.
+   - Run on 2026-10-26: step 6's save succeeded with this credential, so the subject, issuer and audience
+     are right. If a save on another tenant fails with a subject error, **Copy error info** shows the
+     subject Copilot Studio expected: fix the credential to match it.
+
+5. **Give Defender the App ID.** Once per tenant. In the **Copilot Studio** pane from step 3, paste the App ID
+   into **App ID** and **Save**. The step then shows **Pending Power Platform Action** until step 6. A
+   validation error just after a change can mean it hasn't propagated yet: wait a minute and save again.
+
+   - **Optional: a blocking rule.** Per Learn, the built-in **Default** rule only audits; blocking needs a
+     custom rule. **Settings → Security for AI → Policies & rules → Real-time protection → Create rule**:
+     scope **All**, every detection type. Whether Copilot Studio blocks under the Default rule alone is
+     open (`[verify]`): the Learn pages disagree.
+
+6. **Connect `Halcourt-Prod-<estate>` to Defender.** Once per estate, as a Power Platform Administrator.
+   Power Platform admin center → **Security → Threat detection → Additional threat detection** → select
+   `Halcourt-Prod-<estate>` → **Set up**:
+
+   - Select **Allow Copilot Studio to share data with a threat detection partner**. Ticking it agrees to
+     Microsoft's preview terms; the pane says so.
+   - **Azure Entra App ID**: the App ID from step 4. **Endpoint link**: the endpoint from step 3.
+   - **Set error behavior**: leave it at **Allow the agent to respond**. If Defender doesn't answer within
+     a second, the tool call goes ahead.
+   - **Save**. It calls Defender, so a wrong app, a wrong credential or a skipped step 5 fails here. A
+     working setup shows **Connection is on for environment**.
+   - To turn it off later, clear the same checkbox and save.
+
+7. **Check Defender.** Once per tenant. **Settings → Security for AI → Get started** shows **3 of 3
+   complete**: **Agent 365** Done, **Microsoft 365 connector** and **Copilot Studio** Connected.
+
+   - Only tool calls are checked, and only on generative-orchestration agents. Benefits Buddy has no
+     tools, so its chats never reach Defender. That is KT06's point, but it means Benefits Buddy can't
+     show the connection works. Underwriting Assistant's MCP tool is a tool call Defender does see. What
+     an allowed call leaves in Defender is open (`[verify]`).
+   - **A connected estate's tool calls now go through Defender.** Scenarios C and E use Underwriting
+     Assistant's MCP tool in `Halcourt-Prod-<estate>`. The Learn pages disagree on whether the **Default**
+     rule only audits or also blocks (step 5). Until that's checked, re-run C and E on a connected estate
+     in Phase 8, or clear step 6's checkbox on the estates you deliver on.
 
 ### Phase 6 — Author the agents
 
@@ -780,7 +884,7 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
    - 04-04's write half is reasoned, not run: Claims Copilot has no update tool, so there's no test claim.
    - Claims Copilot's reads appear in no log: Dataverse never audits reads, and `Claims-Test` is a sandbox.
      05-07 KT03 teaches that gap.
-   - Defender real-time protection isn't set up (no Agent 365 licence); 05-07 KT06 reasons it through.
+   - 05-07 KT06 reasons Defender real-time protection through, even where Phase 5b has connected it.
 
 5. **Create the facilitator account and sign in with it once.** You demonstrate Exercise 05 as this account
    (`facilitator.<estate>`, "Lab Facilitator (<estate>)"), not your own tenant admin: it holds Power
@@ -870,8 +974,7 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    2. **Show the room:** `2026-comp-bands-labeled.xlsx` shows **Sensitivity** `Confidential-PII-<estate>`,
       `2026-comp-bands.xlsx` none. The library view has no Sensitivity column.
 
-   **05-07 — Nothing to change.** Real-time protection is reasoned through (KT06): the tenant has no Agent
-   365 licence.
+   **05-07 — Nothing to change.** Real-time protection is reasoned through (KT06).
 
 3. **At the end, check everything is back.** Every line must say "same as the snapshot":
 
