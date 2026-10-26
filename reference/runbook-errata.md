@@ -1505,6 +1505,34 @@ licence (an admin-led trial is 25 seats for 30 days) is a commercial decision, a
 to finish initialising (hours, started by the first admin visit). RUNBOOK Phase 5b lists the setup for when
 both are in place. Also seen: a PIM deactivation can silently miss - check the role's members afterwards and
 deactivate again.
+**Correction (2026-10-26).** "Hours" has no source: Microsoft documents no initialising step or time for
+Defender for Cloud Apps, and on 2026-10-26 the page didn't appear. RUNBOOK Phase 5b step 2 now follows Learn.
+
+### Phase 5b · Defender real-time protection set up for `jrc` (2026-10-26)
+
+Run with the Agent 365 trial from 2026-10-24, the Defender steps as the tenant admin; RUNBOOK Phase 5b
+steps 2–7 reached **3 of 3 complete**. What tripped the run:
+
+- **The gear isn't Settings.** It holds only personal preferences (themes, language, password). The
+  portal's Settings page is **Setup & configuration → Settings** in the left menu; Learn calls it **System →
+  Settings**.
+- **The Cloud apps menu opens the apps.** Its items opened OneDrive itself, not Defender for Cloud Apps.
+  **Settings → Cloud Apps** is the way in; **About** there shows the Defender for Cloud Apps Tenant ID.
+- **No "Hang on!" page.** Neither Defender XDR nor Cloud Apps showed it; both checks passed on the first
+  visit.
+- **The Microsoft 365 connector shows Pending connection first.** It read **Connected** by the end of the
+  run; Learn gives no time.
+- **Power Platform's label differs from Learn.** The checkbox reads *"…threat detection partner"*, not
+  "provider", and ticking it accepts Microsoft's preview terms. Save showed **Connection is on for
+  environment** - the first proof the federated credential from step 4 works.
+- **Defender's status is per tenant.** **Copilot Studio** turned **Connected** after one estate, so it
+  can't show which estates are connected.
+- **Attendees are Power Platform Administrators.** **Get started** lists `Lab Student 01 (stu01)` among
+  **Identified Power Platform Admins**, so attendees can change or clear an estate's connection.
+
+**Still open:** whether the Default rule blocks or only audits Copilot Studio tool calls (Scenarios C and E
+use Underwriting Assistant's MCP tool in a connected estate), what an allowed call leaves in Defender, and
+whether attendees need Agent 365 seats.
 
 ### Phase 8b · DSPM showed no transcripts to attendees (2026-10-21)
 

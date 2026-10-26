@@ -35,4 +35,4 @@ and what it costs. The [RUNBOOK](../../setup/RUNBOOK.md) stays a list of steps a
 | [0028](0028-planted-governance-gaps.md) | DLP on Prod only, and no Conditional Access for agent identities | Accepted |
 | [0029](0029-purview-app-only-identity.md) | Purview runs app-only, through one lab compliance app | Accepted |
 | [0030](0030-audit-claim-changes-only.md) | Audit claim changes only; no read logs | Accepted |
-| [0031](0031-no-defender-realtime-protection.md) | Defender real-time protection for agents is not used | Accepted |
+| [0031](0031-no-defender-realtime-protection.md) | Defender real-time protection for agents is not exercised in KT06 | Accepted (amended 2026-10-26) |
