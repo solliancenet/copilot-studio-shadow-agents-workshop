@@ -16,7 +16,7 @@ filled-in [artifact pack]({% link worksheets/index.md %}#the-artifact-pack).
 **Data sensitivity** is the most sensitive class of data the agent can *reach* through its grounding or
 its connections: PII, compensation, internal, or public/none. When in doubt, classify up.
 
-| # | Agent | Purpose | Environment (type · managed · DLP) | Owner (status) | Identity | Tool calls (connection · `auth_type` · connection owner) | Grounding | Data sensitivity |
+| # | Agent | Purpose | Environment (type · managed · DLP) | Owner (status) | Identity | Calls (tool, topic or flow: connection · `auth_type` · connection owner) | Grounding | Data sensitivity |
 |---|-------|---------|------------------------------------|----------------|----------|-----------------------------------------------------------|-----------|------------------|
 | 1 |       |         |                                    |                |          |                                                           |           |                  |
 | 2 |       |         |                                    |                |          |                                                           |           |                  |
