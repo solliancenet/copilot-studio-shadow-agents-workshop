@@ -901,11 +901,38 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
 
 ### During delivery — Exercise 05 demonstrations
 
-Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
-the estate back. Do it as the facilitator account (Before delivery, step 5), not your own tenant admin.
+Each attendee retests on their own estate, which shows the *before*. You apply each control on the
+presenting estate and show the *after* on screen, then put the estate back. Do it as the facilitator account
+(Before delivery, step 5), not your own tenant admin, unless a step says otherwise.
 
-1. **Before Exercise 05 starts, snapshot the estate.** The script records the data policies, the default
-   environment's makers and `svc-claims`'s roles, so each demonstration can be undone exactly:
+**Pacing (90 minutes).** Open with 05-01: it's the one control that visibly blocks an attack live. 05-02 and
+05-04 change nothing an agent uses (05-04 isn't applied at all), so explain them in a couple of minutes each
+instead of demonstrating. Pre-stage 05-03 (step 0): made live, its changes don't show within the session.
+
+0. **Hours before Exercise 05 (the morning of), pre-stage 05-03 on the presenting estate.** Made live,
+   Benefits Buddy keeps answering from its index for over an hour ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)),
+   so make the changes early and show the result. As the tenant admin:
+   1. **Snapshot first**, once, before any change (step 1's command with `-Estate <estate>`). Don't
+      snapshot again later: a snapshot taken after these changes makes the restore put them back.
+   2. **Scenario C:** `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1 -Estate <estate>`.
+   3. **Scenario C's second path:** until #109 is deployed, send `claims.csv` to the recycle bin in
+      `Claims-Knowledge-<estate>` → Shared Documents. It duplicates the claim statuses into the grounding
+      (#98). Leave it removed afterwards; #109 stops builds uploading it.
+   4. **Scenario B:** 05-03 step 1 (`Leadership/` → **HR Benefits Members** → **No direct access**).
+   5. **Check the *after*** in Copilot Studio's **Test** pane, as an admin of that environment.
+      - **Claims Copilot:** its tool runs on `svc-claims`'s connection whoever tests, so the pane matches
+        Teams. Rehearsed on `fac01` (2026-10-26): about 2 minutes after the role, "CLM-9003 is not listed
+        among the current claims", with only CLM-9001 and CLM-9002 visible.
+      - **Benefits Buddy:** grounding may read with the tester's own access, and the site's Owners keep
+        `Leadership/`, so an owner's test pane can't prove the *after*. Check in Teams with a licensed
+        account that isn't a site owner or member.
+
+   In 05-03, the room retests its own estates (the *before*: CLM-9003 comes back "Approved") and you show
+   yours (the *after*). Put it back after the session with 05-03's step 4.
+
+1. **Before Exercise 05 starts, snapshot the estate**, unless you pre-staged (step 0 took it). The script
+   records the data policies, the default environment's makers and `svc-claims`'s roles, so each
+   demonstration can be undone exactly:
 
    ```bash
    pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All
@@ -981,6 +1008,13 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       select **Onboarding Guide** → **Block** → confirm. The status reads **Blocked**, with the banner
       "Agent blocked". Never **Delete**: it can't be undone.
    3. Wait for KT05 (attendees read Onboarding Guide's **Status**; lab accounts can't Block).
+      - **Show the contrast while they read** (nothing changes). The registry's **Agents without owners**
+        reads 0, though Onboarding Guide's owner left in January: his account still exists. Then open the
+        **Security Dashboard for AI** (`ai.security.microsoft.com`), signed in with a lab account. It needs
+        Security Reader, and a tenant admin without it sees blank cards. **AI risk** reads 0 exfiltration
+        and 0 oversharing minutes after the room exfiltrated the comp table, and its checklist shows 4 of 10
+        recommended controls on: DLP and Insider Risk aren't. Visibility depends on what's configured; it
+        isn't validation.
    4. **Put it back:** select Onboarding Guide again → **Unblock** → confirm. Let AI Administrator lapse.
 
    **05-06 — Show the labelled copy** (KT01 step 3; nothing changes)
