@@ -981,7 +981,37 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    2. **Show the room:** `2026-comp-bands-labeled.xlsx` shows **Sensitivity** `Confidential-PII-<estate>`,
       `2026-comp-bands.xlsx` none. The library view has no Sensitivity column.
 
-   **05-07 — Nothing to change.** Real-time protection is reasoned through (KT06).
+   **05-07 — Show Audit × D on Expense Helper** (reveal; nothing changes). Real-time protection stays
+   reasoned through (KT06).
+
+   1. Sign in as a **System Administrator of Halcourt (default)**, such as the tenant admin who built the
+      estates, not the facilitator account: it holds only Environment Maker and Basic User there, so it can't
+      open another user's flow. Attendees can't open it either (#73), so this is shown, not done.
+   2. In Power Automate (`make.powerautomate.com`), switch to **Halcourt (default)** → **Solutions** →
+      **Default Solution**, listed below the per-agent solutions; or go straight to
+      `make.powerautomate.com/environments/<environment id>/solutions/fd140aaf-4df4-11dd-bd17-0019b9312238`,
+      the Default Solution's id in every environment. In its **Objects** pane
+      select **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense under $500**
+      (24 of them); the **Owner** column tells them apart, e.g. `# Sam Olsen (<estate>)`. Open the copy
+      owned by **Sam Olsen (the attendee's estate** whose chat you'll match in step 4), not your own, or
+      there's no run at that attendee's time. **Select the row** and choose **Details** in the toolbar.
+      Don't select the flow's name: that opens it in the editor.
+   3. **Details** shows **28-day run history**; a run can take a few minutes to appear. Select the run at
+      the time of one attendee's Exercise 04 Expense Helper chat, then **When Copilot Studio calls a flow** →
+      **Show raw outputs**. The body is only the amount; the headers name the agent and channel
+      (`BotSchemaName:cr458_ExpenseHelper<estate>`, `ChannelId:msteams`) but no user. Don't select
+      **Resubmit** or **Edit**, and sign out (or close the private window) when done - this is the tenant
+      admin on the shared screen.
+   4. **Show the room** that run next to the same attendee's `CopilotInteraction` event: in their KT01
+      search, the row whose **AgentName** is Expense Helper. The run says which agent called it and when, not
+      who asked. Matching the two by agent and time is **cross-log only** - or **partial** if more than one
+      run sits near that time (the attendee submitted twice, or you tested), since the time match then
+      doesn't single one out. The flow writes nothing, so the run is not evidence a privileged approval ran.
+      If the event hasn't arrived yet (it can take hours), show the run and say the match has to wait for it.
+   5. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
+      nothing. "Auto-approved" (under $500) is only the reply.
+   6. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
+      channel, and Halcourt-Prod read logging is off by design (04b), so its reads reach no log.
 
 3. **At the end, check everything is back.** Every line must say "same as the snapshot":
 
