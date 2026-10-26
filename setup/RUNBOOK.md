@@ -794,6 +794,13 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
 
    - It writes `setup/attendee-handouts.local.pdf` (and the `.html` it prints from). Both hold the passwords
      in plain text: gitignored, so print them, never share or publish them, and delete them in Phase 9.
+   - It also writes `setup/teams-links.local.html`: each estate's Teams install links (from Phase 6's
+     `teams-links-<estate>.local.csv`) to the agents attendees chat with. It holds **no passwords**, and a
+     link opens its agent only for that estate's lab account, so **share it with the room** at the start of
+     Exercise 04 (a Teams chat or email). Each card's **Agent links** row points to it.
+   - A warning that an attendee agent has **no Teams link** means that attendee can't chat with it: usually
+     its Teams channel is off (#93). Re-run `06_provision_agents.ps1 -Agents <slug>` for that estate, then
+     07d again. Don't hand out cards until the warning is gone.
 
 An attendee account is a tenant-wide Power Platform admin: delete the accounts right after the delivery
 (Phase 9).
@@ -822,7 +829,8 @@ Each attendee gets a small environment of their own, where they are System Admin
    register MFA — have an authenticator app ready. Then confirm:
 
    - [ ] the Power Platform admin center lists their slice, `Lab-<estate>-NN`;
-   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent;
+   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent, and 07d ran
+         with no missing-link warning (the links page attendees get is built from the same files);
    - [ ] Claims Copilot gives them claim CLM-9002, although their own Claims-Test roles grant no claim
          access — the confused-deputy path, with the attendee as the requester.
 
