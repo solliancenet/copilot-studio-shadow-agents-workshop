@@ -912,7 +912,7 @@ in with a handed-out password at all, does not reach it.
 **What it blocks.** Every task that sends an attendee anywhere but PPAC:
 
 - 01-01 KT01 step 3, and 02-01 KT01 step 4 - the agent registry in the M365 admin center;
-- 01-01 KT02 step 2, the former 03-01 KT02 step 3 (removed, #88), 03-03 KT01 step 7 - owner checks in the Entra admin center;
+- 01-01 KT02 step 2, the former 03-01 KT02 step 3 (removed, #88), 03-02 KT02 step 7 - owner checks in the Entra admin center;
 - 01-02 KT01 step 2 - *Entra ID -> Agents -> Agent identities*;
 - 01-01 KT02 step 2, 02-03 hunt 5, the former 03-01 KT02 step 3 (removed, #88) - shared mailboxes in the Exchange admin center.
 
@@ -1111,7 +1111,7 @@ the user record before granting the role. A re-run still finishes anything left.
 
 **Symptom.** As an attendee (Lab Reviewer + Bot Viewer, licensed), **Environments → `Claims-Test-<estate>` →
 Settings → Users + permissions → Users** shows *"It looks like something went wrong"* before any search.
-Lab 03-01 KT02 s2, 03-03 KT01 s3 and 04-04 KT01 s1 all start there.
+Lab 03-01 KT02 s2, 03-02 KT02 s3 and 04-04 KT01 s1 all start there.
 
 **Evidence.** The page's own query, `GET systemusers?$select=...`, returns 403 naming the gap: *"is missing
 prvReadPosition privilege ... on OTC=50"*. A second call on the same page,
