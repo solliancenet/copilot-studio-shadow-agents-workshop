@@ -4,7 +4,7 @@
 > Halcourt Mutual demo tenant and save to `media/<filename>`. Naming: `exNN_tMM_ktKK_sSS.png`
 > (exercise, task, key-task, step). Redact any real values that are not part of the canon.
 
-Total: 13 screenshots.
+Total: 10 screenshots.
 
 | File (`media/`) | Referenced by | What to capture (alt text) |
 |---|---|---|

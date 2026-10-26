@@ -58,7 +58,7 @@ Entra, Microsoft 365 and Exchange admin centers the labs use. It costs about two
 
 **Attendees also get Dataverse access inside each estate environment, defined by an access model.**
 Power Platform Administrator is a **tenant** role and grants nothing inside a Dataverse environment, and
-most of the day's tasks read something that lives there: a security role's scope (03-02, 03-04), an
+most of the day's tasks read something that lives there: a security role's scope (03-01, 03-02), an
 agent's Knowledge, Topics, Tools and Connection Settings in Copilot Studio (01-01, 01-02, 02-01..03, all of
 Exercise 04). So the script assigns two roles in each of the estate's three Dataverse environments:
 
@@ -111,9 +111,9 @@ seat (`accessmode=0`) opened the PPAC role editor and the Copilot Studio agent p
 mode **filters** a custom role's privileges. What survives filtering is System Administrator - so an
 unlicensed attendee can do those steps only in **their own slice** (Phase 8c), never in the shared estate.
 Without seats, the steps that read a role or an agent's configuration in the shared estate fall back to the
-artifact pack: the Copilot Studio parts of 01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01, 03-02 KT02 s2 and
-03-04; Exercise 04's configuration reads (04-01..06) and 04-03 KT02 s2's role editor in Claims-Test; and 05-01
-KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2. The role editor in 03-02 and 03-04 already routes to the slice. Entra
+artifact pack: the Copilot Studio parts of 01-01 KT02 s6, 01-02, 01-03, 02-01..03, 03-01 and 03-02;
+Exercise 04's configuration reads (04-01..06) and 04-03 KT02 s2's role editor in Claims-Test; and 05-01
+KT02 s2, 05-03 KT01 s1, 05-04 KT06 s2. The role editor in 03-01 and 03-02 already routes to the slice. Entra
 reads, PPAC lists and the admin APIs work either way.
 
 The script attempts assignment, never fatally, and the end-of-run table reports who got one - so an attendee

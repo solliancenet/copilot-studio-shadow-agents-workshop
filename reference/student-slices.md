@@ -2,7 +2,7 @@
 
 Reference for [RUNBOOK → Phase 8c](../setup/RUNBOOK.md#phase-8c--per-student-slices-needed-from-exercise-03).
 
-Slices exist so attendees can open the `svc-claims` role as **System Administrator** in 03-02 and 03-04:
+Slices exist so attendees can open the `svc-claims` role as **System Administrator** in 03-01 and 03-02:
 the PPAC role editor opens for a System Administrator whatever their licence, and for a reviewer holding
 the custom role only if they have a seat (RUNBOOK Phase 8b). Exercise 05 is demonstrated on the shared estate
 (RUNBOOK → During delivery), so attendees apply no control in their slice.
