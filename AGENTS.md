@@ -324,7 +324,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 |---|---|---|
 | Least privilege (Dataverse role + row-level security + scoped connection) | CLOSES IT | Replace god-mode svc account with a scoped role + RLS: only assigned claims reachable. The real fix. |
 | DLP | MISSES IT | Controls *which* connectors are usable, not the over-grant *within* Dataverse. **Observed 2026-10-26:** with HTTP and custom connectors blocked, Claims Copilot still returned CLM-9002 and Underwriting's MCP tool still answered. |
-| Environment strategy | DENTS IT | A properly-scoped env with only needed connectors reduces reach. |
+| Environment strategy | MISSES IT | Decides which connectors an env allows, not what `svc-claims` can read. **Observed 2026-10-26:** the default-environment lockdown left `Claims-Test` unchanged. |
 | Agent 365 | DENTS IT | Exposes the over-permission; may recommend least privilege. |
 | Purview | DENTS IT | Labeling PII raises the bar on exfil; doesn't fix the grant. |
 | Conditional Access | MISSES IT | Post-auth authorization. |
