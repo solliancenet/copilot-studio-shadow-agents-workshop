@@ -862,7 +862,7 @@ Measured 2026-10-13, same account, two environments:
 So it is a propagation lag, not a permanent divergence - worth knowing before someone reports it as a
 bug, and worth not "fixing" by re-disabling the account.
 
-**It does not affect the exercises.** Lab 02-03's orphan hunt and Lab 03-01's owner cross-check both read
+**It does not affect the exercises.** Lab 02-03's orphan hunt and the former Lab 03-01's owner cross-check (folded into 03-01 KT01, #88) both read
 `account_enabled`, which comes from **Entra** via `users-export.csv`, and Entra is correct immediately. A
 student who queries an environment's `systemusers` table directly on the day a slice was built is the only
 one who would see the stale value.
@@ -912,9 +912,9 @@ in with a handed-out password at all, does not reach it.
 **What it blocks.** Every task that sends an attendee anywhere but PPAC:
 
 - 01-01 KT01 step 3, and 02-01 KT01 step 4 - the agent registry in the M365 admin center;
-- 01-01 KT02 step 2, 03-01 KT02 step 3, 03-04 KT01 step 7 - owner checks in the Entra admin center;
+- 01-01 KT02 step 2, the former 03-01 KT02 step 3 (removed, #88), 03-03 KT01 step 7 - owner checks in the Entra admin center;
 - 01-02 KT01 step 2 - *Entra ID -> Agents -> Agent identities*;
-- 01-01 KT02 step 2, 02-03 hunt 5, 03-01 KT02 step 3 - shared mailboxes in the Exchange admin center.
+- 01-01 KT02 step 2, 02-03 hunt 5, the former 03-01 KT02 step 3 (removed, #88) - shared mailboxes in the Exchange admin center.
 
 **The fix is to stop avoiding MFA and enrol it.** Have attendees register MFA on first sign-in, the way
 they would for any corporate lab. That is strictly better than what is built today:
@@ -957,9 +957,9 @@ So the facilitator instruction is simply: tell attendees to bring an authenticat
 first sign-in. Nothing in the kit has to weaken `CA-Require-MFA-Admins` to make the labs work.
 
 
-### Phase 8b · Lab 03-02's role editor needs a LICENCE, not more privileges (2026-10-14)
+### Phase 8b · Lab 03-01's role editor needs a LICENCE, not more privileges (2026-10-14)
 
-**Symptom.** An attendee follows Task 03-02 to *"open a role under **Security roles** to see what it grants
+**Symptom.** An attendee follows Task 03-01 to *"open a role under **Security roles** to see what it grants
 on each table"* and the page renders **"Loading role failed!"**. The roles *list* loads; only the editor
 fails — and the editor is the only place scope (user / business unit / organization) is visible.
 
@@ -997,9 +997,9 @@ the real answer to "how many licensed attendees does this tenant support": about
 **Decision required before a delivery** — the two options are not equivalent:
 
 1. **Licence the lab accounts.** Free seats from the demo users and assign E5 in `07_provision_lab_users.ps1`.
-   Task 03-02 then works as written. Note the tenant is shared between estates, so those demo accounts may
+   Task 03-01 then works as written. Note the tenant is shared between estates, so those demo accounts may
    belong to someone else's build — confirm before stripping them.
-2. **Reword Task 03-02.** Drop "open a role" and have attendees read the roles list, recording role breadth
+2. **Reword Task 03-01.** Drop "open a role" and have attendees read the roles list, recording role breadth
    as the **open question** that step 3 of the same task already sanctions ("role breadth unknown from
    export; verify in tenant"). Pedagogically defensible, but it removes the one place the lab shows scope.
 
@@ -1034,7 +1034,7 @@ POST https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scope
 After the flip: `islicensed True`, `accessmode 0` (Read-Write), and the granted privileges apply.
 
 **Facilitator consequence:** licence the attendee accounts the DAY BEFORE a delivery, not the morning of.
-An account licensed an hour before the lab will still fail Task 03-02, and the failure looks like a
+An account licensed an hour before the lab will still fail Task 03-01, and the failure looks like a
 privilege problem, not a timing one. Verify with the `systemusers` query above before you start.
 
 **Also fixed (2026-10-14).** Re-running `07_provision_lab_users.ps1` against existing accounts rewrote the
@@ -1046,7 +1046,7 @@ nothing to carry.
 
 ### Phase 8b · CORRECTION - the role editor is gated by SYSTEM ADMINISTRATOR, not by a licence (2026-10-14)
 
-The entries above conclude that Task 03-02 needs a Dataverse-capable licence and that attendee accounts
+The entries above conclude that Task 03-01 needs a Dataverse-capable licence and that attendee accounts
 must be licensed the day before a delivery. **That conclusion was drawn from one account that differed in
 two ways at once, and it is wrong.** A single-variable test says otherwise:
 
@@ -1063,13 +1063,13 @@ were exactly the metadata privileges the editor needs (`prvReadAttribute`, `prvR
 `prvReadEntityRecordFilter`).
 
 **What this means for a delivery.** `08_provision_student_slices.ps1` already makes each attendee
-**System Administrator of their own slice**, and that slice already carries the substrate Task 03-02 asks
+**System Administrator of their own slice**, and that slice already carries the substrate Task 03-01 asks
 about (`svc-claims` holding the over-broad role). So an attendee reading role scope **in their own slice
 needs no licence at all**. It fails only in the shared estate, where they hold just the reviewer role -
 and granting them System Administrator there is not an option, because it would give them write access to
 the shared estate and contradict "a security reviewer observes; they do not change the estate".
 
-So the fix is a ROUTING change, not a procurement one: point Task 03-02's role reading at the attendee's
+So the fix is a ROUTING change, not a procurement one: point Task 03-01's role reading at the attendee's
 own slice.
 
 **The licence-sync trap recorded above is still real and still bidirectional** - it just is not the cause
@@ -1111,7 +1111,7 @@ the user record before granting the role. A re-run still finishes anything left.
 
 **Symptom.** As an attendee (Lab Reviewer + Bot Viewer, licensed), **Environments → `Claims-Test-<estate>` →
 Settings → Users + permissions → Users** shows *"It looks like something went wrong"* before any search.
-Lab 03-02 KT01 s2, 03-04 KT01 s3 and 04-04 KT01 s1 all start there.
+Lab 03-01 KT02 s2, 03-03 KT01 s3 and 04-04 KT01 s1 all start there.
 
 **Evidence.** The page's own query, `GET systemusers?$select=...`, returns 403 naming the gap: *"is missing
 prvReadPosition privilege ... on OTC=50"*. A second call on the same page,
@@ -1143,7 +1143,7 @@ Viewer; both agents were listed at once.
 
 **Symptom.** **PPAC → Halcourt (default) → Resources → Flows** says *"No flows found for this
 environment"*, while Inventory lists *Submit and auto-approve expense under $500* there as a Cloud flow
-(`statecode` 1, on). Lab 03-01 KT01 s2 and 04-04 KT02 s5 open that flow's **Details**.
+(`statecode` 1, on). The former Lab 03-01 KT01 s2 (removed, #88) and 04-04 KT02 s5 open that flow's **Details**.
 
 **Cause.** Bot Viewer grants workflow read at **Basic** depth only (the attendee's own flows).
 
