@@ -13,8 +13,9 @@ You spent Exercise 04 breaking things. Every scenario ended the same way: you re
 down what worked, and moved on. That was the point — you now hold a list of concrete, demonstrated ways
 the Halcourt Mutual estate misbehaves.
 
-This exercise returns to that list. For each failure, your facilitator **configures a Microsoft control
-against the real estate** while you watch, and you **re-run the exact same attack** and see what changed.
+This exercise returns to that list. For each failure, your facilitator either **applies a Microsoft control
+to the estate**, where it can be done and undone within the session, or you **reason through** what the
+control would do. Then you check whether the attack still works.
 The estate is shared by everyone in the room, so each change is made once, by the facilitator, and undone
 when the retests are done. You are not here to admire
 a feature list. You are here to answer one honest question per cell: after this control is on, does the
@@ -33,7 +34,7 @@ The rhythm of the whole exercise is **Attack → Control → Retest**:
 ```mermaid
 flowchart LR
   A["Attack<br/>an Exercise 04 failure<br/>you reproduced"] --> C["Control<br/>the facilitator applies it<br/>to the estate"]
-  C --> R["Retest<br/>re-run the<br/>same attack"]
+  C --> R["Retest, or<br/>reason it<br/>through"]
   R --> V{"Honest<br/>verdict"}
   V -->|CLOSES IT| Rec["Record verdict +<br/>remaining risk<br/>in the matrix"]
   V -->|DENTS IT| Rec
@@ -59,10 +60,10 @@ working without it — because they already tell you which environment carries w
 credential each connection carries. Label those offline verdicts as reasoned conclusions, not retest
 results.
 
-Your lab account reads the estate; it doesn't change it. One control isn't demonstrated at all, because a
-single wrong edit locks every account in the tenant out: the Conditional Access policy in Task 05-04. For
-that one, you specify the control rather than watch it applied, and label the verdict as reasoned, like an
-offline one.
+Your lab account reads the estate; it doesn't change it. Some controls aren't demonstrated: Conditional
+Access (Task 05-04), because one wrong policy locks out the tenant, and Purview labeling (Task 05-06) and
+Defender real-time protection (Task 05-07), because they take longer to apply than a session lasts. For
+those, you reason it through and label the verdict reasoned, like an offline one.
 
 ## Objectives
 
@@ -71,8 +72,8 @@ After this exercise you will be able to:
 - Explain how each core Microsoft control is configured, and evaluate it — DLP, environment strategy,
   Dataverse least privilege, Conditional Access for agents, Agent 365 governance, Purview, and Defender /
   audit — against a live Copilot Studio estate.
-- Re-run a reproduced attack against a configured control and reach a defensible **CLOSES IT / DENTS IT /
-  MISSES IT** verdict rather than assuming the control worked.
+- Retest a reproduced attack against a configured control — or reason it through where the control can't
+  be applied in the session — and reach a defensible **CLOSES IT / DENTS IT / MISSES IT** verdict rather than assuming the control worked.
 - Name the *boundary* of each control — the trust boundary or processing stage it structurally cannot
   reach — so you can predict, before testing, which failures it will miss.
 - Explain why some failures close with a platform control while others are only dented, using your own
@@ -81,7 +82,7 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 60 minutes
+**Estimated time:** 90 minutes
 
 ## Deliverable
 

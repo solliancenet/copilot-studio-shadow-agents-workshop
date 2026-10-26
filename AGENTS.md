@@ -311,22 +311,22 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 ### Scenario B — Data exfiltration (over-broad grounding)
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
-| Least privilege / scope the grounding | CLOSES IT | If the agent identity can't read `Leadership/`, the comp file isn't reachable. The real fix. |
-| Purview (labels + auto-label + Copilot honoring labels) | CLOSES IT **[verify]** | Label the comp file `Confidential-PII`; Copilot withholds it. Strong here. |
+| Least privilege / scope the grounding | DENTS IT | If the agent identity can't read `Leadership/`, the comp file isn't reachable — the real fix. **Observed 2026-10-26:** after the Members group lost `Leadership/`, Benefits Buddy still returned the band table: it answers from what it already indexed, so the fix doesn't show within a session. CLOSES IT once the index drops the file. |
+| Purview (labels + auto-label + Copilot honoring labels) | DENTS IT (reasoned) | Copilot Studio can't ground on the encrypting-labelled copy, but the unlabelled original holds the same figures and still leaks. Labelling the original would close it, once the label applies and the file is re-indexed — longer than a session, so 05-06 reasons it. |
 | DLP | DENTS IT | Can block labeled/sensitive content on some paths; chat responses aren't classic egress DLP. |
 | Environment strategy | MISSES IT | Doesn't change intra-site over-sharing. |
 | Agent 365 | DENTS IT | Surfaces the over-broad access so you can fix it. |
 | Conditional Access | MISSES IT | Post-auth authorization problem. |
-| Defender / audit | DENTS IT | Detect / reconstruct. |
+| Defender / audit | MISSES IT, or DENTS IT if DSPM lists the comp file | Detect / reconstruct after the fact; the DSPM interaction record is the only place the comp file could show as a resource. |
 
 ### Scenario C — Excessive connector / tool permissions
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
-| Least privilege (Dataverse role + row-level security + scoped connection) | CLOSES IT | Replace god-mode svc account with a scoped role + RLS: only assigned claims reachable. The real fix. |
+| Least privilege (Dataverse role + row-level security + scoped connection) | CLOSES IT | Replace god-mode svc account with a scoped role + RLS: only assigned claims reachable. The real fix. **Observed 2026-10-26:** ~10 minutes after the scoped role (Read at User depth, owner of CLM-9001/9002 only), Claims Copilot still returned CLM-9003 — either delay or the connection isn't reading as svc-claims **[verify]**. |
 | DLP | MISSES IT | Controls *which* connectors are usable, not the over-grant *within* Dataverse. **Observed 2026-10-26:** with HTTP and custom connectors blocked, Claims Copilot still returned CLM-9002 and Underwriting's MCP tool still answered. |
 | Environment strategy | MISSES IT | Decides which connectors an env allows, not what `svc-claims` can read. **Observed 2026-10-26:** the default-environment lockdown left `Claims-Test` unchanged. |
 | Agent 365 | DENTS IT | Exposes the over-permission; may recommend least privilege. |
-| Purview | DENTS IT | Labeling PII raises the bar on exfil; doesn't fix the grant. |
+| Purview | MISSES IT (reasoned) | The SSN classifier exists but nothing applies it to Dataverse, and a classification doesn't change what svc-claims may read. |
 | Conditional Access | MISSES IT | Post-auth authorization. |
 | Defender / audit | DENTS IT | Detect / reconstruct. |
 
@@ -355,7 +355,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Control | Verdict | Why / remaining risk |
 |---|---|---|
 | Identity lifecycle / JML (disable + remove connections when owner leaves) | CLOSES IT | The true fix for the *access*: disabling the leaver stops his OAuth connections at their next token refresh (AADSTS50057, seen on the live estate). The agent and its Agent ID survive until someone reassigns or retires them, so JML closes the authority, not the orphan. |
-| Agent 365 / CoE governance (ownership, orphaned-resource detection, lifecycle policy) | CLOSES IT → DENTS IT **[verify]** | Inventory + orphan detection + owner reassignment is where governance genuinely helps. |
+| Agent 365 / CoE governance (ownership, lifecycle actions) | DENTS IT | **Observed 2026-10-26:** the action works — Block set Onboarding Guide to **Blocked** — but detection didn't: Agents without owners read 0 (Tom's account still exists), Agents at risk read "—", and the registry has no environment column, so Claims Copilot's drift is invisible. The block leaves the Entra identity and Tom's Outlook connection; Unblock restores everything. |
 | Environment strategy | DENTS IT | Ephemeral test envs + gated promotion prevent test→prod drift; doesn't fix existing orphans. |
 | Least privilege | DENTS IT | Shrinks blast radius of the survivor. |
 | DLP / Conditional Access | MISSES IT | Don't address ownership/lifecycle. |
