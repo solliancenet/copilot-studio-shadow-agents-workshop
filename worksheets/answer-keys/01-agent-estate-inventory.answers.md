@@ -26,8 +26,8 @@ evidence:
   which Task 02-03's clearance step asks them to do.
 
 Data sensitivity is by **reach**, not intent. An attendee working from the artifact pack alone has no
-grounding data, so Benefits Buddy may be classified from its SharePoint connection only; accept
-"Compensation (from connections only)" or a classify-up equivalent.
+grounding data, so Benefits Buddy is classified from its description only; accept
+"Compensation (HR/benefits site)" or a classify-up equivalent.
 
 ## The joins that reveal the findings
 
