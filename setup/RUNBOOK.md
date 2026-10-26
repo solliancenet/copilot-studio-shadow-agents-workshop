@@ -985,21 +985,24 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    reasoned through (KT06).
 
    1. Sign in as a **System Administrator of Halcourt (default)**, such as the tenant admin who built the
-      estates, not the facilitator account: it holds only Environment Maker there and can't open another
-      user's flow. Attendees can't open it either (#73), so this is shown, not done.
+      estates, not the facilitator account: it holds only Environment Maker and Basic User there, so it can't
+      open another user's flow. Attendees can't open it either (#73), so this is shown, not done.
    2. In Power Automate (`make.powerautomate.com`), switch to **Halcourt (default)** → **Solutions** →
-      **Default Solution**; it's below the per-agent solutions, so search for it. In its **Objects** pane
+      **Default Solution**, listed below the per-agent solutions; or go straight to
+      `make.powerautomate.com/environments/<environment id>/solutions/fd140aaf-4df4-11dd-bd17-0019b9312238`,
+      the Default Solution's id in every environment. In its **Objects** pane
       select **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense under $500**
       (24 of them); the **Owner** column tells them apart, e.g. `# Sam Olsen (<estate>)`. **Select the row**
       and choose **Details** in the toolbar. Don't select the flow's name: that opens it in the editor.
-   3. **Details** shows **28-day run history**; a run appears a few minutes after the chat. Select the run at
+   3. **Details** shows **28-day run history**; a run can take a few minutes to appear. Select the run at
       the time of one attendee's Exercise 04 Expense Helper chat, then **When Copilot Studio calls a flow** →
       **Show raw outputs**. The body is only the amount; the headers name the agent and channel
       (`BotSchemaName:cr458_ExpenseHelper<estate>`, `ChannelId:msteams`) but no user. Don't select
       **Resubmit** or **Edit**.
-   4. **Show the room** that run next to the attendee's `CopilotInteraction` event from KT04. The run says
-      which agent called it and when, not who asked. Only matching the two by agent and time links them, so
-      attribution is **cross-log only**.
+   4. **Show the room** that run next to the same attendee's `CopilotInteraction` event: in their KT01
+      search, the row whose **AgentName** is Expense Helper. The run says which agent called it and when, not
+      who asked. Only matching the two by agent and time links them, so attribution is **cross-log only**.
+      If the event hasn't arrived yet (it can take hours), show the run and say the match has to wait for it.
    5. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
       nothing. "Auto-approved" (under $500) is only the reply.
    6. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
