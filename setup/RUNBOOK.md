@@ -800,7 +800,9 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
      Exercise 04 (a Teams chat or email). Each card's **Agent links** row points to it.
    - A warning that an attendee agent has **no Teams link** means that attendee can't chat with it: usually
      its Teams channel is off (#93). Re-run `06_provision_agents.ps1 -Agents <slug>` for that estate, then
-     07d again. Don't hand out cards until the warning is gone.
+     07d again, without `-Estates`: the page is rewritten with only the estates in the run. Don't hand out
+     cards until the warning is gone. No warning doesn't prove the channels are on: an agent with its channel
+     off can still have a link that won't open it (#93), so still open each link before the delivery.
 
 An attendee account is a tenant-wide Power Platform admin: delete the accounts right after the delivery
 (Phase 9).
@@ -829,8 +831,9 @@ Each attendee gets a small environment of their own, where they are System Admin
    register MFA — have an authenticator app ready. Then confirm:
 
    - [ ] the Power Platform admin center lists their slice, `Lab-<estate>-NN`;
-   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent, and 07d ran
-         with no missing-link warning (the links page attendees get is built from the same files);
+   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent (a link can
+         exist with the channel off, so 07d's warning alone doesn't show this), and 07d ran with no
+         missing-link warning (the links page attendees get is built from the same files);
    - [ ] Claims Copilot gives them claim CLM-9002, although their own Claims-Test roles grant no claim
          access — the confused-deputy path, with the attendee as the requester.
 
@@ -1020,6 +1023,7 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy
    rm setup/lab-users-$HALCOURT_ESTATE.local.csv
    rm -f setup/attendee-handouts.local.pdf setup/attendee-handouts.local.html   # the printed cards (8b step 5)
+   rm -f setup/teams-links.local.html                                           # the shared links page (8b step 5)
    ```
 
 3. **Delete the facilitator account.** It also deletes its password file.

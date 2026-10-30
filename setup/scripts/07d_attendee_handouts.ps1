@@ -97,7 +97,7 @@ foreach ($est in @($cards | ForEach-Object Estate | Select-Object -Unique)) {
   }
 }
 if ($missing) {
-  Write-Warning "$($missing.Count) attendee agent(s) have no Teams link, so those attendees can't chat with them. Usually the agent's Teams channel is off (#93): re-run 06_provision_agents.ps1 -Agents <slug> for that estate, then run this again.`n$($missing -join "`n")"
+  Write-Warning "$($missing.Count) attendee agent(s) have no Teams link, so those attendees can't chat with them. Usually the agent's Teams channel is off (#93): re-run 06_provision_agents.ps1 -Agents <slug> for that estate, then run this again without -Estates (the page is rewritten with only the estates in the run).`n$($missing -join "`n")"
 }
 
 $guideShown = $GuideUrl -replace '^https?://', '' -replace '/$', ''
@@ -169,7 +169,8 @@ Set-Content -Path $htmlPath -Value $html -Encoding utf8
 Write-Host "$($cards.Count) card(s) from $($files.Count) handout file(s) -> $htmlPath"
 
 # The Teams links page: no passwords, safe to share with the room.
-$linksPath = Join-Path (Split-Path -Parent $OutBase) 'teams-links.local.html'
+$outDir = Split-Path -Parent $OutBase
+$linksPath = Join-Path $(if ($outDir) { $outDir } else { '.' }) 'teams-links.local.html'
 $sections = @(foreach ($est in $linksByEstate.Keys) {
   $rows = @(foreach ($l in $linksByEstate[$est]) {
     $cell = if ($l.Link) { "<a href=`"$(HtmlEnc $l.Link)`">Open in Teams</a><div class=`"url mono`">$(HtmlEnc $l.Link)</div>" }
