@@ -359,7 +359,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Agent 365 / CoE governance (ownership, lifecycle actions) | DENTS IT | **Observed 2026-10-26:** the action works — Block set Onboarding Guide to **Blocked** — but detection didn't: Agents without owners read 0 (Tom's account still exists), Agents at risk read "—", and the registry has no environment column, so Claims Copilot's drift is invisible. The block leaves the Entra identity and Tom's Outlook connection; Unblock restores everything. |
 | Environment strategy | DENTS IT | Ephemeral test envs + gated promotion prevent test→prod drift; doesn't fix existing orphans. |
 | Least privilege | DENTS IT | Shrinks blast radius of the survivor. |
-| DLP / Conditional Access | MISSES IT | Don't address ownership/lifecycle. |
+| DLP / Conditional Access | MISSES IT | Don't address ownership/lifecycle. **Verified 2026-10-26:** connector-blocking can't touch Onboarding Guide: its only connector, Office 365 Outlook, is on Microsoft's list of connectors data policies can't put in the Blocked group (Learn: *Connector classification*, as "Microsoft 365 Outlook"; the tenant's own unblockable list, `PowerPlatform.Governance/v1/connectors/metadata/unblockable`, includes `shared_office365` and Dataverse's `shared_commondataserviceforapps`). Advanced connector policies or a data-group conflict might reach it; see #100. |
 | Defender / audit | DENTS IT | Detect stale/unused agents. |
 
 ### One-line takeaways (for the wrap)
