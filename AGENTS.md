@@ -338,6 +338,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Agent 365 | DENTS IT | Surfaces shared-connection / service-account use. |
 | Conditional Access | MISSES IT (mostly) | Governs authentication of principals; CA-for-workload-identities can slightly constrain where the agent identity is used. |
 | DLP / Environment | MISSES IT | Don't address *whose* identity acts. |
+| Purview | MISSES IT (reasoned) | A classifier labels data; it doesn't change which identity the agent acts as, so the confused deputy stands. Matches 05-06's Purview × D. |
 | Logging / audit | MISSES IT (attribution) | **Teaching point:** for a **read** (Claims Copilot has only List-rows tools) there is no downstream record at all: Dataverse auditing logs changes, not reads, and read logs reach Purview only for production environments — `Claims-Test` is a sandbox. Nothing downstream ties the read to anyone, not even svc-claims; attribution rests entirely on the agent layer - the `CopilotInteraction` event and the DSPM interaction record, which name the requester and the agent but not the claim: **partial** at the agent layer, **unavailable** downstream (**complete** at the agent layer only if the prompt and response text is readable and shows the claim; in the lab tenant DSPM can't retrieve it - errata, Phase 8b). For a **write**, the log shows svc-claims/owner as the actor, not the real user — only cross-log correlation with `CopilotInteraction` links it to *who really asked*. Fix is upstream: on-behalf-of auth. |
 
 ### Scenario E — HTTP / MCP / tool boundary
@@ -358,7 +359,7 @@ verdict depends on a 2026 product detail, it is flagged **[verify]** and listed 
 | Agent 365 / CoE governance (ownership, lifecycle actions) | DENTS IT | **Observed 2026-10-26:** the action works — Block set Onboarding Guide to **Blocked** — but detection didn't: Agents without owners read 0 (Tom's account still exists), Agents at risk read "—", and the registry has no environment column, so Claims Copilot's drift is invisible. The block leaves the Entra identity and Tom's Outlook connection; Unblock restores everything. |
 | Environment strategy | DENTS IT | Ephemeral test envs + gated promotion prevent test→prod drift; doesn't fix existing orphans. |
 | Least privilege | DENTS IT | Shrinks blast radius of the survivor. |
-| DLP / Conditional Access | MISSES IT | Don't address ownership/lifecycle. |
+| DLP / Conditional Access | MISSES IT | Don't address ownership/lifecycle. **Verified 2026-10-26:** connector-blocking can't touch Onboarding Guide: its only connector, Office 365 Outlook, is on Microsoft's list of connectors data policies can't put in the Blocked group (Learn: *Connector classification*, as "Microsoft 365 Outlook"; the tenant's own unblockable list, `PowerPlatform.Governance/v1/connectors/metadata/unblockable`, includes `shared_office365` and Dataverse's `shared_commondataserviceforapps`). Advanced connector policies or a data-group conflict might reach it; see #100. |
 | Defender / audit | DENTS IT | Detect stale/unused agents. |
 
 ### One-line takeaways (for the wrap)
