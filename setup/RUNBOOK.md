@@ -915,9 +915,10 @@ instead of demonstrating. Pre-stage 05-03 (step 0): made live, its changes don't
    1. **Snapshot first**, once, before any change (step 1's command with `-Estate <estate>`). Don't
       snapshot again later: a snapshot taken after these changes makes the restore put them back.
    2. **Scenario C:** `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1 -Estate <estate>`.
-   3. **Scenario C's second path:** until #109 is deployed, send `claims.csv` to the recycle bin in
-      `Claims-Knowledge-<estate>` → Shared Documents. It duplicates the claim statuses into the grounding
-      (#98). Leave it removed afterwards; #109 stops builds uploading it.
+   3. **Scenario C's second path, older estates only:** builds no longer upload `claims.csv` into
+      `Claims-Knowledge` (#98). If your estate was built before that fix, re-run
+      `03_provision_sharepoint.ps1 -Estate <estate>` (it removes the file), or send `claims.csv` to the
+      recycle bin in `Claims-Knowledge-<estate>` → Shared Documents. Leave it removed afterwards.
    4. **Scenario B:** 05-03 step 1 (`Leadership/` → **HR Benefits Members** → **No direct access**).
    5. **Check the *after*** in Copilot Studio's **Test** pane, as an admin of that environment.
       - **Claims Copilot:** its tool runs on `svc-claims`'s connection whoever tests, so the pane matches
@@ -989,14 +990,12 @@ instead of demonstrating. Pre-stage 05-03 (step 0): made live, its changes don't
       then `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles -Estate <estate>`
       (the role, Basic User and record owners).
 
-   {: .warning }
-   > **Known open item for the Scenario C retest (#98).** After the scoped role, Claims Copilot may still
-   > return a claim outside the subset (e.g. "CLM-9003 is currently Approved"). The likely cause is that the
-   > claim data is **also** in the agent's grounding: the build uploaded `claims.csv` into `Claims-Knowledge`,
-   > which the agent can read regardless of the Dataverse role. Present this as the finding it is — least
-   > privilege on one path doesn't help when the same data has a second, indexed path — **not** as the scoped
-   > role failing, and don't wait on "re-check in 15-20 minutes" to fix it (the index won't change the
-   > answer). Being confirmed and resolved in #98.
+   {: .note }
+   > **Estates built before the #98 fix.** Those builds uploaded `claims.csv` into `Claims-Knowledge`, a
+   > second, indexed path to the claim data that the Dataverse role doesn't touch, so Claims Copilot can still
+   > return CLM-9003 after the scoped role. Step 0.3 removes the file. If it still answers from the index,
+   > present that as the finding it is — least privilege on one path doesn't help when the same data has
+   > another — not as the scoped role failing.
 
    **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
    policy locks out the tenant.

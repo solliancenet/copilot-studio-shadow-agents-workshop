@@ -444,7 +444,7 @@ Grant-SiteAccess 'Claims-Adjusters' 'All-Employees'
 # previous build uploaded it, so re-provisioning cleans existing estates (re-indexing then lags by design).
 if (Get-PnPFile -Url 'Shared Documents/claims.csv' -AsListItem -ErrorAction SilentlyContinue) {
   Write-Host 'Removing claims.csv from Claims-Knowledge/Shared Documents (duplicated Dataverse data, #98)'
-  Remove-PnPFile -SiteRelativeUrl 'Shared Documents/claims.csv' -Force -ErrorAction SilentlyContinue
+  Remove-PnPFile -SiteRelativeUrl 'Shared Documents/claims.csv' -Force
 }
 
 $procMd   = Join-Path $work 'Claims-Procedures.md'
