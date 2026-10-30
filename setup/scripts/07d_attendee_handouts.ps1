@@ -6,6 +6,11 @@ Letter page with a cut line between them: the workshop guide's address, the esta
 tenant domain, the attendee's own lab environment (Lab-<estate>-NN, Phase 8c) and the first sign-in steps.
 Print the PDF and hand each attendee their card.
 
+Also writes setup/teams-links.local.html: each estate's Teams install links to the agents attendees chat with
+(Exercise 04/05), read from Phase 6's setup/teams-links-<estate>.local.csv. It holds no passwords, and a link
+opens its agent only for that estate's lab account, so share it with the room (Teams chat, email). Each card
+points to it. An attendee agent with no link is warned about here: usually its Teams channel is off (#93).
+
   pwsh setup/scripts/07d_attendee_handouts.ps1                          # every lab-users-*.local.csv
   pwsh setup/scripts/07d_attendee_handouts.ps1 -Estates stu01,stu02     # just these estates
 
@@ -75,6 +80,26 @@ if ($problems) {
 $cards = @($cards | Sort-Object Estate, NN)
 if (-not $cards) { throw 'No attendee accounts found in the handout CSVs.' }
 
+# The agents attendees chat with in Teams: a Teams channel and the All-Employees audience (manifest). Agents in
+# the shared default environment carry the estate id in their name, as Phase 6 records them in the links CSV.
+$manifest = Get-Content (Join-Path $setup 'agents/manifest.json') -Raw | ConvertFrom-Json
+$teamsAgents = @($manifest.agents | Where-Object { $_.teamsChannel -and $_.chatAudience -eq 'All-Employees' })
+$linksByEstate = [ordered]@{}
+$missing = @()
+foreach ($est in @($cards | ForEach-Object Estate | Select-Object -Unique)) {
+  $csv = Join-Path $HandoutDir "teams-links-$est.local.csv"
+  $have = @{}
+  if (Test-Path $csv) { foreach ($r in Import-Csv $csv) { if ($r.teams_link) { $have[$r.agent] = $r.teams_link } } }
+  $linksByEstate[$est] = foreach ($a in $teamsAgents) {
+    $name = if ($a.estateSuffixName) { "$($a.display) ($est)" } else { $a.display }
+    if (-not $have[$name]) { $missing += "  ${est}: $name" }
+    [pscustomobject]@{ Agent = $name; Link = $have[$name] }
+  }
+}
+if ($missing) {
+  Write-Warning "$($missing.Count) attendee agent(s) have no Teams link, so those attendees can't chat with them. Usually the agent's Teams channel is off (#93): re-run 06_provision_agents.ps1 -Agents <slug> for that estate, then run this again without -Estates (the page is rewritten with only the estates in the run).`n$($missing -join "`n")"
+}
+
 $guideShown = $GuideUrl -replace '^https?://', '' -replace '/$', ''
 $body = @(foreach ($c in $cards) {
   $lab = "Lab-$($c.Estate)-$($c.NN)"
@@ -91,6 +116,7 @@ $body = @(foreach ($c in $cards) {
     <tr><th>Password</th><td class="mono big">$(HtmlEnc $c.Password)</td></tr>
     <tr><th>Tenant domain</th><td class="mono">$(HtmlEnc $c.Domain)</td></tr>
     <tr><th>Your lab environment</th><td class="mono">$(HtmlEnc $lab)</td></tr>
+    <tr><th>Agent links</th><td>The Teams links page your facilitator shares: section <b class="mono">$(HtmlEnc $c.Estate)</b></td></tr>
   </table>
   <ol>
     <li>Open a <b>private browser window</b>, so your work account doesn't sign you in to the wrong tenant.</li>
@@ -141,10 +167,43 @@ $htmlPath = "$OutBase.html"; $pdfPath = "$OutBase.pdf"
 foreach ($f in $htmlPath, $pdfPath) { Set-Content -Path $f -Value $null -NoNewline; if (-not $IsWindows) { chmod 600 $f } }
 Set-Content -Path $htmlPath -Value $html -Encoding utf8
 Write-Host "$($cards.Count) card(s) from $($files.Count) handout file(s) -> $htmlPath"
+
+# The Teams links page: no passwords, safe to share with the room.
+$outDir = Split-Path -Parent $OutBase
+$linksPath = Join-Path $(if ($outDir) { $outDir } else { '.' }) 'teams-links.local.html'
+$sections = @(foreach ($est in $linksByEstate.Keys) {
+  $rows = @(foreach ($l in $linksByEstate[$est]) {
+    $cell = if ($l.Link) { "<a href=`"$(HtmlEnc $l.Link)`">Open in Teams</a><div class=`"url mono`">$(HtmlEnc $l.Link)</div>" }
+            else { '<span class="none">Not available - tell your facilitator</span>' }
+    "<tr><th>$(HtmlEnc $l.Agent)</th><td>$cell</td></tr>"
+  })
+  "<section><h2>Estate <span class=`"mono`">$(HtmlEnc $est)</span></h2><table>$($rows -join '')</table></section>"
+})
+@"
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Teams links to your agents</title>
+<style>
+  body { margin: 2em auto; max-width: 52em; padding: 0 1em; font: 11pt/1.45 "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #111; }
+  h1 { font-size: 17pt; } h2 { font-size: 13pt; margin: 1.4em 0 0.3em; border-bottom: 1px solid #ccc; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-weight: 600; width: 14em; padding: 4px 8px 4px 0; vertical-align: top; }
+  td { padding: 4px 0; }
+  .mono { font-family: "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; }
+  .url { font-size: 8.5pt; color: #555; overflow-wrap: anywhere; }
+  .none { color: #a00; }
+</style></head><body>
+<h1>Teams links to your agents</h1>
+<p>Find the section for your <b>estate id</b> (it's on your sign-in card). Open each link in the private browser
+window where you're signed in with your lab account, then select <b>Add</b> or <b>Open</b>. A link only works
+for its own estate's lab account.</p>
+$($sections -join "`n")
+</body></html>
+"@ | Set-Content -Path $linksPath -Encoding utf8
+Write-Host "Teams links page (no passwords; share it with the room) -> $linksPath"
 if ($HtmlOnly) { Remove-Item $pdfPath -ErrorAction SilentlyContinue }
 else {
   $out = python3 (Join-Path $PSScriptRoot 'lib/print_pdf.py') --html $htmlPath --pdf $pdfPath 2>&1
   if ($LASTEXITCODE) { throw "PDF rendering failed (open the HTML and print it instead): $($out -join ' ')" }
   Write-Host "Print: $pdfPath ($([math]::Ceiling($cards.Count / 2)) page(s), two cards a page - cut on the dashed line)"
 }
-Write-Warning 'These files hold PLAINTEXT passwords. They are gitignored; print them, never share them, and delete them after the delivery.'
+Write-Warning "The card files ($htmlPath, $pdfPath) hold PLAINTEXT passwords. They are gitignored; print them, never share them, and delete them after the delivery. The Teams links page holds none."
