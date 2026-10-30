@@ -437,11 +437,14 @@ Use-Site $claimsUrl
 Grant-SiteAccess 'Claims-Adjusters' 'All-Employees'
 
 # Ordinary claims-procedure grounding so the site looks real (context for Claims Copilot).
-# Only a CSV source exists; upload it as-is and also publish a short procedures .docx placeholder.
-$claimsCsv = Join-Path $dataDir 'claims.csv'
-if (Test-Path $claimsCsv) {
-  Write-Host 'Uploading claims.csv to Claims-Knowledge/Shared Documents'
-  Add-PnPFile -Path $claimsCsv -Folder 'Shared Documents' | Out-Null
+# We publish a short procedures .docx only. We do NOT upload claims.csv here: it duplicates the Dataverse
+# claim data (statuses, amounts) into grounding that every employee can read, so Claims Copilot could answer
+# a claim query from the indexed file instead of the Dataverse tool - defeating Scenario C's least-privilege
+# retest (the scoped svc-claims role wouldn't narrow what the agent returns). See #98. Remove it if a
+# previous build uploaded it, so re-provisioning cleans existing estates (re-indexing then lags by design).
+if (Get-PnPFile -Url 'Shared Documents/claims.csv' -AsListItem -ErrorAction SilentlyContinue) {
+  Write-Host 'Removing claims.csv from Claims-Knowledge/Shared Documents (duplicated Dataverse data, #98)'
+  Remove-PnPFile -SiteRelativeUrl 'Shared Documents/claims.csv' -Force
 }
 
 $procMd   = Join-Path $work 'Claims-Procedures.md'

@@ -9,7 +9,7 @@ subfolder holding `2026-comp-bands.xlsx`) and `/sites/Claims-Knowledge-<estate>`
 section hidden (vanish + white text) so a reader doesn't see it while grounding still ingests it. It also
 creates a separate, clean **`HR FAQ`** library holding one benign all-staff FAQ
 (`setup/data/HR-FAQ-Published.md`) — the grounding source for the **HR FAQ v2 (copy) decoy**, kept apart
-from the poisoned `Shared Documents`. Claims-Knowledge gets `claims.csv` and `Claims-Procedures.docx`.
+from the poisoned `Shared Documents`. Claims-Knowledge gets `Claims-Procedures.docx` only; `claims.csv` stays out of the grounding (#98) and is removed if an earlier build uploaded it.
 Safe to re-run.
 
 It also sets the access Scenarios A and B depend on, from the Phase 2 groups:
