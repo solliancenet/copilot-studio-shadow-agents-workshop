@@ -794,6 +794,15 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
 
    - It writes `setup/attendee-handouts.local.pdf` (and the `.html` it prints from). Both hold the passwords
      in plain text: gitignored, so print them, never share or publish them, and delete them in Phase 9.
+   - It also writes `setup/teams-links.local.html`: each estate's Teams install links (from Phase 6's
+     `teams-links-<estate>.local.csv`) to the agents attendees chat with. It holds **no passwords**, and a
+     link opens its agent only for that estate's lab account, so **share it with the room** at the start of
+     Exercise 04 (a Teams chat or email). Each card's **Agent links** row points to it.
+   - A warning that an attendee agent has **no Teams link** means that attendee can't chat with it: usually
+     its Teams channel is off (#93). Re-run `06_provision_agents.ps1 -Agents <slug>` for that estate, then
+     07d again, without `-Estates`: the page is rewritten with only the estates in the run. Don't hand out
+     cards until the warning is gone. No warning doesn't prove the channels are on: an agent with its channel
+     off can still have a link that won't open it (#93), so still open each link before the delivery.
 
 An attendee account is a tenant-wide Power Platform admin: delete the accounts right after the delivery
 (Phase 9).
@@ -822,7 +831,9 @@ Each attendee gets a small environment of their own, where they are System Admin
    register MFA — have an authenticator app ready. Then confirm:
 
    - [ ] the Power Platform admin center lists their slice, `Lab-<estate>-NN`;
-   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent;
+   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent (a link can
+         exist with the channel off, so 07d's warning alone doesn't show this), and 07d ran with no
+         missing-link warning (the links page attendees get is built from the same files);
    - [ ] Claims Copilot gives them claim CLM-9002, although their own Claims-Test roles grant no claim
          access — the confused-deputy path, with the attendee as the requester.
 
@@ -901,11 +912,39 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
 
 ### During delivery — Exercise 05 demonstrations
 
-Attendees share one estate, so **you** apply each Exercise 05 control, once, live; the room retests; you put
-the estate back. Do it as the facilitator account (Before delivery, step 5), not your own tenant admin.
+Each attendee retests on their own estate, which shows the *before*. You apply each control on the
+presenting estate and show the *after* on screen, then put the estate back. Do it as the facilitator account
+(Before delivery, step 5), not your own tenant admin, unless a step says otherwise.
 
-1. **Before Exercise 05 starts, snapshot the estate.** The script records the data policies, the default
-   environment's makers and `svc-claims`'s roles, so each demonstration can be undone exactly:
+**Pacing (90 minutes).** Open with 05-01: it's the one control that visibly blocks an attack live. 05-02 and
+05-04 change nothing an agent uses (05-04 isn't applied at all), so explain them in a couple of minutes each
+instead of demonstrating. Pre-stage 05-03 (step 0): made live, its changes don't show within the session.
+
+0. **Hours before Exercise 05 (the morning of), pre-stage 05-03 on the presenting estate.** Made live,
+   Benefits Buddy keeps answering from its index for over an hour ([errata](../reference/runbook-errata.md#exercise-05-03--narrowing-benefits-buddys-grounding-did-not-stop-the-leak-within-an-hour-2026-10-20)),
+   so make the changes early and show the result. As the tenant admin:
+   1. **Snapshot first**, once, before any change (step 1's command with `-Estate <estate>`). Don't
+      snapshot again later: a snapshot taken after these changes makes the restore put them back.
+   2. **Scenario C:** `pwsh setup/scripts/09b_ex05_scoped_claims_role.ps1 -Estate <estate>`.
+   3. **Scenario C's second path, older estates only:** builds no longer upload `claims.csv` into
+      `Claims-Knowledge` (#98). If your estate was built before that fix, re-run
+      `03_provision_sharepoint.ps1 -Estate <estate>` (it removes the file), or send `claims.csv` to the
+      recycle bin in `Claims-Knowledge-<estate>` → Shared Documents. Leave it removed afterwards.
+   4. **Scenario B:** 05-03 step 1 (`Leadership/` → **HR Benefits Members** → **No direct access**).
+   5. **Check the *after*** in Copilot Studio's **Test** pane, as an admin of that environment.
+      - **Claims Copilot:** its tool runs on `svc-claims`'s connection whoever tests, so the pane matches
+        Teams. Rehearsed on `fac01` (2026-10-26): about 2 minutes after the role, "CLM-9003 is not listed
+        among the current claims", with only CLM-9001 and CLM-9002 visible.
+      - **Benefits Buddy:** grounding may read with the tester's own access, and the site's Owners keep
+        `Leadership/`, so an owner's test pane can't prove the *after*. Check in Teams with a licensed
+        account that isn't a site owner or member.
+
+   In 05-03, the room retests its own estates (the *before*: CLM-9003 comes back "Approved") and you show
+   yours (the *after*). Put it back after the session with 05-03's step 4.
+
+1. **Before Exercise 05 starts, snapshot the estate**, unless you pre-staged (step 0 took it). The script
+   records the data policies, the default environment's makers and `svc-claims`'s roles, so each
+   demonstration can be undone exactly:
 
    ```bash
    pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Snapshot -Control All
@@ -962,6 +1001,13 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       then `pwsh setup/scripts/09_ex05_demo_state.ps1 -Action Restore -Control ClaimsRoles -Estate <estate>`
       (the role, Basic User and record owners).
 
+   {: .note }
+   > **Estates built before the #98 fix.** Those builds uploaded `claims.csv` into `Claims-Knowledge`, a
+   > second, indexed path to the claim data that the Dataverse role doesn't touch, so Claims Copilot can still
+   > return CLM-9003 after the scoped role. Step 0.3 removes the file. If it still answers from the index,
+   > present that as the finding it is — least privilege on one path doesn't help when the same data has
+   > another — not as the scoped role failing.
+
    **05-04 — Nothing to change.** The Conditional Access policy is specified, never created: one wrong
    policy locks out the tenant.
 
@@ -972,6 +1018,13 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
       select **Onboarding Guide** → **Block** → confirm. The status reads **Blocked**, with the banner
       "Agent blocked". Never **Delete**: it can't be undone.
    3. Wait for KT05 (attendees read Onboarding Guide's **Status**; lab accounts can't Block).
+      - **Show the contrast while they read** (nothing changes). The registry's **Agents without owners**
+        reads 0, though Onboarding Guide's owner left in January: his account still exists. Then open the
+        **Security Dashboard for AI** (`ai.security.microsoft.com`), signed in with a lab account. It needs
+        Security Reader, and a tenant admin without it sees blank cards. **AI risk** reads 0 exfiltration
+        and 0 oversharing minutes after the room exfiltrated the comp table, and its checklist shows 4 of 10
+        recommended controls on: DLP and Insider Risk aren't. Visibility depends on what's configured; it
+        isn't validation.
    4. **Put it back:** select Onboarding Guide again → **Unblock** → confirm. Let AI Administrator lapse.
 
    **05-06 — Show the labelled copy** (KT01 step 3; nothing changes)
@@ -981,7 +1034,37 @@ the estate back. Do it as the facilitator account (Before delivery, step 5), not
    2. **Show the room:** `2026-comp-bands-labeled.xlsx` shows **Sensitivity** `Confidential-PII-<estate>`,
       `2026-comp-bands.xlsx` none. The library view has no Sensitivity column.
 
-   **05-07 — Nothing to change.** Real-time protection is reasoned through (KT06).
+   **05-07 — Show Audit × D on Expense Helper** (reveal; nothing changes). Real-time protection stays
+   reasoned through (KT06).
+
+   1. Sign in as a **System Administrator of Halcourt (default)**, such as the tenant admin who built the
+      estates, not the facilitator account: it holds only Environment Maker and Basic User there, so it can't
+      open another user's flow. Attendees can't open it either (#73), so this is shown, not done.
+   2. In Power Automate (`make.powerautomate.com`), switch to **Halcourt (default)** → **Solutions** →
+      **Default Solution**, listed below the per-agent solutions; or go straight to
+      `make.powerautomate.com/environments/<environment id>/solutions/fd140aaf-4df4-11dd-bd17-0019b9312238`,
+      the Default Solution's id in every environment. In its **Objects** pane
+      select **Cloud flows**. Every estate has a flow named **Submit and auto-approve expense under $500**
+      (24 of them); the **Owner** column tells them apart, e.g. `# Sam Olsen (<estate>)`. Open the copy
+      owned by **Sam Olsen (the attendee's estate** whose chat you'll match in step 4), not your own, or
+      there's no run at that attendee's time. **Select the row** and choose **Details** in the toolbar.
+      Don't select the flow's name: that opens it in the editor.
+   3. **Details** shows **28-day run history**; a run can take a few minutes to appear. Select the run at
+      the time of one attendee's Exercise 04 Expense Helper chat, then **When Copilot Studio calls a flow** →
+      **Show raw outputs**. The body is only the amount; the headers name the agent and channel
+      (`BotSchemaName:cr458_ExpenseHelper<estate>`, `ChannelId:msteams`) but no user. Don't select
+      **Resubmit** or **Edit**, and sign out (or close the private window) when done - this is the tenant
+      admin on the shared screen.
+   4. **Show the room** that run next to the same attendee's `CopilotInteraction` event: in their KT01
+      search, the row whose **AgentName** is Expense Helper. The run says which agent called it and when, not
+      who asked. Matching the two by agent and time is **cross-log only** - or **partial** if more than one
+      run sits near that time (the attendee submitted twice, or you tested), since the time match then
+      doesn't single one out. The flow writes nothing, so the run is not evidence a privileged approval ran.
+      If the event hasn't arrived yet (it can take hours), show the run and say the match has to wait for it.
+   5. Say what it isn't: the flow's one action replies to the agent and calls no connector, so the run writes
+      nothing. "Auto-approved" (under $500) is only the reply.
+   6. Don't use Sales Nudge for this. Attendees aren't in its audience (`Halcourt-Makers`), it has no Teams
+      channel, and Halcourt-Prod read logging is off by design (04b), so its reads reach no log.
 
 3. **At the end, check everything is back.** Every line must say "same as the snapshot":
 
@@ -1012,6 +1095,7 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    pwsh setup/scripts/07_provision_lab_users.ps1 -Destroy
    rm setup/lab-users-$HALCOURT_ESTATE.local.csv
    rm -f setup/attendee-handouts.local.pdf setup/attendee-handouts.local.html   # the printed cards (8b step 5)
+   rm -f setup/teams-links.local.html                                           # the shared links page (8b step 5)
    ```
 
 3. **Delete the facilitator account.** It also deletes its password file.

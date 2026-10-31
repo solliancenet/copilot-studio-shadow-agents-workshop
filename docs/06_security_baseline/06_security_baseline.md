@@ -21,7 +21,8 @@ The standard is five plain-English stages and a gate:
 
 **KNOW IT → OWN IT → SCOPE IT → CONTROL IT → WATCH IT → the production promotion gate.**
 
-Every stage is work you've already done. This exercise names each stage, points to where you did it, and
+You've done the work behind every stage. The one new step is naming who's accountable: a business owner,
+a technical owner and a security reviewer. This exercise names each stage, points to where you did it, and
 hands you the rules as a ready-made checklist.
 
 ```mermaid
@@ -32,7 +33,9 @@ flowchart LR
   C --> W["WATCH IT<br/>logging · detection · lifecycle"]
   W --> G{"Production<br/>promotion gate"}
   G -->|all stages pass| P["Promote to production"]
-  G -->|any stage fails| R["Remediate — do not promote"]
+  G -->|a stage fails| E{"Formal exception<br/>valid and unexpired?"}
+  E -->|yes| P
+  E -->|no| R["Remediate — do not promote"]
 ```
 
 | Stage | What it asks | Where you already did it |
@@ -67,7 +70,7 @@ After this exercise you will be able to:
 
 ## Duration
 
-**Estimated time:** 10 minutes
+**Estimated time:** 20 minutes
 
 ## Deliverable
 

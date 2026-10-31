@@ -76,6 +76,12 @@ authorizes, and what you observe. That gap is the whole subject of this exercise
 > so you are never blocked when the tenant is slow or the demo queue is long.
 {: .note }
 
+> **Your agents' Teams links.** In the live tenant you chat with the agents in Teams. Your facilitator
+> shares a Teams links page with one section per estate id; your sign-in card points to it. Open the links
+> in your estate's section, in the private browser window where you're signed in with your lab account. If a
+> link says it's not available, tell your facilitator and take the offline route for that agent.
+{: .tip }
+
 ## Objectives
 
 After this exercise you will be able to:
