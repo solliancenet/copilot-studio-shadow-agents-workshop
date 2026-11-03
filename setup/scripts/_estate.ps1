@@ -53,3 +53,9 @@ function Get-LabPassword([string]$Given) {
   }
   throw "No lab password. Put it in setup/lab-secrets.local.json as {""labPassword"": ""...""} (gitignored), or set HALCOURT_LAB_PASSWORD. Never commit it."
 }
+
+# Say which account and az profile the run is about to act as, before it does anything.
+function Write-SignInBanner {
+  $who = az account show --query user.name -o tsv 2>$null
+  Write-Host "Signed in as $who (az profile: $env:AZURE_CONFIG_DIR)"
+}

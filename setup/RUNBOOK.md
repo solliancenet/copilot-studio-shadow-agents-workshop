@@ -1080,8 +1080,12 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
 
 Before you start:
 
-- `az` is signed in in the dev container: `az login --use-device-code --allow-no-subscriptions`. The
-  current CLI still shows a subscription picker; press Enter to accept the default.
+- `az` is signed in to the repo's `.azure/` profile, not `~/.azure`: the scripts read `AZURE_CONFIG_DIR`
+  from `scripts/env.sh`. Sign in from a shell that has run `source scripts/env.sh` (the VS Code terminal and
+  Claude Code do this automatically): `az login --use-device-code --allow-no-subscriptions`. The current CLI
+  still shows a subscription picker; press Enter to accept the default. Running the container with
+  `docker exec`? Pass `-e AZURE_CONFIG_DIR=/workspaces/copilot-studio-shadow-agents-workshop/.azure`, or the
+  login goes to the wrong profile and the script then fails with `TokenIssuedBeforeRevocationTimestamp`.
 - The lab password is set ([Phase 0b](#phase-0b--choose-your-estate-id) step 5: `setup/lab-secrets.local.json`
   or `HALCOURT_LAB_PASSWORD`). Step 6 signs in as the estate's personas.
 
@@ -1107,6 +1111,8 @@ Before you start:
 
    - Step 6 needs the lab password. The attendee CSV this step deletes is not a place to keep it; it
      lives in `setup/lab-secrets.local.json` or `HALCOURT_LAB_PASSWORD`.
+   - `07_provision_lab_users.ps1 -Destroy` refuses to run when no lab password is set, so step 6 can still
+     sign in as the personas.
 
 3. **Delete the facilitator account.** It also deletes its password file.
 
@@ -1129,7 +1135,7 @@ Before you start:
    ```
 
 6. **Tear down the estate.** In dependency order: the default environment's agents and the auto-approve
-   flow (as their owners), the SharePoint sites (purged, so the URLs can be reused), the three estate
+   flow, the SharePoint sites (purged, so the URLs can be reused), the three estate
    environments with everything in them, the Prod data policy, and the billing link. It only unlinks the
    billing plan; it never deletes it. `-RemovePersonas` also deletes the Phase 2 personas and every
    `*-<estate>` group.
@@ -1139,9 +1145,14 @@ Before you start:
    pwsh setup/scripts/99_teardown.ps1 -RemovePersonas
    ```
 
-   - Before `-RemovePersonas`, check the estate's default-environment agents (Expense Helper, Onboarding
-     Guide) still have live owners. If an owner persona is already gone, teardown cannot sign in as it
-     and cannot delete that agent; the fix is the PPAC System Administrator route in
+   - It first prints `Signed in as <upn> (az profile: <dir>)`, lists what it will delete, and asks you to
+     type the estate id to confirm; `-Force` skips the prompt. If the `az` check fails it prints the real
+     error and the profile; the cause may be a transient network error, so re-run once before signing in
+     again.
+   - The two default-environment agents (Expense Helper, Onboarding Guide) are deleted with the admin's own
+     token, selected by exact schema name, so the owner personas don't need to exist or be able to sign in.
+     It tries the owners only for an agent the admin cannot see; the fallback is the PPAC System
+     Administrator route in
      [the errata](../reference/runbook-errata.md#teardown--delete-the-default-environment-agents-or-the-next-build-cannot-recreate-them).
    - Environments delete in the background, over a few minutes.
    - It keeps Phase 0 (the tenant and the Conditional Access baseline), the default environment, the

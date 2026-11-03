@@ -623,6 +623,10 @@ reports *"No Chatbots found"* — the agent is invisible to every headless ident
 deactivate it, then delete — and if it still will not go it prints a loud warning naming the agents and
 telling you to remove them **before** re-running Phase 2.
 
+**Superseded where it works:** the admin token can read and delete these agents in the tenant checked on
+2026-11-02, so the "no human holds System Administrator" conclusion above does not hold there; see
+[an owner persona deleted early](#teardown--an-owner-persona-deleted-early-and-a-revoked-az-token-teardown-carried-on-past).
+
 **If you already have orphans**, the only way out is interactive, once: in **PPAC → the default environment
 → Settings → Users + permissions → Users**, give yourself **System Administrator**, then delete the two
 agents in Copilot Studio (or Dataverse). Do it *before* Phase 6, which will then recreate them normally.
@@ -687,7 +691,7 @@ name.
 
 ### Teardown · an owner persona deleted early, and a revoked `az` token teardown carried on past
 
-Found tearing down the `jrc` estate on 2026-11-02. Two separate failures, one stranded agent.
+Found tearing down the `jrc` estate on 2026-11-02. Three separate failures, one stranded agent.
 
 **(a) The default-environment agent owner was already gone.** `tom.dean` owns one of the estate's
 default-environment agents, and his persona had already been deleted. Teardown's sign-in as him failed with
@@ -699,9 +703,17 @@ it returned 401. The agent survived; this is the orphan case from
 (`TokenIssuedBeforeRevocationTimestamp`). Teardown printed `InteractionRequired` and carried on, so the
 failures that followed looked unrelated.
 
+**(c) Two `az` profiles.** The token errors were really the repo's `.azure/` profile holding a revoked
+login, while `az login` had been run against `~/.azure` in the container. Checks passed in one profile and
+the script failed in the other. Log in with `AZURE_CONFIG_DIR` set to the repo's `.azure` (`source
+scripts/env.sh`; with `docker exec`, pass `-e AZURE_CONFIG_DIR=/workspaces/copilot-studio-shadow-agents-workshop/.azure`).
+
 **Fix.** `az logout`, then `az login --use-device-code --allow-no-subscriptions` (press Enter at the
-subscription picker), and re-run. For the stranded agent, use the PPAC System Administrator route in the
-entry above. Check the owners exist before `-RemovePersonas` (Phase 9 step 6).
+subscription picker) against the repo's profile, and re-run. The admin **can** read and delete the
+default-environment agents directly in this tenant (verified 2026-11-02: listed with the admin token; a
+direct `DELETE` returned 400, then deleting the `botcomponents` and retrying succeeded), so the PPAC System
+Administrator route in the entry above is only a fallback. `99_teardown.ps1` now deletes them with the admin
+token by exact schema name and no longer needs the owners alive.
 
 **The lab password lived only in the attendee CSV.** Phase 9 step 2 deletes that file, and step 6 signs in
 as the personas with the lab password, so nothing was left to sign in with. Keep it in
