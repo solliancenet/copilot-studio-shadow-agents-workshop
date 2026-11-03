@@ -1078,6 +1078,13 @@ After the delivery, remove this estate's attendee and facilitator accounts, its 
 objects, then the estate itself. Run the steps in this order: some need things a later step deletes. Each
 removes only this estate; nothing another estate uses is touched. To reseed instead, re-run Phases 2–6.
 
+Before you start:
+
+- `az` is signed in in the dev container: `az login --use-device-code --allow-no-subscriptions`. The
+  current CLI still shows a subscription picker; press Enter to accept the default.
+- The lab password is set ([Phase 0b](#phase-0b--choose-your-estate-id) step 5: `setup/lab-secrets.local.json`
+  or `HALCOURT_LAB_PASSWORD`). Step 6 signs in as the estate's personas.
+
 1. **Take back the attendees' Purview role.** Before step 2, while the accounts still exist: the script
    matches role-group members by display name. It needs one admin device-code approval.
 
@@ -1097,6 +1104,9 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    rm -f setup/attendee-handouts.local.pdf setup/attendee-handouts.local.html   # the printed cards (8b step 5)
    rm -f setup/teams-links.local.html                                           # the shared links page (8b step 5)
    ```
+
+   - Step 6 needs the lab password. The attendee CSV this step deletes is not a place to keep it; it
+     lives in `setup/lab-secrets.local.json` or `HALCOURT_LAB_PASSWORD`.
 
 3. **Delete the facilitator account.** It also deletes its password file.
 
@@ -1125,11 +1135,14 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    `*-<estate>` group.
 
    ```bash
-   export ENTRAID_APP_ID=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
-   export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
+   export ENTRAID_APP_ID=$(jq -r .appId setup/pnp.local.json) HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=$(jq -r .password setup/pnp.local.json)
    pwsh setup/scripts/99_teardown.ps1 -RemovePersonas
    ```
 
+   - Before `-RemovePersonas`, check the estate's default-environment agents (Expense Helper, Onboarding
+     Guide) still have live owners. If an owner persona is already gone, teardown cannot sign in as it
+     and cannot delete that agent; the fix is the PPAC System Administrator route in
+     [the errata](../reference/runbook-errata.md#teardown--delete-the-default-environment-agents-or-the-next-build-cannot-recreate-them).
    - Environments delete in the background, over a few minutes.
    - It keeps Phase 0 (the tenant and the Conditional Access baseline), the default environment, the
      shared Azure deployment and the other shared pieces.

@@ -685,6 +685,28 @@ Same family as the maker OneDrives, the soft-deleted users and the per-build age
 living **outside** the estate environments survives an environment-level teardown and has to be removed by
 name.
 
+### Teardown · an owner persona deleted early, and a revoked `az` token teardown carried on past
+
+Found tearing down the `jrc` estate on 2026-11-02. Two separate failures, one stranded agent.
+
+**(a) The default-environment agent owner was already gone.** `tom.dean` owns one of the estate's
+default-environment agents, and his persona had already been deleted. Teardown's sign-in as him failed with
+`AADSTS50034` (user account does not exist in the directory), and every `bots` / `botcomponents` call after
+it returned 401. The agent survived; this is the orphan case from
+[delete the default-environment agents](#teardown--delete-the-default-environment-agents-or-the-next-build-cannot-recreate-them).
+
+**(b) The container's `az` token had been revoked.** Continuous access evaluation killed it
+(`TokenIssuedBeforeRevocationTimestamp`). Teardown printed `InteractionRequired` and carried on, so the
+failures that followed looked unrelated.
+
+**Fix.** `az logout`, then `az login --use-device-code --allow-no-subscriptions` (press Enter at the
+subscription picker), and re-run. For the stranded agent, use the PPAC System Administrator route in the
+entry above. Check the owners exist before `-RemovePersonas` (Phase 9 step 6).
+
+**The lab password lived only in the attendee CSV.** Phase 9 step 2 deletes that file, and step 6 signs in
+as the personas with the lab password, so nothing was left to sign in with. Keep it in
+`setup/lab-secrets.local.json` or `HALCOURT_LAB_PASSWORD` (Phase 0b step 5).
+
 ### Phase 5 · a brand-new Dataverse environment is flaky
 
 A freshly provisioned Dataverse environment fails metadata writes transiently while it warms up:

@@ -33,6 +33,13 @@ $Estate = Resolve-Estate $Estate
 $AzClient = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'
 if (-not $TenantId)     { $TenantId = az account show --query tenantId -o tsv }
 if (-not $DomainSuffix) { $DomainSuffix = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv }
+# Fail fast on an unusable sign-in. A revoked or expired `az` login (InteractionRequired /
+# TokenIssuedBeforeRevocationTimestamp) otherwise prints its error and the script carries on into the
+# destructive steps with a blank tenant, domain and token.
+$null = az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $TenantId -or -not $DomainSuffix) {
+  throw "The az sign-in is unusable (no Graph token, tenant or domain). Sign in again, then re-run: az logout; az login --use-device-code --allow-no-subscriptions"
+}
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
 Write-Host "Tearing down estate '$Estate' on $DomainSuffix"
 
@@ -41,7 +48,10 @@ $script:AdminTokens = @{}
 function Get-AdminToken([string]$r) { if (-not $script:AdminTokens[$r]) { $script:AdminTokens[$r] = az account get-access-token --resource $r --query accessToken -o tsv }; $script:AdminTokens[$r] }
 function Get-PersonaToken([string]$a, [string]$r) {
   $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $a); password = (Get-LabPassword $LabPassword); scope = "$($r.TrimEnd('/'))/.default" }
-  (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token
+  # A persona that cannot sign in returns $null and sets $script:PersonaTokenError; callers skip, not retry.
+  $script:PersonaTokenError = $null
+  try { (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token }
+  catch { $script:PersonaTokenError = "$($_.ErrorDetails.Message) $($_.Exception.Message)"; $null }
 }
 function Invoke-Json([string]$m, [string]$u, [string]$tok, $body) {
   $h = @{ Authorization = "Bearer $tok"; Accept = 'application/json' }
@@ -72,9 +82,22 @@ if ($defaultEnv) {
   # Administrator - only Microsoft service principals), and the NEXT build fails its solution import with
   # "does not have WriteAccess right(s) ... of entity Agent" for an agent it cannot see or remove.
   # So: drop the agent's components, deactivate it, then delete - and shout if it still will not go.
-  $orphanRisk = @()
+  $orphanRisk = @(); $skippedOwners = @()
   foreach ($owner in 'tom.dean','sam.olsen') {                     # the default-env agent owners (Onboarding, Expense)
     $tok = Get-PersonaToken $owner $org
+    if (-not $tok) {
+      # No token means every call below would 401. AADSTS50034 = the owner is already gone from the directory.
+      $agentLabel = if ($owner -eq 'tom.dean') { 'Onboarding' } else { 'Expense' }
+      if ($script:PersonaTokenError -match 'AADSTS50034') {
+        Write-Warning "Skipping the $agentLabel agent: its owner $(Get-Upn $owner) no longer exists, so it cannot be deleted as the owner. In PPAC give the admin System Administrator on the default environment and delete the agent there (reference/runbook-errata.md, Teardown default-environment-agents)."
+      } else {
+        # The owner exists but we cannot be them (wrong lab password, locked, MFA). Carrying on would delete the
+        # personas next and strand the agent, so stop here.
+        throw "Cannot sign in as the $agentLabel agent's owner $(Get-Upn $owner): $($script:PersonaTokenError.Trim().Split([char]10)[0]). Fix the sign-in (lab password: Phase 0b step 5) and re-run; nothing after this point has run."
+      }
+      $skippedOwners += $owner
+      continue
+    }
     foreach ($b in @((Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid,name" $tok).value)) {
       Write-Host "  agent '$($b.name)' (owner $owner)"
       $gone = $false
@@ -101,8 +124,10 @@ if ($defaultEnv) {
     Write-Warning "personas will be new principals, the agents will be orphaned, and Phase 6 will fail to"
     Write-Warning "recreate them ('does not have WriteAccess ... entity Agent')."
   }
-  $stok = Get-PersonaToken 'sam.olsen' $org
-  foreach ($w in @((Invoke-Json GET "$org/api/data/v9.2/workflows?`$select=workflowid,name&`$filter=category eq 5 and startswith(name,'Submit and auto-approve')" $stok).value)) {
+  if ($skippedOwners) { Write-Warning "Agents owned by $($skippedOwners -join ', ') were NOT deleted (owner cannot sign in) - see the warning above before re-running Phase 2." }
+  $stok = if ($skippedOwners -contains 'sam.olsen') { $null } else { Get-PersonaToken 'sam.olsen' $org }
+  if (-not $stok) { Write-Host "  skipping the auto-approve flow (sam.olsen cannot sign in)" }
+  foreach ($w in @(if ($stok) { (Invoke-Json GET "$org/api/data/v9.2/workflows?`$select=workflowid,name&`$filter=category eq 5 and startswith(name,'Submit and auto-approve')" $stok).value })) {
     Write-Host "  flow '$($w.name)'"; Invoke-Json PATCH "$org/api/data/v9.2/workflows($($w.workflowid))" $stok @{ statecode = 0; statuscode = 1 } | Out-Null
     Invoke-Json DELETE "$org/api/data/v9.2/workflows($($w.workflowid))" $stok | Out-Null
   }
