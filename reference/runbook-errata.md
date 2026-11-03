@@ -1654,3 +1654,21 @@ redirect wrapper, not the audit page: the access model (`prvReadRecordAuditHisto
 directly. The page's **Delete Change History** button is shown regardless; the student holds only Lab
 Reviewer (read-only) and Bot Viewer in Claims-Test, neither with `prvDeleteAudit` or
 `prvDeleteAuditPartitions`.
+
+### Many-estate build - transient failures and how each resumed (2026-11-03)
+
+**Symptom.** Building estate `db` with `10_build_estates.ps1` hit these transient failures; none needed a
+code change.
+**Evidence and fix, by phase.**
+- **Phase 2.** Graph `409 Directory_ConcurrencyViolation` - transient; re-run. The licence step also crashed
+  once on a Graph concurrency error (the script says licensing is never fatal) - re-run.
+- **Phase 4b.** OneDrive hit the 45-minute timeout. Resumed with `-From onedrive`; it succeeded.
+- **Phase 4c.** Right after the build: `label not yet replicated to SharePoint (labelNotFound)`. Re-run
+  `-From purview -To purview` later (it succeeded the same day; the PnP env vars must be exported).
+- **Phase 6.** `POST /publishers` ResponseEnded, then a pac push failure mid-run. Resumed with
+  `06_provision_agents.ps1 -Agents <remaining slugs>` for only the agents not yet built, which avoids
+  republishing built agents and creating extra agent identities.
+- **Phase 6.** The Teams channel step timed out for two agents (benefits-buddy, expense-helper). Re-running 06
+  for just those two with `-SkipConnections` added the channel and wrote the links.
+- **Phase 8b.** The builder's `-From users` leaves the attendee without a seat (07 runs with `-NoLicense`). At
+  25/25 E5 seats, free one from a prior delivery's attendee and run `07 -Count 1` directly.

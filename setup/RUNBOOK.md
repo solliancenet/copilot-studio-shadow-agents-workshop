@@ -842,6 +842,13 @@ Each attendee gets a small environment of their own, where they are System Admin
 Run these the day before. They check what the build phases set up, as the attendees will see it. What each
 check protects: [before-delivery-checks.md](../reference/before-delivery-checks.md).
 
+{: .note }
+> Steps 1 and 2 (the preflight and the Teams chat probe) are for the shared estate, or a spot-check of one or
+> two estates. With one estate per attendee it is not practical to run them on every estate (admin MFA, and
+> the number of estates); the estates delivered so far (2026-10) were not each preflighted. Hand-built estates
+> handed to a lab developer to work through self-paced are likewise not preflighted; the developer follows the
+> lab as written.
+
 1. **Run the preflight.** It checks the tenant capabilities
    ([tenant-capabilities.md](../reference/tenant-capabilities.md)), the estate and the attendee access
    model, and names the exercise step each failed check would break. In the dev container terminal, signed

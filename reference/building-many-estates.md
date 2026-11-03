@@ -24,9 +24,36 @@ pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -From users           # j
   for that estate before changing its agents.
 - **Purview's transcript role** (RUNBOOK Phase 8b step 3) needs one device-code approval as the admin; pass
   every estate so that one approval covers them all: `07c_provision_purview_roles.ps1 -Estates fac01,stu01,...`.
-- **Attendee seats** come the day before the delivery, once the persona seats are reclaimed: re-run
-  `07_provision_lab_users.ps1 -Count 1` (without `-NoLicense`) per estate (RUNBOOK Phase 8b).
+- **Attendee seats.** The builder (including `10_build_estates.ps1 -From users`) runs 07 with `-NoLicense`,
+  so the attendee account gets NO seat from the builder. Seat one directly, without `-NoLicense`, the day
+  before the delivery once the persona seats are reclaimed (RUNBOOK Phase 8b):
+  `pwsh setup/scripts/07_provision_lab_users.ps1 -Estate <id> -Count 1`.
+  When the tenant is at 25 of 25 E5 seats (`DEVELOPERPACK_V2_E5`), free one first from a previous
+  delivery's attendee account: check its last sign-in (Graph beta `users` `signInActivity`) shows that
+  delivery is over, then remove its licence (Graph `POST /users/<upn>/assignLicense` with
+  `removeLicenses: [<E5 skuId>]`). Removing another account's licence is the facilitator's decision.
 - **Phase 4c** usually reports the label not yet in SharePoint: re-run it hours later with
-  `-From purview -To purview`.
+  `-From purview -To purview`. That throws unless `ENTRAID_APP_ID`, `HALCOURT_PNP_CERT_PFX` and
+  `HALCOURT_PNP_CERT_PW` are exported (the builder checks at `10_build_estates.ps1` line ~69):
+  ```bash
+  export ENTRAID_APP_ID=$(jq -r .appId setup/pnp.local.json) HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=$(jq -r .password setup/pnp.local.json)
+  ```
+- **Teams links.** If Phase 6 reports no Teams install link for an agent (the channel step timed out),
+  recover with
+  `pwsh setup/scripts/06_provision_agents.ps1 -Estate <id> -Agents <slug>,<slug> -SkipConnections`.
+  It adds the channel, republishes that agent and writes the link to `setup/teams-links-<id>.local.csv`.
+  Copying by hand (Channels > Teams > Availability options > Copy link) is the fallback. Verified
+  2026-11-03 on estate `db` for `benefits-buddy` and `expense-helper`.
 - **Check each estate** before the delivery with the preflight and the Teams chat probe (*Before delivery*),
   chatting as Jordan Blake on a lent seat if the personas' seats were reclaimed.
+- **Handing an estate to a lab developer (self-paced).** The builder does not create the facilitator
+  account; run `pwsh setup/scripts/07b_provision_facilitator.ps1` with `HALCOURT_ESTATE=<id>` (the password
+  goes to `setup/lab-facilitator-<id>.local.csv`). For Exercise 05-03 the developer also needs:
+  (a) ownership of the M365 group `HR Benefits (<id>)`, which owns the `HR-Benefits-<id>` site (Scenario B
+  changes the Leadership folder as site owner); add via Graph `POST /groups/<id>/owners/$ref`; and
+  (b) a tenant-admin role such as Global Administrator on the facilitator account, to run
+  `09_ex05_demo_state.ps1` and `09b_ex05_scoped_claims_role.ps1` from the dev container with the repo's
+  az profile (those scripts run as the az sign-in). The developer enrols MFA themselves at first sign-in,
+  so the authentication codes are theirs. Teardown: `07b_provision_facilitator.ps1 -Destroy`. A standing
+  Global Administrator on a lab account is a deliberate trade-off for a lab tenant; remove it with the
+  account.
