@@ -1148,7 +1148,8 @@ Before you start:
    `*-<estate>` group.
 
    ```bash
-   export ENTRAID_APP_ID=$(jq -r .appId setup/pnp.local.json) HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=$(jq -r .password setup/pnp.local.json)
+   export ENTRAID_APP_ID=$(az ad app list --display-name "Halcourt PnP" --query "[0].appId" -o tsv)
+   export HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=<cert-pw>
    pwsh setup/scripts/99_teardown.ps1 -RemovePersonas
    ```
 
@@ -1158,7 +1159,7 @@ Before you start:
      again.
    - The two default-environment agents (Expense Helper, Onboarding Guide) are deleted with the admin's own
      token, selected by exact schema name, so the owner personas don't need to exist or be able to sign in.
-     It tries the owners only for an agent the admin cannot see; the fallback is the PPAC System
+     It tries the owners for an agent the admin cannot see or could not delete; the fallback is the PPAC System
      Administrator route in
      [the errata](../reference/runbook-errata.md#teardown--delete-the-default-environment-agents-or-the-next-build-cannot-recreate-them).
    - Environments delete in the background, over a few minutes.

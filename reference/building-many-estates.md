@@ -36,7 +36,7 @@ pwsh setup/scripts/10_build_estates.ps1 -Estates fac01 -From users           # j
   `-From purview -To purview`. That throws unless `ENTRAID_APP_ID`, `HALCOURT_PNP_CERT_PFX` and
   `HALCOURT_PNP_CERT_PW` are exported (the builder checks at `10_build_estates.ps1` line ~69):
   ```bash
-  export ENTRAID_APP_ID=$(jq -r .appId setup/pnp.local.json) HALCOURT_PNP_CERT_PFX=setup/pnp.local.pfx HALCOURT_PNP_CERT_PW=$(jq -r .password setup/pnp.local.json)
+  export ENTRAID_APP_ID=$(jq -r .appId setup/pnp-app.local.json) HALCOURT_PNP_CERT_PFX=setup/pnp-app.local.pfx HALCOURT_PNP_CERT_PW=$(jq -r .pfxPassword setup/pnp-app.local.json)
   ```
 - **Teams links.** If Phase 6 reports no Teams install link for an agent (the channel step timed out),
   recover with
