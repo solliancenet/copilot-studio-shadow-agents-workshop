@@ -842,6 +842,13 @@ Each attendee gets a small environment of their own, where they are System Admin
 Run these the day before. They check what the build phases set up, as the attendees will see it. What each
 check protects: [before-delivery-checks.md](../reference/before-delivery-checks.md).
 
+{: .note }
+> Steps 1 and 2 (the preflight and the Teams chat probe) are for the shared estate, or a spot-check of one or
+> two estates. With one estate per attendee it is not practical to run them on every estate (admin MFA, and
+> the number of estates); the estates delivered so far (2026-10) were not each preflighted. Hand-built estates
+> handed to a lab developer to work through self-paced are likewise not preflighted; the developer follows the
+> lab as written.
+
 1. **Run the preflight.** It checks the tenant capabilities
    ([tenant-capabilities.md](../reference/tenant-capabilities.md)), the estate and the attendee access
    model, and names the exercise step each failed check would break. In the dev container terminal, signed
@@ -1078,6 +1085,17 @@ After the delivery, remove this estate's attendee and facilitator accounts, its 
 objects, then the estate itself. Run the steps in this order: some need things a later step deletes. Each
 removes only this estate; nothing another estate uses is touched. To reseed instead, re-run Phases 2–6.
 
+Before you start:
+
+- `az` is signed in to the repo's `.azure/` profile, not `~/.azure`: the scripts read `AZURE_CONFIG_DIR`
+  from `scripts/env.sh`. Sign in from a shell that has run `source scripts/env.sh` (the VS Code terminal and
+  Claude Code do this automatically): `az login --use-device-code --allow-no-subscriptions`. The current CLI
+  still shows a subscription picker; press Enter to accept the default. Running the container with
+  `docker exec`? Pass `-e AZURE_CONFIG_DIR=/workspaces/copilot-studio-shadow-agents-workshop/.azure`, or the
+  login goes to the wrong profile and the script then fails with `TokenIssuedBeforeRevocationTimestamp`.
+- The lab password is set ([Phase 0b](#phase-0b--choose-your-estate-id) step 5: `setup/lab-secrets.local.json`
+  or `HALCOURT_LAB_PASSWORD`). Step 6 signs in as the estate's personas.
+
 1. **Take back the attendees' Purview role.** Before step 2, while the accounts still exist: the script
    matches role-group members by display name. It needs one admin device-code approval.
 
@@ -1097,6 +1115,11 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    rm -f setup/attendee-handouts.local.pdf setup/attendee-handouts.local.html   # the printed cards (8b step 5)
    rm -f setup/teams-links.local.html                                           # the shared links page (8b step 5)
    ```
+
+   - Step 6 needs the lab password. The attendee CSV this step deletes is not a place to keep it; it
+     lives in `setup/lab-secrets.local.json` or `HALCOURT_LAB_PASSWORD`.
+   - `07_provision_lab_users.ps1 -Destroy` refuses to run when no lab password is set, so step 6 can still
+     sign in as the personas.
 
 3. **Delete the facilitator account.** It also deletes its password file.
 
@@ -1119,7 +1142,7 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    ```
 
 6. **Tear down the estate.** In dependency order: the default environment's agents and the auto-approve
-   flow (as their owners), the SharePoint sites (purged, so the URLs can be reused), the three estate
+   flow, the SharePoint sites (purged, so the URLs can be reused), the three estate
    environments with everything in them, the Prod data policy, and the billing link. It only unlinks the
    billing plan; it never deletes it. `-RemovePersonas` also deletes the Phase 2 personas and every
    `*-<estate>` group.
@@ -1130,6 +1153,15 @@ removes only this estate; nothing another estate uses is touched. To reseed inst
    pwsh setup/scripts/99_teardown.ps1 -RemovePersonas
    ```
 
+   - It first prints `Signed in as <upn> (az profile: <dir>)`, lists what it will delete, and asks you to
+     type the estate id to confirm; `-Force` skips the prompt. If the `az` check fails it prints the real
+     error and the profile; the cause may be a transient network error, so re-run once before signing in
+     again.
+   - The two default-environment agents (Expense Helper, Onboarding Guide) are deleted with the admin's own
+     token, selected by exact schema name, so the owner personas don't need to exist or be able to sign in.
+     It tries the owners for an agent the admin cannot see or could not delete; the fallback is the PPAC System
+     Administrator route in
+     [the errata](../reference/runbook-errata.md#teardown--delete-the-default-environment-agents-or-the-next-build-cannot-recreate-them).
    - Environments delete in the background, over a few minutes.
    - It keeps Phase 0 (the tenant and the Conditional Access baseline), the default environment, the
      shared Azure deployment and the other shared pieces.

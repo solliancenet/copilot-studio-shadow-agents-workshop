@@ -33,6 +33,7 @@ Thumbs.db
 **/*.answers.local.md
 # Attendee handouts from 07_provision_lab_users.ps1 and 07d's printable cards - PLAINTEXT passwords
 **/*.local.csv
+**/*.local.zip
 setup/**/*.local.html
 setup/**/*.local.pdf
 setup/**/secrets.*

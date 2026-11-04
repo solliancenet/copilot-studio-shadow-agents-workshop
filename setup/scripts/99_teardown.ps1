@@ -25,7 +25,8 @@ param(
   [string]$PnpCertPfx  = $env:HALCOURT_PNP_CERT_PFX,   # app-only cert; omit to skip site removal
   [string]$PnpCertPw   = $env:HALCOURT_PNP_CERT_PW,
   [switch]$RemovePersonas,
-  [switch]$RemoveShared
+  [switch]$RemoveShared,
+  [switch]$Force                                        # skip the type-the-estate-id confirmation
 )
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot '_estate.ps1')
@@ -33,15 +34,38 @@ $Estate = Resolve-Estate $Estate
 $AzClient = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'
 if (-not $TenantId)     { $TenantId = az account show --query tenantId -o tsv }
 if (-not $DomainSuffix) { $DomainSuffix = az rest --method GET --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv }
+# Fail fast on an unusable sign-in. A revoked or expired `az` login (InteractionRequired /
+# TokenIssuedBeforeRevocationTimestamp) otherwise prints its error and the script carries on into the
+# destructive steps with a blank tenant, domain and token.
+$tokCheck = az account get-access-token --resource https://graph.microsoft.com --query accessToken -o tsv 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $TenantId -or -not $DomainSuffix) {
+  # Quote az only when the token call failed: on success $tokCheck IS the access token, never print it.
+  $azErr = if ($LASTEXITCODE -ne 0) { (@($tokCheck) | Where-Object { "$_".Trim() } | Select-Object -First 1) }
+           else { 'a Graph token was issued, but the tenant or default-domain lookup came back empty' }
+  throw "The az sign-in is unusable (no Graph token, tenant or domain). az said: $azErr (az profile: $env:AZURE_CONFIG_DIR). This can also be a transient network error, so re-running may be enough; otherwise sign in again, then re-run: az logout; az login --use-device-code --allow-no-subscriptions"
+}
+$estateEnvNames = 'Halcourt-Prod','Claims-Test','Maker-Sandbox' | ForEach-Object { Get-EstateName $_ $Estate }
 function Get-Upn([string]$Alias) { "$(Get-EstateAlias $Alias $Estate)@$DomainSuffix" }
-Write-Host "Tearing down estate '$Estate' on $DomainSuffix"
+Write-SignInBanner
+Write-Host "`nTearing down estate '$Estate' on $DomainSuffix. This will delete:"
+Write-Host "  - the estate's agents, the auto-approve flow and connections in the shared default environment"
+Write-Host "  - SharePoint sites $(@('HR-Benefits','Claims-Knowledge' | ForEach-Object { Get-EstateName $_ $Estate }) -join ', ') and the maker OneDrives"
+Write-Host "  - environments $($estateEnvNames -join ', ') and the DLP policy $(Get-EstateName 'Halcourt-Prod-DLP' $Estate)"
+if ($RemovePersonas) { Write-Host "  - the personas (*.$Estate@$DomainSuffix) and every group named *-$Estate" }
+if ($RemoveShared)   { Write-Host "  - SHARED, every estate in the tenant: the Halcourt-Copilot-Authors group and the Halcourt PnP app" }
+if (-not $Force) {
+  if ((Read-Host "`nType the estate id ('$Estate') to confirm") -ne $Estate) { Write-Host 'Aborted.'; return }
+}
 
 # --- tokens / helpers (as the engine) -------------------------------------------------------------------
 $script:AdminTokens = @{}
 function Get-AdminToken([string]$r) { if (-not $script:AdminTokens[$r]) { $script:AdminTokens[$r] = az account get-access-token --resource $r --query accessToken -o tsv }; $script:AdminTokens[$r] }
 function Get-PersonaToken([string]$a, [string]$r) {
   $body = @{ client_id = $AzClient; grant_type = 'password'; username = (Get-Upn $a); password = (Get-LabPassword $LabPassword); scope = "$($r.TrimEnd('/'))/.default" }
-  (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token
+  # A persona that cannot sign in returns $null and sets $script:PersonaTokenError; callers skip, not retry.
+  $script:PersonaTokenError = $null
+  try { (Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body $body).access_token }
+  catch { $script:PersonaTokenError = "$($_.ErrorDetails.Message) $($_.Exception.Message)"; $null }
 }
 function Invoke-Json([string]$m, [string]$u, [string]$tok, $body) {
   $h = @{ Authorization = "Bearer $tok"; Accept = 'application/json' }
@@ -60,7 +84,6 @@ function Graph([string]$m, [string]$path, $body, [switch]$Eventual) {
 
 $allEnvs = (Bap GET 'scopes/admin/environments').value
 $defaultEnv = $allEnvs | Where-Object { $_.properties.displayName -eq 'Halcourt (default)' } | Select-Object -First 1
-$estateEnvNames = 'Halcourt-Prod','Claims-Test','Maker-Sandbox' | ForEach-Object { Get-EstateName $_ $Estate }
 
 # --- 1) default-env agents (owned by this estate's personas) + the auto-approve flow --------------------
 if ($defaultEnv) {
@@ -72,27 +95,73 @@ if ($defaultEnv) {
   # Administrator - only Microsoft service principals), and the NEXT build fails its solution import with
   # "does not have WriteAccess right(s) ... of entity Agent" for an agent it cannot see or remove.
   # So: drop the agent's components, deactivate it, then delete - and shout if it still will not go.
-  $orphanRisk = @()
-  foreach ($owner in 'tom.dean','sam.olsen') {                     # the default-env agent owners (Onboarding, Expense)
-    $tok = Get-PersonaToken $owner $org
-    foreach ($b in @((Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid,name" $tok).value)) {
-      Write-Host "  agent '$($b.name)' (owner $owner)"
-      $gone = $false
-      foreach ($attempt in 'direct', 'after-components', 'after-deactivate') {
-        if ($attempt -eq 'after-components') {
-          foreach ($c in @((Invoke-Json GET "$org/api/data/v9.2/botcomponents?`$select=botcomponentid&`$filter=_parentbotid_value eq $($b.botid)" $tok).value)) {
-            try { Invoke-Json DELETE "$org/api/data/v9.2/botcomponents($($c.botcomponentid))" $tok | Out-Null } catch { }
-          }
-        } elseif ($attempt -eq 'after-deactivate') {
-          try { Invoke-Json PATCH "$org/api/data/v9.2/bots($($b.botid))" $tok @{ statecode = 1; statuscode = 2 } | Out-Null } catch { }
+  $orphanRisk = @(); $skippedOwners = @()
+  # Delete one agent with the given token; the three attempts and the read-back are the same for admin and owner.
+  function Remove-DefaultEnvBot($b, [string]$tok, [string]$who) {
+    Write-Host "  agent '$($b.name)' ($who)"
+    $gone = $false
+    foreach ($attempt in 'direct', 'after-components', 'after-deactivate') {
+      if ($attempt -eq 'after-components') {
+        foreach ($c in @((Invoke-Json GET "$org/api/data/v9.2/botcomponents?`$select=botcomponentid&`$filter=_parentbotid_value eq $($b.botid)" $tok).value)) {
+          try { Invoke-Json DELETE "$org/api/data/v9.2/botcomponents($($c.botcomponentid))" $tok | Out-Null } catch { }
         }
-        # Invoke-Json reports a failure and returns $null - it never throws - so read the agent back to know.
-        Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null
-        # Gone only if the read SUCCEEDS and finds nothing: a failed read (token, throttling) proves nothing.
-        $chk = Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid&`$filter=botid eq $($b.botid)" $tok
-        if ($null -ne $chk -and -not $chk.value) { $gone = $true; break }
+      } elseif ($attempt -eq 'after-deactivate') {
+        try { Invoke-Json PATCH "$org/api/data/v9.2/bots($($b.botid))" $tok @{ statecode = 1; statuscode = 2 } | Out-Null } catch { }
       }
-      if ($gone) { Write-Host "    deleted" } else { $orphanRisk += "$($b.name) ($($b.botid))" }
+      # Invoke-Json reports a failure and returns $null - it never throws - so read the agent back to know.
+      Invoke-Json DELETE "$org/api/data/v9.2/bots($($b.botid))" $tok | Out-Null
+      # Gone only if the read SUCCEEDS and finds nothing: a failed read (token, throttling) proves nothing.
+      $chk = Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid&`$filter=botid eq $($b.botid)" $tok
+      if ($null -ne $chk -and -not $chk.value) { $gone = $true; break }
+    }
+    if ($gone) { Write-Host "    deleted" }
+    $gone
+  }
+  # The admin's own Dataverse token lists and deletes these even after the owner personas are gone (seen
+  # 2026-11-02), so delete as the admin. Select by EXACT schema name (06: <committed schema><estate>): estate ids
+  # are 2-12 chars, so one can be a suffix of another and endswith/contains would hit another estate's agent.
+  # An agent the admin cannot see, or could not delete, falls back to its owner persona.
+  $admTok = Get-AdminToken $org
+  # The committed schema comes from the agent's workspace, as 06 reads it. An estate built before #33 kept the
+  # committed (unsuffixed) schema: 06 accepts that one only under THIS estate's display name, and so do we.
+  $AgentsDir = Join-Path (Split-Path $PSScriptRoot -Parent) 'agents'
+  function Get-CommittedSchema([string]$slug) {
+    ((Select-String -Path (Join-Path $AgentsDir "$slug/settings.mcs.yml") -Pattern '^\s*schemaName:\s*(\S+)' | Select-Object -First 1).Matches.Groups[1].Value)
+  }
+  function Find-EstateBots($a, [string]$tok) {
+    $cur = @((Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid,name&`$filter=schemaname eq '$($a.schema)'" $tok).value)
+    $old = @((Invoke-Json GET "$org/api/data/v9.2/bots?`$select=botid,name&`$filter=schemaname eq '$($a.committed)'" $tok).value |
+             Where-Object { $_.name -eq $a.display })
+    @($cur) + @($old)
+  }
+  $agents = @(
+    @{ label = 'Onboarding'; owner = 'tom.dean';  slug = 'onboarding-guide'; display = "Onboarding Guide ($Estate)" },
+    @{ label = 'Expense';    owner = 'sam.olsen'; slug = 'expense-helper';   display = "Expense Helper ($Estate)" }
+  )
+  foreach ($a in $agents) {
+    $a.committed = Get-CommittedSchema $a.slug
+    $a.schema = "$($a.committed)$Estate"
+    $found = @(Find-EstateBots $a $admTok)
+    # Admin first; whatever the admin can't delete falls through to the owner, like an agent it can't see.
+    $left = @(foreach ($b in $found) { if (-not (Remove-DefaultEnvBot $b $admTok 'as admin')) { $b } })
+    if ($found -and -not $left) { continue }
+    $owner = $a.owner
+    $tok = Get-PersonaToken $owner $org
+    if (-not $tok) {
+      # No token means every call below would 401. AADSTS50034 = the owner is already gone from the directory.
+      if ($script:PersonaTokenError -match 'AADSTS50034') {
+        Write-Warning "Skipping the $($a.label) agent: the admin cannot see it and its owner $(Get-Upn $owner) no longer exists. In PPAC give the admin System Administrator on the default environment and delete the agent there (reference/runbook-errata.md, Teardown default-environment-agents)."
+      } else {
+        # The owner exists but we cannot be them (wrong lab password, locked, MFA). Carrying on would delete the
+        # personas next and strand the agent, so stop here.
+        throw "Cannot sign in as the $($a.label) agent's owner $(Get-Upn $owner): $($script:PersonaTokenError.Trim().Split([char]10)[0]). Fix the sign-in (lab password: Phase 0b step 5) and re-run; nothing after this point has run."
+      }
+      $skippedOwners += $owner
+      foreach ($b in $left) { $orphanRisk += "$($b.name) ($($b.botid))" }
+      continue
+    }
+    foreach ($b in @(Find-EstateBots $a $tok)) {
+      if (-not (Remove-DefaultEnvBot $b $tok "owner $owner")) { $orphanRisk += "$($b.name) ($($b.botid))" }
     }
   }
   if ($orphanRisk) {
@@ -101,8 +170,10 @@ if ($defaultEnv) {
     Write-Warning "personas will be new principals, the agents will be orphaned, and Phase 6 will fail to"
     Write-Warning "recreate them ('does not have WriteAccess ... entity Agent')."
   }
-  $stok = Get-PersonaToken 'sam.olsen' $org
-  foreach ($w in @((Invoke-Json GET "$org/api/data/v9.2/workflows?`$select=workflowid,name&`$filter=category eq 5 and startswith(name,'Submit and auto-approve')" $stok).value)) {
+  if ($skippedOwners) { Write-Warning "Agents owned by $($skippedOwners -join ', ') were NOT deleted (owner cannot sign in) - see the warning above before re-running Phase 2." }
+  $stok = if ($skippedOwners -contains 'sam.olsen') { $null } else { Get-PersonaToken 'sam.olsen' $org }
+  if (-not $stok) { Write-Warning "The auto-approve flow ('Submit and auto-approve...') was NOT deleted: sam.olsen cannot sign in. It stays in the shared default environment; delete it there as an admin." }
+  foreach ($w in @(if ($stok) { (Invoke-Json GET "$org/api/data/v9.2/workflows?`$select=workflowid,name&`$filter=category eq 5 and startswith(name,'Submit and auto-approve')" $stok).value })) {
     Write-Host "  flow '$($w.name)'"; Invoke-Json PATCH "$org/api/data/v9.2/workflows($($w.workflowid))" $stok @{ statecode = 0; statuscode = 1 } | Out-Null
     Invoke-Json DELETE "$org/api/data/v9.2/workflows($($w.workflowid))" $stok | Out-Null
   }

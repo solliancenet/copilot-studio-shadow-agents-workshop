@@ -233,6 +233,16 @@ Write-Host "Accounts: $(Get-LabUpn 1) .. $(Get-LabUpn $Count)"
 # Only ever this estate's attendee accounts: '<prefix><digits>.<estate>@'. The personas (no digits before
 # the estate id) and another facilitator's attendees (a different estate id) can't match.
 if ($Destroy) {
+  # Phase 9 deletes the attendee CSV right after this, and it may be the only place the lab password was
+  # written down. 99_teardown.ps1 signs in as the personas with that password later, so confirm it can
+  # still be resolved now, before anything is removed. (The value is never printed.)
+  try { $null = Get-LabPassword $InitialPassword }
+  catch {
+    throw ("No lab password is resolvable, and the later teardown step (99_teardown.ps1) signs in as the personas with it. " +
+           "Set it in setup/lab-secrets.local.json as {""labPassword"": ""...""} or in HALCOURT_LAB_PASSWORD " +
+           "(RUNBOOK Phase 0b step 5), then re-run. Nothing was removed.")
+  }
+
   $pattern = "^$([regex]::Escape($Prefix))\d+\.$([regex]::Escape($Estate))@"
   $found = @((Graph GET "users?`$select=id,userPrincipalName&`$top=999").value | Where-Object { $_.userPrincipalName -match $pattern })
   $groupId = Get-LabGroupId

@@ -70,9 +70,13 @@ foreach ($rg in $RoleGroups) {
     }
   }
   # Verify, rather than trust the calls: every attendee present after an add, none after -Remove.
-  $after = @(Get-RoleGroupMember -Identity $rg | ForEach-Object { "$($_.Name)"; "$($_.DisplayName)" } | Where-Object { $_ })
+  $members = @(Get-RoleGroupMember -Identity $rg)
+  $after = @($members | ForEach-Object { "$($_.Name)"; "$($_.DisplayName)" } | Where-Object { $_ })
   $wrong = @($users | Where-Object { ($_.name -in $after) -eq [bool]$Remove })
-  Write-Host "  ${rg} now: $((@(Get-RoleGroupMember -Identity $rg | ForEach-Object Name)) -join ', ')"
+  # List only this run's attendees (members carry a display name, no UPN or estate id, so filter on the names
+  # selected above); the rest are other estates' or other people's, counted but not named.
+  $inScope = @($members | Where-Object { $_.Name -in $users.name })
+  Write-Host "  ${rg} now: $($members.Count) member(s); this run's scope: $(if ($inScope) { ($inScope | ForEach-Object Name) -join ', ' } else { 'none' }); $($members.Count - $inScope.Count) other member(s) not in this run's scope"
   if ($wrong) { throw "${rg}: $(if ($Remove) { 'still holds' } else { 'is missing' }) $(($wrong.upn) -join ', ')" }
 }
 Disconnect-ExchangeOnline -Confirm:$false | Out-Null
