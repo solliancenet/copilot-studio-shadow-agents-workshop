@@ -24,7 +24,7 @@ re-verified as products change.
 | `sharepoint-seed.md` | What the Phase 4 SharePoint seed creates, and the planted access |
 | `dataverse-seed.md` | What the Phase 5 Dataverse seed creates, and the over-broad role |
 | `agents-build.md` | What Phase 6 builds: owners and roles, tool mechanisms, connections |
-| `building-many-estates.md` | Building several estates with `10_build_estates.ps1` (Phases 2–6.5) |
+| `building-many-estates.md` | Building the three estates (dev, stg, prd) with `10_build_estates.ps1`, promoting a change, and moving off the per-person estates |
 | `attendee-accounts.md` | Phase 8b attendee accounts: roles, MFA, Dataverse access, Teams links, licences |
 | `student-slices.md` | Phase 8c per-student slices: why they exist, what they hold, what they don't |
 | `before-delivery-checks.md` | The audit and Purview checks before a delivery, and what each protects |

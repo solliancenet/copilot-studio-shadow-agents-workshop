@@ -9,9 +9,9 @@
 > tradeoffs, alternatives) and [`../reference/runbook-errata.md`](../reference/runbook-errata.md)
 > (what goes wrong, troubleshooting, open `[verify]` risks). Each phase links to its own section there.
 
-Attendees share one live estate for Exercise 04 and 05; Exercise 05 is demonstrated by the facilitator.
-The artifact pack is the offline fallback. Why:
-[ADR-0002](../reference/adr/0002-shared-vs-individual-estates.md).
+A tenant holds three estates: `dev` to develop changes, `stg` to rehearse them, and `prd` for the delivery.
+Every attendee works in prd. The artifact pack is the offline fallback. Why:
+[ADR-0032](../reference/adr/0032-dev-stg-prd-estates.md).
 
 {: .important }
 > The estate is deliberately broken. Provision it in an **isolated training tenant** you control. Never
@@ -193,12 +193,12 @@ Once per lab tenant. Mostly a portal flow. **Building in a tenant someone else a
 
 ### Phase 0b — Choose your estate id
 
-Once per build. Several people can build Halcourt Mutual in the same tenant; each build is an **estate**,
-and every name it creates carries its estate id. With the id `jsmith`, `Claims-Test` becomes
-`Claims-Test-jsmith` and Marcus becomes `marcus.webb.jsmith@<tenant domain>`. What an estate is and what
-stays shared: [ADR-0001](../reference/adr/0001-estates.md).
+Once per build. Each build of Halcourt Mutual in a tenant is an **estate**, and every name it creates
+carries its estate id. With the id `prd`, `Claims-Test` becomes `Claims-Test-prd` and Marcus becomes
+`marcus.webb.prd@<tenant domain>`. What an estate is and what stays shared:
+[ADR-0001](../reference/adr/0001-estates.md).
 
-1. Pick an estate id: your alias, 2–12 lowercase letters or digits.
+1. The estate id is `dev`, `stg` or `prd` ([Before Phase 2](#before-phase-2--the-three-estates)).
 2. Sign in to the tenant as its global admin. If you just finished Phase 0 you already are — skip to 2b to
    confirm it.
 
@@ -220,8 +220,8 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
       It prints the account you signed in as (`you@<something>.onmicrosoft.com`). The part after the `@`
       must be the training tenant's domain, not your company's.
 
-3. Check nobody in the tenant uses your id. This lists every estate's Ana Reyes account; yours must not be
-   there:
+3. Check whether the estate is already built. This lists every estate's Ana Reyes account. If yours is
+   there, the estate exists: resume or change it, don't build it again.
 
    ```bash
    az ad user list --filter "startswith(userPrincipalName,'ana.reyes.')" --query "[].userPrincipalName" -o tsv
@@ -230,7 +230,7 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
 4. Set the id in the terminal. Every script reads it; do this again in each new terminal:
 
    ```bash
-   export HALCOURT_ESTATE=jsmith         # your id
+   export HALCOURT_ESTATE=prd            # dev, stg or prd
    ```
 
 5. **Set the lab accounts' password.** Phase 2 creates your personas with it, later phases sign in as them,
@@ -246,7 +246,7 @@ stays shared: [ADR-0001](../reference/adr/0001-estates.md).
      scripts sign in as its personas.
    - Or set `HALCOURT_LAB_PASSWORD` in the terminal instead. A script with neither stops and says so.
 
-6. Give attendees the estate id along with the tenant domain.
+6. Attendees get the estate id, `prd`, on their sign-in card (Phase 8b) with the tenant domain.
 
 ### Phase 1 — Azure infrastructure (shared)
 
@@ -272,14 +272,29 @@ an estate deploys nothing.
 
    - Don't run `azd up` for your estate, and don't change the secrets: every estate's agents carry them.
 
-### Before Phase 2 — One estate or several?
+### Before Phase 2 — The three estates
 
-- **One estate:** carry on with Phases 2 to 6.5 below, one at a time.
-- **Several estates** (one per attendee): skip Phases 2 to 6.5. Run them all with one script —
+A tenant holds three estates, with fixed ids ([ADR-0032](../reference/adr/0032-dev-stg-prd-estates.md)):
+
+| Estate | For |
+|---|---|
+| `dev` | Developing and trying changes to the kit and the lab |
+| `stg` | Rehearsal: changes are promoted here, and the delivery is rehearsed against them |
+| `prd` | The delivery. Every attendee works in prd |
+
+- **Build them with one script** instead of walking Phases 2 to 6.5 by hand:
   [building-many-estates.md](../reference/building-many-estates.md). It also runs Phase 7's admin
-  prerequisite and Phases 8b and 8c for each estate (an attendee account without a seat, and its slice).
-  Then continue at Phase 6c, and at Phase 8b do only the steps the builder doesn't: the attendees' seats,
-  the transcript role (`07c -Estates`) and the printed sign-in cards (`07d`).
+  prerequisite and Phases 8b and 8c for each estate: one attendee account without a seat, and its slice.
+  Then continue at Phase 6c. At Phase 8b, create prd's attendee accounts and do the steps the builder
+  doesn't: the seats, the transcript role (`07c`) and the printed sign-in cards (`07d`).
+- **Build stg and prd days before a delivery.** Phase 4c's label can take a day to reach SharePoint.
+- **Promote a change by re-running the changed phase's script with the next estate id:** dev, then stg, then
+  prd. For example, `06_provision_agents.ps1 -Estate stg -Agents <slug>`, then the same with `-Estate prd`.
+  A re-run only adds what is missing. It creates a new agent, topic, flow or row, but it leaves an existing
+  one as it was. A change to something that already exists in stg or prd needs its own update step, or a
+  remove-and-recreate, worked out in dev and recorded with the change. Otherwise the promotion reports
+  success and changes nothing.
+- **Rebuilding one estate by hand** (Phases 2 to 6.5, one at a time) still works, for example dev.
 
 ### Phase 2 — Entra identities & personas
 
@@ -740,8 +755,9 @@ the end of Phase 8c, because it needs Phases 8b and 8c.
 
 ### Phase 8b — Lab (attendee) accounts
 
-Per delivery, not per estate: attendees sign in with native lab accounts you hand out, so they review the
-estate from inside the tenant. What the accounts get and why: [attendee-accounts.md](../reference/attendee-accounts.md).
+Per delivery, in prd: attendees sign in with native lab accounts you hand out, so they review prd from inside
+the tenant. stg keeps one or two accounts for rehearsal (the builder's `student01.stg` is one). What the
+accounts get and why: [attendee-accounts.md](../reference/attendee-accounts.md).
 
 1. **Count your free E5 seats.** That number is the most attendees you can run: Teams, the audit events and
    the access model all need a licence ([ADR-0004](../reference/adr/0004-one-licence-per-attendee.md)). This
@@ -754,14 +770,15 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
    - Free = the first number minus the second. Short? Reclaim seats from built estates
      ([building-many-estates.md](../reference/building-many-estates.md)).
 
-2. **Create the attendee accounts, the day before the delivery.** The script creates `student01.<estate>`…
-   with their admin roles, Dataverse read access in each estate environment, a seat each where one is free,
-   and membership of `All-Employees-<estate>` (so the Teams links work). It prints a handout and writes it,
-   passwords included, to `setup/lab-users-<estate>.local.csv` (gitignored). Safe to re-run: existing
-   accounts are kept, with their passwords carried forward from the handout.
+2. **Create the attendee accounts in prd, the day before the delivery.** The script creates
+   `student01.prd`… with their admin roles, Dataverse read access in each of prd's environments, a seat each
+   where one is free, and membership of `All-Employees-prd` (so the Teams links work). It prints a handout
+   and writes it, passwords included, to `setup/lab-users-prd.local.csv` (gitignored). Safe to re-run:
+   existing accounts are kept, with their passwords carried forward from the handout, so the builder's
+   `student01.prd` gets its seat here.
 
    ```bash
-   pwsh setup/scripts/07_provision_lab_users.ps1 -Count <N>          # add -UniquePasswords for a distinct password each
+   pwsh setup/scripts/07_provision_lab_users.ps1 -Estate prd -Count <N>   # add -UniquePasswords for a distinct password each
    ```
 
    - The day before, not the morning of: Conditional Access and Dataverse's licence state both lag by hours.
@@ -772,11 +789,10 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
    which Global Reader alone can't. It asks for one device-code approval as the admin:
 
    ```bash
-   pwsh setup/scripts/07c_provision_purview_roles.ps1
+   pwsh setup/scripts/07c_provision_purview_roles.ps1 -Estates prd,stg
    ```
 
-   - An estate per attendee? Pass them all, so one approval covers them:
-     `07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02`.
+   - `stg` covers the rehearsal accounts; one approval covers both estates.
 
 4. **Tell attendees to bring an authenticator app.** Their accounts hold admin roles, so Entra makes each one
    register MFA at first sign-in — about two minutes, once. Don't try to avoid it with a Conditional Access
@@ -785,22 +801,22 @@ estate from inside the tenant. What the accounts get and why: [attendee-accounts
 
 5. **Print the sign-in cards.** One card per attendee account, two to a Letter page with a cut line:
    the workshop guide's address, estate id, username, password, tenant domain, their lab environment
-   (`Lab-<estate>-NN`, Phase 8c) and the first sign-in steps. It reads every handout CSV from step 2, so run
-   it after the last 07 run:
+   (`Lab-prd-NN`, Phase 8c) and the first sign-in steps. Run it after the last 07 run. Pass `-Estates prd`:
+   without it, it reads every handout CSV, so dev's and stg's accounts would get cards too:
 
    ```bash
-   pwsh setup/scripts/07d_attendee_handouts.ps1        # or -Estates stu01,stu02 for just those
+   pwsh setup/scripts/07d_attendee_handouts.ps1 -Estates prd
    ```
 
    - It writes `setup/attendee-handouts.local.pdf` (and the `.html` it prints from). Both hold the passwords
      in plain text: gitignored, so print them, never share or publish them, and delete them in Phase 9.
-   - It also writes `setup/teams-links.local.html`: each estate's Teams install links (from Phase 6's
-     `teams-links-<estate>.local.csv`) to the agents attendees chat with. It holds **no passwords**, and a
-     link opens its agent only for that estate's lab account, so **share it with the room** at the start of
-     Exercise 04 (a Teams chat or email). Each card's **Agent links** row points to it.
-   - A warning that an attendee agent has **no Teams link** means that attendee can't chat with it: usually
-     its Teams channel is off (#93). Re-run `06_provision_agents.ps1 -Agents <slug>` for that estate, then
-     07d again, without `-Estates`: the page is rewritten with only the estates in the run. Don't hand out
+   - It also writes `setup/teams-links.local.html`: prd's Teams install links (from Phase 6's
+     `teams-links-prd.local.csv`) to the agents attendees chat with. It holds **no passwords**, and a link
+     opens its agent only for prd's lab accounts, so **share it with the room** at the start of Exercise 04
+     (a Teams chat or email). Each card's **Agent links** row points to it.
+   - A warning that an attendee agent has **no Teams link** means attendees can't chat with it: usually its
+     Teams channel is off (#93). Re-run `06_provision_agents.ps1 -Estate prd -Agents <slug>`, then 07d again
+     with `-Estates prd`: the page is rewritten with only the estates in the run. Don't hand out
      cards until the warning is gone. No warning doesn't prove the channels are on: an agent with its channel
      off can still have a link that won't open it (#93), so still open each link before the delivery.
 
@@ -813,25 +829,25 @@ Each attendee gets a small environment of their own, where they are System Admin
 `svc-claims` role in Tasks 03-01 and 03-02. Why, and what a slice holds:
 [student-slices.md](../reference/student-slices.md).
 
-1. **Build a slice for each attendee account, before the delivery.** The script creates `Lab-<estate>-NN`
+1. **Build a slice for each prd attendee account, before the delivery.** The script creates `Lab-prd-NN`
    for `studentNN` — a Sandbox environment with Dataverse, on the estate's billing plan, seeded like
    Claims-Test (the claims data and the over-broad `svc-claims` role) — and makes `studentNN` its System
    Administrator. Use the same number as Phase 8b: the handout's `studentNN` must match its slice. Safe to
-   re-run.
+   re-run: the builder's `Lab-prd-01` is kept.
 
    ```bash
-   pwsh setup/scripts/08_provision_student_slices.ps1 -Count <N>
+   pwsh setup/scripts/08_provision_student_slices.ps1 -Estate prd -Count <N>
    ```
 
    - A new slice's Dataverse is usually ready in about 30 seconds. An early *"Interactive authentication is
      needed"* clears on its own; the script retries.
 
 2. **Check the attendee's view.** This is Phase 8's last check; it needs 8b and 8c. In a browser, sign in as
-   one student account (password in `setup/lab-users-<estate>.local.csv`). The first sign-in makes you
+   one prd student account (password in `setup/lab-users-prd.local.csv`). The first sign-in makes you
    register MFA — have an authenticator app ready. Then confirm:
 
-   - [ ] the Power Platform admin center lists their slice, `Lab-<estate>-NN`;
-   - [ ] each Teams install link from `setup/teams-links-<estate>.local.csv` opens the agent (a link can
+   - [ ] the Power Platform admin center lists their slice, `Lab-prd-NN`;
+   - [ ] each Teams install link from `setup/teams-links-prd.local.csv` opens the agent (a link can
          exist with the channel off, so 07d's warning alone doesn't show this), and 07d ran with no
          missing-link warning (the links page attendees get is built from the same files);
    - [ ] Claims Copilot gives them claim CLM-9002, although their own Claims-Test roles grant no claim
@@ -839,15 +855,14 @@ Each attendee gets a small environment of their own, where they are System Admin
 
 ### Before delivery — preflight, audit and Exercise 04 notes
 
-Run these the day before. They check what the build phases set up, as the attendees will see it. What each
-check protects: [before-delivery-checks.md](../reference/before-delivery-checks.md).
+Run these the day before, on prd (`export HALCOURT_ESTATE=prd`). They check what the build phases set up,
+as the attendees will see it. Run them on stg too when you rehearse. What each check protects:
+[before-delivery-checks.md](../reference/before-delivery-checks.md).
 
 {: .note }
-> Steps 1 and 2 (the preflight and the Teams chat probe) are for the shared estate, or a spot-check of one or
-> two estates. With one estate per attendee it is not practical to run them on every estate (admin MFA, and
-> the number of estates); the estates delivered so far (2026-10) were not each preflighted. Hand-built estates
-> handed to a lab developer to work through self-paced are likewise not preflighted; the developer follows the
-> lab as written.
+> prd is the one estate the whole room uses, so a fault there stops everyone. Fix every failure before the
+> delivery. If prd was kept from the last delivery, also check that delivery's changes were put back
+> (Phase 9, *After each delivery*).
 
 1. **Run the preflight.** It checks the tenant capabilities
    ([tenant-capabilities.md](../reference/tenant-capabilities.md)), the estate and the attendee access
@@ -918,6 +933,13 @@ check protects: [before-delivery-checks.md](../reference/before-delivery-checks.
    - Sign in with it once in a browser to enrol MFA: it is an admin, so `CA-Require-MFA-Admins` applies.
 
 ### During delivery — Exercise 05 demonstrations
+
+{: .warning }
+> This section still describes the per-person estates of 2026-10: each attendee retesting their own estate,
+> and you showing the *after* on a separate presenting estate. Under
+> [ADR-0032](../reference/adr/0032-dev-stg-prd-estates.md) attendees work in prd, so a control you apply in
+> prd reaches the whole room. Exercise 05's rewrite settles how to run it. Until then, don't pre-stage
+> step 0 in prd before Exercise 04: it would close Scenarios B and C before the room breaks them.
 
 Each attendee retests on their own estate, which shows the *before*. You apply each control on the
 presenting estate and show the *after* on screen, then put the estate back. Do it as the facilitator account
@@ -1081,9 +1103,18 @@ instead of demonstrating. Pre-stage 05-03 (step 0): made live, its changes don't
 
 ### Phase 9 — Teardown
 
-After the delivery, remove this estate's attendee and facilitator accounts, its slices, its Purview
-objects, then the estate itself. Run the steps in this order: some need things a later step deletes. Each
-removes only this estate; nothing another estate uses is touched. To reseed instead, re-run Phases 2–6.
+- **After each delivery,** run steps 1 to 4 on prd (`export HALCOURT_ESTATE=prd`): the attendees' Purview
+  role, their accounts, the facilitator account and the slices. Put Exercise 05's changes back too
+  (`09_ex05_demo_state.ps1 -Action Restore -Control All`, and the portal-only reversals in *During
+  delivery*). prd itself stays for the next delivery, as
+  [ADR-0032](../reference/adr/0032-dev-stg-prd-estates.md) recommends (still an open question there). If
+  attendees changed something with Power Platform Administrator that the preflight doesn't check, rebuild
+  prd instead.
+- **To retire or rebuild an estate,** run every step, 1 to 7.
+
+Run the steps in this order: some need things a later step deletes. Each removes only this estate; nothing
+another estate uses is touched. Re-running Phases 2–6 doesn't reset an estate: a re-run only adds what is
+missing ([Before Phase 2](#before-phase-2--the-three-estates)).
 
 Before you start:
 
@@ -1103,8 +1134,8 @@ Before you start:
    pwsh setup/scripts/07c_provision_purview_roles.ps1 -Remove
    ```
 
-   - Tearing down several estates? One approval covers them all:
-     `07c_provision_purview_roles.ps1 -Estates fac01,stu01,stu02 -Remove`.
+   - Several estates? One approval covers them all, for example
+     `07c_provision_purview_roles.ps1 -Estates prd,stg -Remove`.
 
 2. **Delete the attendee accounts and their handout.** The script deletes and purges the accounts
    ([ADR-0026](../reference/adr/0026-attendee-teardown-purges.md)).
