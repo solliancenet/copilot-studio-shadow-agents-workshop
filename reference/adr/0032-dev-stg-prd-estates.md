@@ -3,7 +3,8 @@
 **Status:** Accepted (Jim, 2026-11-09). Supersedes [ADR-0002](0002-shared-vs-individual-estates.md) and the
 estate per person of [#30](https://github.com/solliancenet/copilot-studio-shadow-agents-workshop/issues/30).
 **Applies to:** `setup/RUNBOOK.md` → *Before Phase 2*, Phases 8b and 8c, *Before delivery*, Phase 9;
-`reference/building-many-estates.md`; `setup/scripts/10_build_estates.ps1`, `07c`, `07d`; Exercise 00 and the
+`reference/building-many-estates.md`; `setup/scripts/10_build_estates.ps1`, `07`, `07c`, `07d`, `99_teardown.ps1`;
+Exercise 00 and the
 estate-id wording in `docs/`
 
 ## Context
@@ -49,6 +50,11 @@ a change without touching the estate attendees use.
 - **Promotion is re-running the changed phase script with the next estate id** — for example
   `06_provision_agents.ps1 -Estate stg -Agents <slug>`, then the same with `-Estate prd`. The scripts stay as
   they are: [ADR-0001](0001-estates.md)'s id mechanism serves three estates as it served twenty-three.
+  A re-run only adds what is missing, though. It creates a new agent, topic, flow or row, but it leaves
+  an existing one as it was: `Ensure-Flow` passes over an active flow, a removed topic stays unless it is
+  listed as retired in 06, and Phase 5 skips the tables, columns and seed rows it finds. A change to
+  something that already exists in stg or prd needs its own update step, or a remove-and-recreate, worked
+  out in dev and recorded with the change, or the promotion reports success and changes nothing.
 - **The three are built with** `10_build_estates.ps1 -Estates dev,stg,prd -ReclaimSeats`.
 - **Attendee accounts and slices live in prd** (`student01.prd`, `Lab-prd-01`, …). stg gets one or two
   accounts for rehearsal.
@@ -95,4 +101,6 @@ a change without touching the estate attendees use.
 
 - **Does prd live between deliveries?** Recommended: keep it, rotate only the attendee accounts and their
   slices each delivery (attendee accounts are deleted right after each one, Phase 9), and preflight before
-  every delivery. The alternative is rebuilding prd for each delivery, about an hour plus Phase 4c's wait.
+  every delivery. Keeping it also keeps whatever the last delivery changed: put Exercise 05's controls back
+  (`09_ex05_demo_state.ps1 -Action Restore`), and treat any change attendees made with Power Platform
+  Administrator that the preflight doesn't check as a reason to rebuild. The alternative is rebuilding prd for each delivery, about an hour plus Phase 4c's wait.
