@@ -217,13 +217,17 @@ Check "Estate agents present ($($agents.Count) in manifest)" '01-01 count; 02-01
   foreach ($a in $agents) {
     $isDefault = "$($a.environment)" -like '*default*'
     $e = if ($isDefault) { $default } else { $envs | Where-Object { $_.properties.displayName -eq (Get-EstateName $a.environment $Estate) } | Select-Object -First 1 }
-    $display = if ($isDefault) { Get-EstateDisplayName $a.display $Estate } else { $a.display }
+    $display = Get-EstateDisplayName $a.display $Estate     # every estate agent carries the id (#71)
     if (-not $e) { $missing += "$display (no environment)"; continue }
     $org = $e.properties.linkedEnvironmentMetadata.instanceApiUrl
     if (-not $org) { $missing += "$display (environment has no Dataverse)"; continue }
     try {
       $esc = $display.Replace("'", "''")
       $bots = (Get-Json "$org/api/data/v9.2/bots?`$select=name&`$filter=name eq '$esc'" $org).value
+      # An estate built before #71 has plain names outside the default environment.
+      if (-not $bots -and -not $isDefault) {
+        $bots = (Get-Json "$org/api/data/v9.2/bots?`$select=name&`$filter=name eq '$($a.display.Replace("'", "''"))'" $org).value
+      }
       if (-not $bots) { $missing += $display }
     } catch { $missing += "$display (read failed: $($_.Exception.Message.Split([char]10)[0]))" }
   }

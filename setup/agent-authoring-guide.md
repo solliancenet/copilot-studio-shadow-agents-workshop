@@ -19,9 +19,10 @@ Every name below is **canonical**. Build with your estate's live names ([`../AGE
 | sites `HR-Benefits`, `Claims-Knowledge` | `/sites/HR-Benefits-<estate>`, `/sites/Claims-Knowledge-<estate>` |
 | environment `Halcourt (default)` | the same — it is the tenant's only default environment, **shared** by every estate |
 
-Agents keep their canonical names — except the two in the shared default environment, which get
-` (<estate>)` so every estate's are told apart: **Expense Helper (\<estate\>)**, **Onboarding Guide
-(\<estate\>)**. The Phase 7 export picks this estate's agents there by owner.
+Every agent's name gets ` (<estate>)`, so every estate's are told apart: **Claims Copilot (\<estate\>)**,
+**Expense Helper (\<estate\>)** (#71). The two in the shared default environment also carry the estate id
+in their schema name. The Phase 7 export picks this estate's agents in the default environment by owner,
+and `-Canonicalize` strips the suffix.
 
 ## General steps (every agent)
 
@@ -32,8 +33,8 @@ Agents keep their canonical names — except the two in the shared default envir
 4. **Publish** the agent and capture its Entra identity's app id for `agent-identities-export.csv`. The
    identity appears as soon as the agent is created, as an `agentIdentity` service principal named
    **`<agent name> (Microsoft Copilot Studio)`** — not `cs-agent-<slug>-<env>`, which is only the pack's
-   canonical label (verified 2026-09-19). The name carries no estate id, so tell estates' identities
-   apart by app id (`bots.synchronizationstatus` → `botRegistration.applicationId`).
+   canonical label (verified 2026-09-19). The agent name carries the estate id, so the identity's name
+   does too; the app id (`bots.synchronizationstatus` → `botRegistration.applicationId`) is the exact key.
 5. Confirm the planted problem reproduces before moving on.
 
 {: warning}

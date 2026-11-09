@@ -5,7 +5,7 @@ Exercise 04: open the agent's install link, Add, then hold a short scripted conv
 agent answers before a delivery or a recording, or to test a change to an agent's owner (issue #30).
 
   python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.<estate>@<domain> --password <pw> \
-      --agent "Policy Lookup Bot" --links setup/teams-links-<estate>.local.csv --out /tmp/probe \
+      --agent "Policy Lookup Bot (<estate>)" --links setup/teams-links-<estate>.local.csv --out /tmp/probe \
       --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
 
 --links is Phase 6's handout (setup/teams-links-<estate>.local.csv); --link <url> instead takes one link.
