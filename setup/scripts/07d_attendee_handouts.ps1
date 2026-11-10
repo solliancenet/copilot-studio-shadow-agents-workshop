@@ -91,7 +91,8 @@ foreach ($est in @($cards | ForEach-Object Estate | Select-Object -Unique)) {
   $have = @{}
   if (Test-Path $csv) { foreach ($r in Import-Csv $csv) { if ($r.teams_link) { $have[$r.agent] = $r.teams_link } } }
   $linksByEstate[$est] = foreach ($a in $teamsAgents) {
-    $name = if ($a.estateSuffixName) { "$($a.display) ($est)" } else { $a.display }
+    $name = "$($a.display) ($est)"                      # every estate agent carries the id (#71)
+    if (-not $have[$name] -and -not $a.estateSuffixName -and $have[$a.display]) { $name = $a.display }   # built before #71
     if (-not $have[$name]) { $missing += "  ${est}: $name" }
     [pscustomobject]@{ Agent = $name; Link = $have[$name] }
   }

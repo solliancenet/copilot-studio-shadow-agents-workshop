@@ -731,7 +731,7 @@ scenarios themselves need someone to talk to the agents.
 
    ```bash
    python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' \
-     --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
+     --agent "Policy Lookup Bot ($HALCOURT_ESTATE)" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
      --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
    ```
 
@@ -743,8 +743,9 @@ scenarios themselves need someone to talk to the agents.
 
 5. **Check the agent registry (Task 05-05).** As the facilitator, with AI Administrator activated:
    **Microsoft 365 admin center** → **Agents** → **All agents** → **Registry** must list all ten estate
-   agents: Expense Helper and Onboarding Guide carry the estate id, and the rest have plain names, one
-   entry per estate in the tenant. An estate-id search shows "Showing 2 of 2". **Block** must be available
+   agents, each named with the estate id, for example `Claims Copilot (prd)`. An estate-id search shows
+   "Showing 10 of 10" (an estate built before #71 shows 2 of 2: only Expense Helper and Onboarding Guide
+   carry the id there). **Block** must be available
    on Onboarding Guide. If you try Block, unblock straight away.
 
    - Whether the tenant's Agent 365 licensing lasts until the delivery is open:
@@ -881,7 +882,7 @@ as the attendees will see it. Run them on stg too when you rehearse. What each c
 
    ```bash
    python3 setup/scripts/lib/teams_chat_probe.py --upn lena.ford.$HALCOURT_ESTATE@<tenant domain> --password '<lab password>' \
-     --agent "Policy Lookup Bot" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
+     --agent "Policy Lookup Bot ($HALCOURT_ESTATE)" --links setup/teams-links-$HALCOURT_ESTATE.local.csv --out /tmp/probe \
      --say "look up a policy" --expect "policy id" --say "POL-1001" --expect "Policy POL-1001"
    ```
 

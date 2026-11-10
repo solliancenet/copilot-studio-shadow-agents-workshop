@@ -466,11 +466,13 @@ function Provision-Agent([object]$A) {
   # "<name> (Microsoft Copilot Studio)" - verified: building claims-copilot into one slice already gave the
   # tenant two. At 20 slices that is 21, which breaks Lab 01-02's identity matching and makes Phase 7's
   # newest-per-name dedupe pick an arbitrary student's slice. So a slice build suffixes the name.
+  # Every estate agent carries the estate id for the same reason, and so the agent registry - which searches
+  # names only - finds an estate's agents by its id (issue #71). Before #71 only the default-environment
+  # agents (estateSuffixName) did. The name is set at init only: an agent built before keeps its plain name.
   # A slice suffix REPLACES the estate suffix rather than stacking on it - appending produced
   # "Onboarding Guide (mgray) (mgray-01)", which is just noise in the identity list.
-  $display = if ($DisplayNameSuffix)   { "$($A.display) ($DisplayNameSuffix)" }
-             elseif ($A.estateSuffixName) { "$($A.display) ($Estate)" }        # shared default env
-             else                      { $A.display }
+  $display = if ($DisplayNameSuffix) { "$($A.display) ($DisplayNameSuffix)" }
+             else                    { Get-EstateDisplayName $A.display $Estate }
   # The shared default environment holds every estate's copy of these agents, and a schema name is unique per
   # environment - so there the schema carries the estate id too (cr458_ExpenseHelper -> cr458_ExpenseHelperjsmith),
   # or the second estate's init fails and its lookups could reach another estate's agent (issue #33). An estate
